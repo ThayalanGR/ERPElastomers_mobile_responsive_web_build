@@ -35,7 +35,7 @@ function createAutoComplete(){
 				objList		=	$('#content_body');
 				ol			=	objList.length;
 				nextRow		=	ol + 1;
-				newRow		=	`<div class="col-12 mt-2 point" id="${nextRow}" docid="${invId}" doctype= "${docType}" invqty = "${invQty}">
+				newRow		=	`<div class="col-12 mt-2" id="${nextRow}" docid="${invId}" doctype= "${docType}" invqty = "${invQty}">
                                                     <div class="container shadow text-left">
                                                             <div class="row ">
                                                                 <div class="col-5 bg-dark" >S.No</div>
@@ -78,12 +78,12 @@ function createAutoComplete(){
 	
 				if(ol > 0)
 				{	
-					$('#content_body div:last').after(newRow);			
+					$('#content_body').after(newRow);		
 				}
 				else
 				{	
 					$('.window_error').html("");
-					newTable	=	newRow ;
+					newTable	=	newRow;
 					$('#content_body').html(newTable);
 					
 				}
@@ -109,7 +109,7 @@ function updateAllItems(){
 	$("#content_body").each(function(index, element) {
 		$(element).removeClass((index%2)?'content_rows_dark':'content_rows_light');
         $(element).addClass((index%2)?'content_rows_light':'content_rows_dark');
-		$(element).find("div:first").text((index+1));
+		$(element).find("td:first").text((index+1));
     });
 }
 
@@ -234,6 +234,4 @@ function noClear(){
 	
 
 }
-
-
 	

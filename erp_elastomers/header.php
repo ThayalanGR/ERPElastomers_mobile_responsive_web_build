@@ -29,148 +29,158 @@
                 </a>
         </div>
     </div>
+
+ <?php   if(ISO_BASE_URL == '/modules/Common/') {?>
     <div class="row justify-content-center" style="height:100em; padding-top: 65px;" >
-    <div class="container-fluid "> 
-        <div class="row"  style="padding-left: 10px; padding-right: 10px; ">   
-        <?php
-            // Get Menus
-            $menuHeadSQL		=	@getMySQLData("select * from tbl_menu_head where status>0 order by menu_order asc");
-            $menuCount			=	$menuHeadSQL['count'];
-            $menuHead			=	$menuHeadSQL['data'];
-            $menuSubCount		=	0;
-            $menuSub			=	array();
-            for($mh=0; $mh<$menuCount; $mh++){
-                // Get Sub Menus
-                $menuSubSQL		=	@getMySQLData("select * from tbl_menu_sub where menu_head='".$menuHead[$mh]['menu_head']."' and visible>0 and status>0 order by menu_order asc");
-                $menuSubCount	=	$menuSubSQL['count'];
-                $menuSub		=	$menuSubSQL['data'];
-                $subMenu		=	' <div class="modal-body container-fluid"><div class="row">';
-                $currHdMenu		=	"";					
-                for($sm=0; $sm<$menuSubCount; $sm++){
-                    $chkLink	=	in_array($menuSub[$sm]['autoId'], $_SESSION['userdetails']['userSubPermissions']);
-                    $subLink	=	((!ISO_IS_REWRITE)?"?module=":"/").preg_replace("/[ ]/", '', $menuHead[$mh]['menu_head']."/".$menuSub[$sm]['menu_sub']);
-                    if($menuSub[$sm]['menu_div'] != '')
-                    {								
-                        if($currHdMenu != $menuSub[$sm]['menu_div'])
-                        {
-                            $currHdMenu	=	$menuSub[$sm]['menu_div'];
-                            $currHdMenuId = $menuSub[$sm]['menu_div'];
-                            $menuDivIcon  = $menuSub[$sm]['menu_div_icon'];
-                            if($currHdMenu == 'eWay Bill'){
-                                $currHdMenuId = 'eWayBill';
-                            }
-                            if($currHdMenu == 'Compound '){
-                                $currHdMenuId = 'CompoundId';
-                            }
-                            if($currHdMenu == 'Component'){
-                                $currHdMenuId = 'ComponentId';
-                            }
-                            if($currHdMenu == 'Incoming Compound'){
-                                $currHdMenuId = 'IncomingCompound';
-                            }
-                            if($currHdMenu == 'Approved List'){
-                                $currHdMenuId = 'ApprovedList';
-                            }
+        <div class="container-fluid "> 
+            <div class="row"  style="padding-left: 10px; padding-right: 10px; ">   
+            <?php
+                // Get Menus
+                $menuHeadSQL		=	@getMySQLData("select * from tbl_menu_head where status>0 order by menu_order asc");
+                $menuCount			=	$menuHeadSQL['count'];
+                $menuHead			=	$menuHeadSQL['data'];
+                $menuSubCount		=	0;
+                $menuSub			=	array();
+                for($mh=0; $mh<$menuCount; $mh++){
+                    // Get Sub Menus
+                    $menuSubSQL		=	@getMySQLData("select * from tbl_menu_sub where menu_head='".$menuHead[$mh]['menu_head']."' and visible>0 and status>0 order by menu_order asc");
+                    $menuSubCount	=	$menuSubSQL['count'];
+                    $menuSub		=	$menuSubSQL['data'];
+                    $subMenu		=	' <div class="modal-body container-fluid"><div class="row">';
+                    $currHdMenu		=	"";					
+                    for($sm=0; $sm<$menuSubCount; $sm++){
+                        $chkLink	=	in_array($menuSub[$sm]['autoId'], $_SESSION['userdetails']['userSubPermissions']);
+                        $subLink	=	((!ISO_IS_REWRITE)?"?module=":"/").preg_replace("/[ ]/", '', $menuHead[$mh]['menu_head']."/".$menuSub[$sm]['menu_sub']);
+                        if($menuSub[$sm]['menu_div'] != '')
+                        {								
+                            if($currHdMenu != $menuSub[$sm]['menu_div'])
+                            {
+                                $currHdMenu	=	$menuSub[$sm]['menu_div'];
+                                $currHdMenuId = $menuSub[$sm]['menu_div'];
+                                $menuDivIcon  = $menuSub[$sm]['menu_div_icon'];
+                             
+                                if($currHdMenu == 'eWay Bill'){
+                                    $currHdMenuId = 'eWayBill';
+                                }
+                                if($currHdMenu == 'Compound '){
+                                    $currHdMenuId = 'CompoundId';
+                                }
+                                if($currHdMenu == 'Component'){
+                                    $currHdMenuId = 'ComponentId';
+                                }
+                                if($currHdMenu == 'Incoming Compound'){
+                                    $currHdMenuId = 'IncomingCompound';
+                                }
+                                if($currHdMenu == 'Approved List'){
+                                    $currHdMenuId = 'ApprovedList';
+                                }
 
-                            $subMenu	.=	'<div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#'. $currHdMenuId.'" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="'.$menuDivIcon.' fa-2x"> </i><br>'. $currHdMenu.' </div></div>
-                                            <div class="collapse" id="'.$currHdMenuId.'">
-                                                <div class="card card-body container-fluid">
-                                                    <div class="row text-warning">
-                                                            ' ;
+                                $_SESSION[''.$currHdMenuId.''] = $menuDivIcon;
+
+                                $subMenu	.=	'<div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#'. $currHdMenuId.'" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="'.$menuDivIcon.' fa-2x"> </i><br>'. $currHdMenu.' </div></div>
+                                                <div class="collapse" id="'.$currHdMenuId.'">
+                                                    <div class="card card-body container-fluid">
+                                                        <div class="row text-warning">
+                                                                ' ;
+                            }
+                            $menuSubIcon  = $menuSub[$sm]['menu_sub_icon'];
+                            $_SESSION[''.$menuSub[$sm]['menu_sub'].''] =  $menuSubIcon;
+                            $subMenu	.=	($chkLink)
+                                                ?'
+                                                <a class="col btn hover1 text-center " href="'.$subLink.'" style="" ><div class="text-warning"><i class="'.$menuSubIcon.' fa-2x"> </i><br>'.$menuSub[$sm]['menu_sub'].'</div></a>
+                                                '
+                                                :'                            
+                                                
+                                                ';
                         }
-                        $menuSubIcon  = $menuSub[$sm]['menu_sub_icon'];
-                        $subMenu	.=	($chkLink)
-                                            ?'
-                                            <a class="col btn hover1 text-center " href="'.$subLink.'" style="" ><div class="text-warning"><i class="'.$menuSubIcon.' fa-2x"> </i><br>'.$menuSub[$sm]['menu_sub'].'</div></a>
-                                            '
-                                            :'                            
-                                           
-                                            ';
+                        else if ($currHdMenu != "")
+                        {
+                            $subMenu .= '</div></div></div>';
+                            $currHdMenu	=	"";
+                        }
+                        else
+                        {
+                            $menuSubIcon  = $menuSub[$sm]['menu_sub_icon'];
+                            $_SESSION[''.$menuSub[$sm]['menu_sub'].''] =  $menuSubIcon;
+                            $subMenu	.=	($menuSub[$sm]['menu_sub'] != '-')
+                                            ?($chkLink)
+                                                ?'
+                                                <a class="col btn hover1 text-center " href="'.$subLink.'" style="" ><div class="text-success"><i class="'.$menuSubIcon.' fa-2x"> </i><br>'.$menuSub[$sm]['menu_sub'].'</div></a>
+                                                '
+                                                :'
+                                                
+                                                '
+                                            :'';
+                        }
                     }
-                    else if ($currHdMenu != "")
-                    {
-                        $subMenu .= '</div></div></div>';
-                        $currHdMenu	=	"";
-                    }
-                    else
-                    {
-                        $menuSubIcon  = $menuSub[$sm]['menu_sub_icon'];
-                        $subMenu	.=	($menuSub[$sm]['menu_sub'] != '-')
-                                        ?($chkLink)
-                                            ?'
-                                            <a class="col btn hover1 text-center " href="'.$subLink.'" style="" ><div class="text-success"><i class="'.$menuSubIcon.' fa-2x"> </i><br>'.$menuSub[$sm]['menu_sub'].'</div></a>
-                                           '
-                                            :'
-                                            
-                                          '
-                                        :'';
-                    }
-                }
-                $subMenu		.=	'</div></div>';
+                    $subMenu		.=	'</div></div>';
 
-                
-                $mainLogo = '';
-                if($menuHead[$mh]['menu_head'] == 'NPD'){
-                    $mainLogo = 'fa fa-shield-alt';
-                }
-                if($menuHead[$mh]['menu_head'] == 'Compound'){
-                    $mainLogo = 'fab fa-connectdevelop';
-                }
-                if($menuHead[$mh]['menu_head'] == 'Component'){
-                    $mainLogo = 'fas fa-puzzle-piece';
-                }
-                if($menuHead[$mh]['menu_head'] == 'Quality'){
-                    $mainLogo = 'fas fa-certificate';
-                }
-                if($menuHead[$mh]['menu_head'] == 'Sales'){
-                    $mainLogo = 'fas fa-chart-line';
-                }
-                if($menuHead[$mh]['menu_head'] == 'Management'){
-                    $mainLogo = 'fas fa-user-tie';
-                }
-                $displayMenu = '';
-                if ((in_array($menuHead[$mh]['autoId'], $_SESSION['userdetails']['userPermissions']))){
-                    $displayMenu = '<div class="col-6 btn hover1 text-center"  style="" data-toggle="modal" data-target="#'.$menuHead[$mh]['menu_head'].'"><div class="mt-4 text-primary"><i class="'.$mainLogo.' fa-3x"></i><br>'.$menuHead[$mh]['menu_head'].'</div></div>';
-
-                }
-                else{
+                    
+                    $mainLogo = '';
+                    if($menuHead[$mh]['menu_head'] == 'NPD'){
+                        $mainLogo = 'fa fa-shield-alt';
+                    }
+                    if($menuHead[$mh]['menu_head'] == 'Compound'){
+                        $mainLogo = 'fab fa-connectdevelop';
+                    }
+                    if($menuHead[$mh]['menu_head'] == 'Component'){
+                        $mainLogo = 'fas fa-puzzle-piece';
+                    }
+                    if($menuHead[$mh]['menu_head'] == 'Quality'){
+                        $mainLogo = 'fas fa-certificate';
+                    }
+                    if($menuHead[$mh]['menu_head'] == 'Sales'){
+                        $mainLogo = 'fas fa-chart-line';
+                    }
+                    if($menuHead[$mh]['menu_head'] == 'Management'){
+                        $mainLogo = 'fas fa-user-tie';
+                    }
                     $displayMenu = '';
-                }
-                // Output Menu
-                echo '
-                '.((in_array($menuHead[$mh]['autoId'], $_SESSION['userdetails']['userPermissions']))
-                                ?($menuHead[$mh]['menu_link'])
-                                    ?'<a class="bb" href="?module='.$menuHead[$mh]['menu_head'].'">'
-                                    :''
-                                :'').''.$displayMenu.'
-                        '.((in_array($menuHead[$mh]['autoId'], $_SESSION['userdetails']['userPermissions']))
-                                ?($menuHead[$mh]['menu_link'])
-                                    ?'</a>'
-                                    :''
-                                :'').(
-                                    (in_array($menuHead[$mh]['autoId'], $_SESSION['userdetails']['userPermissions']))
-                                    ?'<div class="modal fade" id="'.$menuHead[$mh]['menu_head'].'" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered" role="document">
-                                            <div class="modal-content">
-                                                <div class="modal-header " style="height: 50px; ">
-                                                    <h6 class="modal-title" id="exampleModalLongTitle"><i class="'.$mainLogo.'"> </i> '.$menuHead[$mh]['menu_head'].'</h6>
-                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                        <i class="fas fa-home " ></i>
-                                                    </button>
+                    if ((in_array($menuHead[$mh]['autoId'], $_SESSION['userdetails']['userPermissions']))){
+                        $displayMenu = '<div class="col-6 btn hover1 text-center"  style="" data-toggle="modal" data-target="#'.$menuHead[$mh]['menu_head'].'"><div class="mt-4 text-primary"><i class="'.$mainLogo.' fa-3x"></i><br>'.$menuHead[$mh]['menu_head'].'</div></div>';
+
+                    }
+                    else{
+                        $displayMenu = '';
+                    }
+                    // Output Menu
+                    echo '
+                    '.((in_array($menuHead[$mh]['autoId'], $_SESSION['userdetails']['userPermissions']))
+                                    ?($menuHead[$mh]['menu_link'])
+                                        ?'<a class="bb" href="?module='.$menuHead[$mh]['menu_head'].'">'
+                                        :''
+                                    :'').''.$displayMenu.'
+                            '.((in_array($menuHead[$mh]['autoId'], $_SESSION['userdetails']['userPermissions']))
+                                    ?($menuHead[$mh]['menu_link'])
+                                        ?'</a>'
+                                        :''
+                                    :'').(
+                                        (in_array($menuHead[$mh]['autoId'], $_SESSION['userdetails']['userPermissions']))
+                                        ?'<div class="modal fade" id="'.$menuHead[$mh]['menu_head'].'" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                                <div class="modal-content">
+                                                    <div class="modal-header " style="height: 50px; ">
+                                                        <h6 class="modal-title" id="exampleModalLongTitle"><i class="'.$mainLogo.'"> </i> '.$menuHead[$mh]['menu_head'].'</h6>
+                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                            <i class="fas fa-home " ></i>
+                                                        </button>
+                                                    </div>
+                                                    '.$subMenu.'
                                                 </div>
-                                                '.$subMenu.'
                                             </div>
-                                        </div>
-                                    </div>'
-                                    :''
-                                ).'
-                
-                ';
-            }
-        ?>     
-           </div>                 
+                                        </div>'
+                                        :''
+                                    ).'
+                    
+                    ';
+                }
+            ?>     
+                </div>                 
         </div>         
     </div>
+ <?php }
+ ?>
+ 
 <?php endif; ?>
 
 

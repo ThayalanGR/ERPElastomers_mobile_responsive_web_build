@@ -13,9 +13,9 @@
         <link rel="stylesheet" type="text/css" href="<?php //echo ISO_REWRITE_URL; ?>style/jquery.ui.filters.css"/> -->
         <!-- <link rel="stylesheet" href="<?php //echo ISO_REWRITE_URL; ?>style/style.css" media="all" /> -->
         <!-- <link rel="shortcut icon" href="<?php //echo ISO_REWRITE_URL; ?>favicon.ico" /> -->
-        <link rel="stylesheet" href="./fontawesome/web-fonts-with-css/css/fontawesome-all.css">
-        <link rel="stylesheet" href="./bootstrap/css/bootstrap.min.css">
-        <link rel="stylesheet" href="./mobile.css">
+        <link rel="stylesheet" href="<?php echo ISO_REWRITE_URL; ?>fontawesome/web-fonts-with-css/css/fontawesome-all.css">
+        <link rel="stylesheet" href="<?php echo ISO_REWRITE_URL; ?>bootstrap/css/bootstrap.min.css">
+        <link rel="stylesheet" href="<?php echo ISO_REWRITE_URL; ?>mobile.css">
 
         <script src="<?php echo ISO_REWRITE_URL; ?>script/jquery.min.js" type="text/javascript"></script>
         <script src="<?php echo ISO_REWRITE_URL; ?>script/jquery.ui.min.js" type="text/javascript"></script>
@@ -25,7 +25,7 @@
         <script src="<?php echo ISO_REWRITE_URL; ?>script/jquery.filters.js" type="text/javascript"></script>
         <script src="<?php echo ISO_REWRITE_URL; ?>script/jquery.monthpicker.js" type="text/javascript"></script>
         <script src="<?php echo ISO_REWRITE_URL; ?>script/jquery.others.js" type="text/javascript"></script>
-
+ 
         <script src="<?php echo ISO_REWRITE_URL; ?>script/functions.js" type="text/javascript"></script>
         <script src="<?php echo ISO_REWRITE_URL; ?>script/general.js" type="text/javascript"></script>
         <script src="<?php echo ISO_REWRITE_URL; ?>script/incvar.js" type="text/javascript"></script>
@@ -40,7 +40,9 @@
             <div class="row justify-content-center">
                 <div class="col-sm-12" >
                     <div id="header">
-                    <?php include_once 'header.php' ?>
+                    <?php 
+                        include_once 'header.php';
+                    ?>
                     </div>
                     <div id="content" class="" style="">  
                         <?php if(ISO_LOAD_MODULE != "login"){?><span id="right_col"><?php }?>
@@ -61,9 +63,9 @@
             </div>
         </div>
         <?php if(ISO_LOAD_MODULE != "login"): ?> 
-            <script src="./bootstrap/js/popper.min.js" type="text/javascript"></script>
-            <script src="./bootstrap/js/jquery-3.3.1.min.js" type="text/javascript"></script>
-            <script src="./bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
+            <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/popper.min.js" type="text/javascript"></script>
+            <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/jquery-3.3.1.min.js" type="text/javascript"></script>
+            <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
         <?php endif; ?>
     </body>
     </html>
