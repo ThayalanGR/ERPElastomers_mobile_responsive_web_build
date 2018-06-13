@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+ 		<table id="resultTable" class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr>
+					<th align="left" width="10%">Key ID</th>
+					<th align="left" width="10%">Key Date</th>
+					<th align="left" width="15%">Tool Code</th>              
+					<th align="left" width="25%">Transferor</th>
+					<th align="left" width="25%">Transferee</th>
+					<th align="right">#</th>
+				</tr>
+			</thead>
+			<tbody>	
+            <xsl:for-each select="xmldata/root/data/row">
+   				<tr>
+                	<td align="left">
+                        <xsl:value-of select="ttn_ref"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="invdate" />
+					</td>
+					<td align="left">
+						<xsl:value-of select="tool_code" />
+					</td>
+					<td align="left">
+						<xsl:value-of select="transferor_username" />
+					</td>
+					<td align="left">
+						<xsl:value-of select="transferee_username"/>
+					</td>
+					<td align="right">
+						<a>
+							<xsl:attribute name="invoice_id"><xsl:value-of select="invoice_id" /></xsl:attribute>
+							<xsl:attribute name="class">view_button link</xsl:attribute>
+							View
+						</a>
+					</td>
+                </tr>
+            </xsl:for-each>
+			</tbody>
+        </table>
+    </xsl:template>
+</xsl:stylesheet>

@@ -1,0 +1,133 @@
+<?php
+	session_start();
+	global $appsubdocs_upload_dir;
+	header("Content-Type: text/xml");
+	if (is_array($_REQUEST['doctype']) && count($_REQUEST['doctype']) > 0) {
+		$subId			=	$_REQUEST['subid'];	
+		$needToUpdate	=	false;
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$appsubdocs_upload_dir;
+		$codeNo			=	'';
+		if($subId == null || $subId == '')
+		{
+			$codeNo			=	@getRegisterData("appsubcode");
+			$uploadPath		.=	$codeNo."/";
+		}
+		else
+		{
+			$uploadPath		.=	$subId."/";;
+			$needToUpdate	=	true;
+		}
+		
+		if(!(is_dir($uploadPath)))
+			mkdir($uploadPath);
+		$numFiles		=	count($_REQUEST['doctype']);
+		$docList		=	$_REQUEST['doctype'];
+		try 
+		{
+			for($fileCount=1;$fileCount <= $numFiles;$fileCount++)
+			{
+				$fileAttr		=	"file".$fileCount;				
+				$storagename	=	$docList[$fileCount].".pdf"	;
+				 // Check $_FILES['file']['error'] value.
+				switch ($_FILES[$fileAttr]['error']) {
+					 case UPLOAD_ERR_OK:
+						 break;
+					 case UPLOAD_ERR_NO_FILE:
+						 throw new RuntimeException('No file sent.');
+					 case UPLOAD_ERR_INI_SIZE:
+					 case UPLOAD_ERR_FORM_SIZE:
+						 throw new RuntimeException('Exceeded filesize limit.');
+					 default:
+						 throw new RuntimeException('Unknown errors.');
+				}
+
+				 // You should also check filesize here. 
+				 if ($_FILES[$fileAttr]['size'] > $max_upload_filesize) {
+					 throw new RuntimeException('Exceeded filesize limit.');
+				}
+
+				if( 'application/pdf' == $_FILES[$fileAttr]['type'] ) 
+				{
+					if(!move_uploaded_file($_FILES[$fileAttr]["tmp_name"], $uploadPath . $storagename))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+				}
+				else
+				{
+					throw new RuntimeException('Invalid file format.');			 
+				}
+			}
+			// Add Doc Types
+			$output		=	"";
+			$userId		=	$_SESSION['userdetails']['userId'];
+			$numSamples	=	$_POST['num_samples'];
+			$remarks	=	$_POST['remarks'];
+			$toolRef	=	$_POST['toolref'];
+			$rfqId		=	$_POST['rfqid'];
+			if($needToUpdate)
+			{
+				if($numSamples > 0)
+				{
+					$sql		=	"update tbl_approval_submit set subDate = now(), numSamples = $numSamples, remarks =	'$remarks', entry_on = now(), entry_by = '$userId', status = 1 where subId = '$subId'";
+				}
+				else
+				{
+					$sql		=	"update tbl_approval_submit set subDate = now(), cpd_entry_on = now(), cpd_entry_by = '$userId', status = 1 where subId = '$subId'";
+				}
+			}
+			else 
+			{
+				if($numSamples > 0)
+				{
+					$sql		=	"insert into tbl_approval_submit(subId,toolRef,numSamples,remarks,entry_on,entry_by) values";
+					$sql		.=	"('$codeNo', '$toolRef',$numSamples ,'$remarks', now(), '$userId')";
+				}
+				else
+				{
+					$sql		=	"insert into tbl_approval_submit(subId,toolRef,cpd_entry_on,cpd_entry_by) values";
+					$sql		.=	"('$codeNo', '$toolRef', now(), '$userId')";				
+				}
+			}
+			$sql_query 	=	@getMySQLData($sql);
+			if($sql_query['status'] != "success"){
+				throw new RuntimeException('Upload of Approval Submission Documents failed due to :'.$sql_query['status']);						
+			}
+			if($needToUpdate)
+				@getMySQLData("update tbl_sample_layout_dim set status = 2 where rfqid='$rfqId'");
+			else
+				@getMySQLData("update tbl_settings set auto_inc=auto_inc + 1 where name='appsubcode'");
+				
+			$output 	= 	"<root>
+								<sql>$sql</sql>
+								<status>".$sql_query['status']."</status>
+								<codeno>".(($subId == null || $subId == '')?$codeNo:$subId)."</codeno>
+							</root>";				
+			echo $output;
+		} 
+		catch (RuntimeException $e) {
+			if($subId == null || $subId == '')
+				array_map('unlink', glob("$uploadPath/*.*"));
+			echo $e->getMessage();
+		}      
+	} 
+	else 
+	{ 	
+		switch($_POST["type"]){
+			case "SAMPLELIST":
+				$sql	=	"select sno, part_number,part_description,cusName,cpdName,tcpd.cpdId,toolCavities,tsp.toolRef,ifnull(tas.subId,'') as subId,ifnull(numSamples,0) as subStatus,compound_spec,cpdpolymer,concat('/".$rfqdrawings_upload_dir."',drawing_file_name) as drawing_file_name
+								from tbl_develop_request tdr
+								inner join (select rfqid , status from tbl_sample_layout_dim group by rfqid) tsld on tsld.rfqid = tdr.sno
+								inner join (select planId,rfqid,toolRef from (select * from tbl_sample_plan where status > 1 order by entry_on desc) tbl1 group by toolRef,rfqid) tsp on tsp.rfqid = tdr.sno
+								inner join tbl_sample_receipt tsr on tsr.planId = tsp.planId
+								left outer join (select subId, toolRef,numSamples from tbl_approval_submit where status != 1 group by toolRef) tas on  tas.toolRef = tsp.toolRef
+								inner join tbl_trn	tt on tt.trnId = tsp.toolRef
+								inner join tbl_compound tcpd on tcpd.cpdId=tsr.cpdId
+								inner join tbl_customer tc on tc.cusid=tdr.cusid
+							where tt.status = 1 and tsld.status = 1 order by tdr.sno";
+				echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+			break;
+		}
+	}
+
+?>

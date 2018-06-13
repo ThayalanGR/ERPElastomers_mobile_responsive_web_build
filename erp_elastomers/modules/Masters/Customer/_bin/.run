@@ -1,0 +1,1185 @@
+compoundId		=	new Array();
+compoundList	=	new Array();
+componentId		=	new Array();
+componentList	=	new Array();
+appCpd			=	new Array();
+appCmpd			=	new Array();
+
+function getParamDataAndValidate(type)
+{
+	objData			=	[
+		// Object ID's
+		[
+			['RefNo', 'CustName', 'CustAddr1', 'CustAddr2', 'SupplyPlace','PinCode', 'Distance', 'ContName','Email', 'Mobile', 'Phone', 'Fax', 'Biz'],
+			['BankName', 'BankNo', 'IFSCCode', 'Credit', 'Freight', 'MultiInvoice', 'TransName', 'TransId'],
+			['PANNo', 'GSTNo', 'SupplyState'],
+			['AppComp'],
+			['AppCmpd'],
+			['AppUser', 'AppDate', 'Remarks']
+		],
+		// Object Default Values
+		[
+			['', '', '', '', '', '', 0,'', '', '', '', '', '', ''],
+			['', '', '', '', '','', '',''],
+			['', '', ''],
+			[''],
+			[''],
+			['', 'DD/MM/YYYY', '']
+		],
+		// Object POST Variable
+		[
+			['cusrefno', 'cusname', 'cusadd1', 'cusadd2','cusplace',  'cuspincode', 'cusdistance', 'cuscontperson', 'cusemail', 'cusmobile', 'cusphone', 'cusfax', 'cusgroup'],
+			['cusbankname', 'cusbankno', 'cusifsccode', 'cuscredit', 'cusfreight','cusmultiinvoice', 'custransportname', 'custransportid'],
+			['cuspan','cusgstn','cusstate'],
+			['appcomp'],
+			['appcmpd'],
+			['cusappuser', 'cusappdate', 'cusremarks']
+		],
+		// Object Error Name
+		[
+			['Reference No.', 'Customer Name', 'Address1', 'Address2', 'Supply Place', 'Pincode', 'Distance', 'Contact Person', 'Email', 'Mobile No.', 'Phone No.', 'Fax No.', 'Business Group'],
+			['Bank Name', 'Bank No.', 'IFSC Code', 'Credit Days', 'Freight', 'Multi-Items Invoice', 'Transporter Name', 'Transporter Id'],
+			['PAN Number','GST Number','Supply State'],
+			['Approved Compounds'],
+			['Approved Components'],
+			['Approved User', 'Approved Date', 'Remarks']
+		],
+		// Object Mandatory
+		[
+			[false, true, true, false, true, true, false, false, false, false, false, false, false],
+			[false, false, false, false, false, false],
+			[false, false, true],
+			[false],
+			[false],
+			[false, false, false]
+		]
+	];
+	
+	paramVal = "";
+	errObj		=	$('#'+type+'_item_error');
+	accordionObj	=	$("#"+type+"_item_accord");
+	if(objData.length > 0 && objData[0].length > 0){
+		for(o=0; o<objData[0].length; o++){
+			for(j=0; j<objData[0][o].length; j++){
+				object	=	$("#"+type+"_" + objData[0][o][j]);
+				if(objData[0][o][j] == 'AppComp' && type == 'new'){
+					paramVal	+=	getCpdParam(objData[2][o][j]);
+				}
+				else if(objData[0][o][j] == 'AppCmpd' && type == 'new' ){
+					paramVal	+=	getCmpdParam(objData[2][o][j]);
+				}				
+				else if((objData[4][o][j]) && (object.val() == null || object.val() == "" || object.val() == objData[1][o][j]))
+				{	
+					displayError(errObj, "error", "<strong>Error !</strong> - " + objData[3][o][j] + " Missing.");
+					if(accordionObj.accordion("option", "active") != o)
+						accordionObj.accordion("option", "active", o );
+					throw object;
+				}
+				else
+				{	
+					if(objData[0][o][j]	==	'MultiInvoice')
+					{
+						value		=	((object.attr('checked'))?1:0);
+						paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+					}	
+					else if(object.val() != "" && object.val() != objData[1][o][j]){
+						value	=	object.val();
+						switch(objData[0][o][j]){
+							case 'Email':
+								if(!emailCheck(object.val())){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid Email Format.");									
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									throw object;
+								}
+							break;
+							case 'AppDate':
+								value	=	value.split('/');
+								value	=	value[2] + '-' +  value[1] + '-' +  value[0];
+							break;
+							case 'Distance':
+								if(isNaN(Number(value)) || Number(value) <= 0){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid " + objData[3][o][j] + ".");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									object.val(0);
+									throw object;
+								}
+							break;
+							case 'PinCode':
+								if(isNaN(Number(value)) || Number(value) <= 100000 || Number(value) >= 999999){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid Pincode");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									object.val(0);
+									throw object;
+								}
+							break;							
+							case 'PANNo':
+								if(value.length != 10){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid " + objData[3][o][j] + ".");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									throw object;
+								}
+							break;
+							case 'TransId':
+							case 'GSTNo':
+								if(value.length != 15){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid " + objData[3][o][j] + ".");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									throw object;
+								}
+							break;
+						}
+						paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+					}
+					else
+					{
+						value	=	object.val();
+						paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+					}
+				}
+			}
+		}
+	}
+	
+	return paramVal;
+}
+
+function getPageData(){
+	XMLContent		=	postback(actionFile, "selecttype=CUSVIEW&outtype=xml", "POST", "XML");
+	//alert(XMLContent);
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	$(".edit_button").click(function(e) {
+        editForm($(this).attr('cusid'));
+    });
+	
+	$(".delete_button").click(function(e) {
+        deleteForm($(this).attr('cusid'));
+    });
+	
+	updateHeader();updateContent();
+}
+
+function getCompoundAutoList(){
+	var getCPDList			=	postback(actionFile, "selecttype=CUSCPDATLIST&outtype=xml", "POST", "XML");
+	supXML					=	parseXMLdoc(getCPDList);
+	rowXML					=	supXML.getElementsByTagName("row");
+	for(sl=0; sl<rowXML.length; sl++){
+		compoundId[sl]		=	rowXML[sl].childNodes[0].firstChild.nodeValue;
+		compoundList[sl]	=	rowXML[sl].childNodes[1].firstChild.nodeValue;
+	}
+}
+
+function getComponentAutoList(){
+	var getCMPDList			=	postback(actionFile, "selecttype=CUSCMPDATLIST&outtype=xml", "POST", "XML");
+	supXML					=	parseXMLdoc(getCMPDList);
+	rowXML					=	supXML.getElementsByTagName("row");
+	for(sl=0; sl<rowXML.length; sl++){
+		componentId[sl]		=	rowXML[sl].childNodes[0].firstChild.nodeValue;
+		componentList[sl]	=	rowXML[sl].childNodes[1].firstChild.nodeValue + " (" + rowXML[sl].childNodes[2].firstChild.nodeValue + ")";
+	}
+}
+
+function removeCompound(cpd){
+	if(cpd != null && cpd != ""){
+		for(ac=0; ac<appCpd.length; ac++){
+			if(appCpd[ac] == cpd){
+				appCpd.splice(ac, 1);
+				break;
+			}			
+		}
+		
+		for(ac=0; ac<appCpd.length; ac++){
+			tabClass	=	(ac%2)?'content_rows_light':'content_rows_dark';
+			$("#nAppComp_" + appCpd[ac]).removeClass().addClass(tabClass);
+		}
+		
+		delCmpdSno	=	1;
+		$("#new_AppComp tr").each(function(index, element) {
+			if(typeof element == "object" && element.id != null && element.id != ""){
+				$("#" + element.id + " td:first").html(((delCmpdSno <= 9)?'0':'') + delCmpdSno);
+				delCmpdSno++;
+			}
+		});
+		
+	}
+}
+
+function removeComponent(cmpd){
+	if(cmpd != null && cmpd != ""){
+		for(acd=0; acd<appCmpd.length; acd++){
+			if(appCmpd[acd] == cmpd){
+				appCmpd.splice(acd, 1);
+				break;
+			}			
+		}
+		
+		for(acd=0; acd<appCmpd.length; acd++){
+			tabClass	=	(acd%2)?'content_rows_light':'content_rows_dark';
+			$("#nAppCmpd_" + appCmpd[acd]).removeClass().addClass(tabClass);
+		}
+		
+		delCmptSno	=	1;
+		$("#new_AppCmpd tr").each(function(index, element) {
+			if(typeof element == "object" && element.id != null && element.id != ""){
+				$("#" + element.id + " td:first").html(((delCmptSno <= 9)?'0':'') + delCmptSno);
+				delCmptSno++;
+			}
+		});
+		
+	}
+}
+
+function clearAllAppComp(type){
+	for(ac=0; ac<appCpd.length; ac++){
+		if(type == 'edit')
+			$("#eAppComp_" + appCpd[ac]).remove();
+		else
+			$("#nAppComp_" + appCpd[ac]).remove();
+	}
+	appCpd		=	new Array();
+}
+
+function clearAllAppCmpd(type){
+	for(acd=0; acd<appCmpd.length; acd++){
+		if(type == 'edit')
+			$("#eAppCmpd_" + appCmpd[acd]).remove();
+		else
+			$("#nAppCmpd_" + appCmpd[acd]).remove();
+	}
+	appCmpd		=	new Array();
+}
+
+function openAccordion(obj, ev, type, no){
+	ev = ev || window.event;			// gets the event in ie or ns
+	kCode = ev.keyCode || ev.which;		// gets the keycode in ie or ns
+	if(ev != null && no != null && no >= 0){
+		if(!ev.shiftKey && kCode == 9){
+			switch(type){
+				case 'new':	
+					$("#new_item_accord").accordion("option", "active", no);
+				break;
+				case 'edit':	
+					$("#edit_item_accord").accordion("option", "active", no);	
+				break;
+			}
+		}
+	}	
+}
+
+function getSubmitButton(fid){
+	if(fid != null){
+		fid			=	(typeof fid == "object")?fid:document.getElementById(fid);
+		if(fid){
+			nsib		=	fid.nextSibling;
+			if(nsib){
+				buttons		=	nsib.getElementsByTagName("button");
+				if(buttons.length > 0){
+					buttons[0].click();
+				}
+			}
+		}
+	}
+}
+
+function editForm(no){
+	$("#edit_item_form").css('visibility', 'visible');
+	$("#edit_item_form").dialog("open");
+	EditNo		=	(no)?no:null;	
+	if(typeof setEditFunc == "function")
+	setEditFunc();
+}
+
+function deleteForm(no){
+	$("#del_item_form").css('visibility', 'visible');
+	$("#del_item_form").dialog("open");
+	DeleteNo	=	(no)?no:null;
+}
+
+function addItemFunc(){
+	newError		=	$('#new_item_error');
+	newAccordion	=	$("#new_item_accord");	
+	displayError(newError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");
+	param				=	"selecttype=" + "CUSADD";
+	try{
+		param		+=	getParamDataAndValidate("new");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}
+	XMLContent			=	postback(actionFile, param, "POST", "XML");
+	xmlData				=	parseXMLdoc(XMLContent);
+	error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+	if(error == "success"){
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		$("#new_item_form").dialog("close");
+		updatePageBehaviour();
+	}
+	else{
+		displayError(newError, "error", xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("errtxt")[0].firstChild.nodeValue);
+	}
+}
+
+function getCpdParam(objDatParam,o){
+	cpdParam = '';
+	for(ac=0; ac<appCpd.length; ac++){
+		acName		=	$("#appCompName_"+appCpd[ac]);
+		acPORef		=	$("#appCompPORef_"+appCpd[ac]);
+		acPODate	=	$("#appCompPODate_"+appCpd[ac]);
+		acRate		=	$("#appCompRate_"+appCpd[ac]);
+		
+		if(acName.val() == null || acName.val() == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid Compound Name at Row " + (ac+1) + ".");
+			if(newAccordion.accordion("option", "active") != o)
+				newAccordion.accordion("option", "active", o);			
+			throw acName;
+		}
+		else if(acPORef.val() == null || acPORef.val() == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid P.O. Reference at Row " + (ac+1) + ".");
+			if(newAccordion.accordion("option", "active") != o)
+				newAccordion.accordion("option", "active", o);
+			throw acPORef;
+		}
+		else if(acPODate.val() == null || acPODate.val() == "" || acPODate.val() == "DD/MM/YYYY"){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid P.O. Date at Row " + (ac+1) + ".");
+			if(newAccordion.accordion("option", "active") != o)
+				newAccordion.accordion("option", "active", o);
+			throw acPODate;
+		}
+		else if(isNaN(acRate.val().split(",").join("")) || acRate.val().toNumber() <= 0){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid Rate at Row " + (ac+1) + ".");
+			if(newAccordion.accordion("option", "active") != o)
+				newAccordion.accordion("option", "active", o);
+			acRate.val('0.00');
+			throw acRate;
+		}	
+		cpdParam	+=	"&" + objDatParam + "[id][]=" + acName.val() +
+						"&" + objDatParam + "[name][]=" + acName.find("option:selected").text() + 
+						"&" + objDatParam + "[poref][]=" + acPORef.val() + 
+						"&" + objDatParam + "[podate][]=" + acPODate.val() +
+						"&" + objDatParam + "[rate][]=" + acRate.val();
+	}
+	return cpdParam;
+}
+
+function getCmpdParam(objDatParam,o){
+	cmpdParam = '';
+	for(acd=0; acd<appCmpd.length; acd++){
+		acdName		=	$("#appCmpdName_"+appCmpd[acd]);
+		acdDesc		=   $("#appCmpdName_"+appCmpd[acd]+" option:selected");
+		acdPORef	=	$("#appCmpdPORef_"+appCmpd[acd]);
+		acdPODate	=	$("#appCmpdPODate_"+appCmpd[acd]);
+		acdRate		=	$("#appCmpdRate_"+appCmpd[acd]);
+		acdQty		=	$("#appCmpdQty_"+appCmpd[acd]);
+		acdInsVal	=	$("#appCmpdInsVal_"+appCmpd[acd]);
+		
+		if(acdName.val() == null || acdName.val() == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid Component Name at Row " + (acd+1) + ".");
+			if(newAccordion.accordion("option", "active") != o)
+				newAccordion.accordion("option", "active", o);
+			throw acdName;
+		}
+		else if(acdPORef.val() == null || acdPORef.val() == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid P.O. Reference at Row " + (acd+1) + ".");
+			if(newAccordion.accordion("option", "active") != o)
+				newAccordion.accordion("option", "active", o);
+			throw acdPORef;
+		}
+		else if(acdPODate.val() == null || acdPODate.val() == "" || acdPODate.val() == "DD/MM/YYYY"){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid P.O. Date at Row " + (acd+1) + ".");
+			if(newAccordion.accordion("option", "active") != o)
+				newAccordion.accordion("option", "active", o);
+			throw acdPODate;
+		}
+		else if(isNaN(acdRate.val().split(",").join("")) || acdRate.val().toNumber() <= 0){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid Rate at Row " + (acd+1) + ".");
+			if(newAccordion.accordion("option", "active") != o)
+				newAccordion.accordion("option", "active", o);
+			acdRate.val('0.00');
+			throw acdRate;
+		}
+		else if(isNaN(acdQty.val().split(",").join("")) || acdQty.val().toNumber() < 0){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid PO Qty at Row " + (acd+1) + ".");	
+			if(newAccordion.accordion("option", "active") != o)
+				newAccordion.accordion("option", "active", o);		
+			acdQty.val('0');
+			throw acdQty;
+		}
+		else if(isNaN(acdInsVal.val().split(",").join("")) || acdInsVal.val().toNumber() < 0){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid Insert Qty at Row " + (acd+1) + ".");
+			if(newAccordion.accordion("option", "active") != o)
+				newAccordion.accordion("option", "active", o);			
+			acdInsVal.val('0.00');
+			throw acdInsVal;
+		}				
+		cmpdParam	+=	"&" + objDatParam + "[id][]=" + acdName.val() +
+					"&" + objDatParam + "[name][]=" + acdDesc.text() + 
+					"&" + objDatParam + "[poref][]=" + acdPORef.val() + 
+					"&" + objDatParam + "[podate][]=" + acdPODate.val() +
+					"&" + objDatParam + "[rate][]=" + acdRate.val()+
+					"&" + objDatParam + "[qty][]=" + acdQty.val()+
+					"&" + objDatParam + "[insval][]=" + acdInsVal.val();
+	}
+	return cmpdParam;
+}
+
+function setEditFunc(){
+	editError		=	$('#edit_item_error');
+	timenow			=	new Date();
+	tmenow			=	((timenow.getDate() < 10)?'0':'') + timenow.getDate() + "/" +
+						(((timenow.getMonth()+1) < 10)?'0':'') + (timenow.getMonth()+1) + "/" +
+						timenow.getFullYear();
+	
+	if(EditNo != null && EditNo != ""){
+		xmlData		=	parseXMLdoc(XMLContent);
+		Rows		=	xmlData.getElementsByTagName("row");
+		EditData	=	new Array();
+		if(Rows.length > 0){
+			for(R=0; R<Rows.length; R++){
+				Obj		=	Rows[R];
+				Sno		=	Obj.childNodes[0].firstChild.nodeValue;
+				if(Sno == EditNo){
+					for(ER=0; ER<Obj.childNodes.length; ER++){
+						EditData[Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+					}
+					break;
+				}
+			}
+			
+			setEditAppCompound();
+			setEditAppComponent();
+			$('#edit_RefNo').val(EditData['cusrefno']);
+			$('#edit_CustName').val(EditData['cusname']);
+			$('#edit_CustAddr1').val(EditData['cusadd1']);
+			$('#edit_CustAddr2').val(EditData['cusadd2']);
+			$('#edit_PinCode').val(EditData['cuspincode']);
+			$('#edit_Distance').val(EditData['cusdistance']);
+			$('#edit_Email').val(EditData['cusemail']);
+			$('#edit_ContName').val(EditData['cuscontname']);
+			$('#edit_Mobile').val(EditData['cusmobile']);
+			$('#edit_Phone').val(EditData['cusphone']);
+			$('#edit_Fax').val(EditData['cusfax']);
+			$('#edit_Biz').val(EditData['cusgroup']);
+			$('#edit_BankName').val(EditData['cusbankname']);
+			$('#edit_BankNo').val(EditData['cusbankno']);
+			$('#edit_IFSCCode').val(EditData['cusifsccode']);
+			$('#edit_PANNo').val(EditData['cuspan']);
+			$('#edit_GSTNo').val(EditData['cusgstn']);
+			$('#edit_SupplyPlace').val(EditData['cusplace']);
+			$('#edit_SupplyState').val(EditData['cusstate']);
+			$('#edit_AppUser').val(EditData['cusapprovedby']);
+			$('#edit_AppDate').val((EditData['cusapproveddate'] == '00/00/0000')?String(tmenow):EditData['cusapproveddate']);
+			$('#edit_Credit').val(EditData['cuscreditdays']);
+			$('#edit_Freight').val(EditData['cusfreight']);
+			if(EditData['cusmultiinvoice'] == 1)
+				$('#edit_MultiInvoice').attr('checked',true);	
+			else
+				$('#edit_MultiInvoice').attr('checked',false);
+			$('#edit_TransName').val(EditData['custransportname']);
+			$('#edit_TransId').val(EditData['custransportid']);
+			$('#edit_Remarks').val(EditData['cusremarks']);			
+			if(EditData['cusapproveddate'])
+				$('#edit_AppDate').removeClass().addClass('normal_text');
+			$('#edit_item_accord').accordion("option", "active", 0);
+			$('#edit_RefNo').focus();
+		}
+	}
+}
+
+function setEditAppCompound(){
+	var getCPDList		=	postback(actionFile, "selecttype=CUSCPDEDITLIST&cusid="+EditNo+"&outtype=xml", "POST", "XML");
+	supXML				=	parseXMLdoc(getCPDList);
+	Rows				=	supXML.getElementsByTagName("row");
+	appCpd				=	new Array();
+	EditAppComp			=	new Array();
+	timenow				=	(new Date()).getTime();
+	if(Rows.length > 0){
+		for(R=0; R<Rows.length; R++){
+			Obj					=	Rows[R];
+			EditAppComp[R]		=	new Array();
+			for(ER=0; ER<Obj.childNodes.length; ER++){
+				EditAppComp[R][Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+			}
+		}
+		
+		getCompoundAutoList();
+		
+		for(ERC=0; ERC<EditAppComp.length; ERC++){
+			tabClass	=	(ERC%2)?'content_rows_light':'content_rows_dark';
+			$("#edit_AppComp tr:last").after(
+				'<tr id="eAppComp_' + timenow + '" class="' + tabClass + '">' +
+					'<td align="center">' +
+						(((ERC + 1) <= 9)?'0':'') + (ERC + 1) +
+					'</td>' +
+					'<td id="appCompName_' + timenow + '">' +
+						EditAppComp[ERC]['cpdname'] +
+					'</td>' +
+					'<td id="appCompPORef_' + timenow + '">' +
+						EditAppComp[ERC]['poref'] +
+					'</td>' +
+					'<td id="appCompPODate_' + timenow + '">' +
+						((EditAppComp[ERC]['podate'] != "00/00/0000" && EditAppComp[ERC]['podate'] != "01/01/1970")?EditAppComp[ERC]['podate']:"") +
+					'</td>' +
+					'<td id="appCompRate_' + timenow + '" align="right">' +
+						getCurrency(EditAppComp[ERC]['porate'], 2) +
+					'</td>' +
+					'<td align="right">' +
+						'<a href="#" onclick="editAppComp(' + timenow + ')">Edit</a> &nbsp;|&nbsp; <a href="#" onclick="delAppComp(' + timenow + ')">Delete</a>&nbsp;' +
+					'</td>' +
+				'<tr>'
+			);
+			appCpd.push(timenow);
+			timenow++;
+		}
+	}
+}
+
+function setEditAppComponent(){
+	var getCMPDList		=	postback(actionFile, "selecttype=CUSCMPDEDITLIST&cusid="+EditNo+"&outtype=xml", "POST", "XML");
+	supXML				=	parseXMLdoc(getCMPDList);
+	Rows				=	supXML.getElementsByTagName("row");
+	appCmpd				=	new Array();
+	EditAppCmpd			=	new Array();
+	timenow				=	(new Date()).getTime();
+	if(Rows.length > 0){
+		for(R=0; R<Rows.length; R++){
+			Obj					=	Rows[R];
+			EditAppCmpd[R]		=	new Array();
+			for(ER=0; ER<Obj.childNodes.length; ER++){
+				EditAppCmpd[R][Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+			}
+		}
+		
+		getComponentAutoList();
+		
+		for(ERC=0; ERC<EditAppCmpd.length; ERC++){
+			tabClass	=	(ERC%2)?'content_rows_light':'content_rows_dark';
+			$("#edit_AppCmpd tr:last").after(
+				'<tr id="eAppCmpd_' + timenow + '" class="' + tabClass + '">' +
+					'<td align="center">' +
+						(((ERC + 1) <= 9)?'0':'') + (ERC + 1) +
+					'</td>' +
+					'<td id="appCmpdName_' + timenow + '">' +
+						EditAppCmpd[ERC]['cmpdname'] +
+					'</td>' +
+					'<td id="appCmpdPORef_' + timenow + '">' +
+						EditAppCmpd[ERC]['poref'] +
+					'</td>' +
+					'<td id="appCmpdPODate_' + timenow + '">' +
+						((EditAppCmpd[ERC]['podate'] != "00/00/0000" && EditAppCmpd[ERC]['podate'] != "01/01/1970")?EditAppCmpd[ERC]['podate']:"") +
+					'</td>' +
+					'<td id="appCmpdRate_' + timenow + '" align="right">' +
+						getCurrency(EditAppCmpd[ERC]['porate'], 2) +
+					'</td>' +
+					'<td id="appCmpdQty_' + timenow + '" align="right">' +
+						getCurrency(EditAppCmpd[ERC]['poqty']) +
+					'</td>' +	
+					'<td id="appCmpdInsVal_' + timenow + '" align="right">' +
+						getCurrency(EditAppCmpd[ERC]['insertvalue'],2) +
+					'</td>' +				
+					'<td align="right">' +
+						'<a href="#" onclick="editAppCmpd(' + timenow + ')">Edit</a> &nbsp;|&nbsp; <a href="#" onclick="delAppCmpd(' + timenow + ')">Delete</a>&nbsp;' +
+					'</td>' +
+				'<tr>'
+			);
+			
+			appCmpd.push(timenow);
+			timenow++;
+		}
+	}
+}
+
+function editAppComp(id){
+	if(id != null && id != ""){
+		$("#edit_app_comp_form").dialog('open');
+		$("#edit_AppCompName").val($("#appCompName_" + id).html());
+		$("#edit_AppCompName").attr("readonly","true");
+		$("#edit_AppCompPORef").val($("#appCompPORef_" + id).html());
+		if($("#appCompPODate_" + id).html() != null && $("#appCompPODate_" + id).html() != ""){
+			$("#edit_AppCompPODate").val($("#appCompPODate_" + id).html());
+			$("#edit_AppCompPODate").removeClass();
+		}
+		else{
+			$("#edit_AppCompPODate").val($("#appCompPODate_" + id).html());
+			$("#edit_AppCompPODate").addClass("invisible_text");
+		}
+		$("#edit_AppCompRate").val($("#appCompRate_" + id).html());
+		$("#edit_AppCompRate").removeClass();
+	}	
+}
+
+function editAppCmpd(id){
+	if(id != null && id != ""){
+		$("#edit_app_cmpd_form").dialog('open');
+		$("#edit_AppCmpdName").val($("#appCmpdName_" + id).html());
+		$("#edit_AppCmpdName").attr("readonly","true");
+		$("#edit_AppCmpdPORef").val($("#appCmpdPORef_" + id).html());
+		if($("#appCmpdPODate_" + id).html() != null && $("#appCmpdPODate_" + id).html() != ""){
+			$("#edit_AppCmpdPODate").val($("#appCmpdPODate_" + id).html());
+			$("#edit_AppCmpdPODate").removeClass();
+		}
+		else{
+			$("#edit_AppCmpdPODate").val("DD/MM/YYYY");
+			$("#edit_AppCmpdPODate").addClass("invisible_text");
+		}
+		$("#edit_AppCmpdRate").val($("#appCmpdRate_" + id).html());
+		$("#edit_AppCmpdRate").removeClass();
+		$("#edit_AppCmpdQty").val($("#appCmpdQty_" + id).html());
+		$("#edit_AppCmpdQty").removeClass();		
+		$("#edit_AppCmpdInsVal").val($("#appCmpdInsVal_" + id).html());
+		$("#edit_AppCmpdInsVal").removeClass();		
+		
+	}
+}
+
+function delAppComp(id){
+	if(id != null && id != ""){
+		conf		=	confirm("Are you Sure to Delete ? ? ?");
+		if(conf == true){
+			param			=	"selecttype=CUSAPPCPDDEL" +
+								"&cusid=" + EditNo +
+								"&acname=" + $("#appCompName_" + id).html() +
+								"&acporef=" + $("#appCompPORef_" + id).html() +
+								"&acpodate=" + $("#appCompPODate_" + id).html() +
+								"&acrate=" + $("#appCompRate_" + id).html();
+			dacContent		=	postback(actionFile, param, "POST", "XML");
+			xmlData			=	parseXMLdoc(dacContent);
+			error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+			if(error == "success"){
+				clearAllAppComp('edit');
+				setEditAppCompound();
+			}
+			else{
+				displayError(appCompError, "error", error);
+			}
+		}
+	}
+}
+
+function delAppCmpd(id){
+	if(id != null && id != ""){
+		conf		=	confirm("Are you Sure to Delete ? ? ?");
+		if(conf == true){
+			param			=	"selecttype=CUSAPPCMPDDEL" +
+								"&cusid=" + EditNo +
+								"&acname=" + $("#appCmpdName_" + id).html() +
+								"&acporef=" + $("#appCmpdPORef_" + id).html() +
+								"&acpodate=" + $("#appCmpdPODate_" + id).html() +
+								"&acrate=" + $("#appCmpdRate_" + id).html();
+			dacContent		=	postback(actionFile, param, "POST", "XML");
+			xmlData			=	parseXMLdoc(dacContent);
+			error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+			if(error == "success"){
+				clearAllAppCmpd('edit');
+				setEditAppComponent();
+			}
+			else{
+				displayError(appCmpdError, "error", error);
+			}
+		}
+	}
+}
+
+function editAppCompFunc(){
+	compName		=	$("#edit_AppCompName");
+	poRef			=	$("#edit_AppCompPORef");
+	poDate			=	$("#edit_AppCompPODate");
+	compRate		=	$("#edit_AppCompRate");
+	appCompError	=	$("#edit_app_comp_error");
+	
+	if(compName.val() == null || compName.val() == ''){
+		displayError(appCompError, "error", "<strong>Error !</strong> - Invalid Compound Name.");
+		compName.focus();
+		return false;
+	}
+	else if(poRef.val() == null || poRef.val() == ''){
+		displayError(appCompError, "error", "<strong>Error !</strong> - Invalid P.O. Reference.");
+		poRef.focus();
+		return false;
+	}
+	else if(poDate.val() == null || poDate.val() == '' || poDate.val() == 'DD/MM/YYYY'){
+		displayError(appCompError, "error", "<strong>Error !</strong> - Invalid P.O. Date.");
+		poDate.focus();
+		return false;
+	}
+	else if(isNaN(compRate.val().split(",").join("")) || compRate.val().toNumber() <= 0){
+		displayError(appCompError, "error", "<strong>Error !</strong> - Invalid Rate.");
+		compRate.val('0.00');
+		compRate.focus();
+		return false;
+	}
+	
+	param			=	"selecttype=CUSAPPCPDADDUPD" +
+						"&cusid=" + EditNo +
+						"&acname=" + compName.val() +
+						"&acporef=" + poRef.val() +
+						"&acpodate=" + poDate.val() +
+						"&acrate=" + compRate.val();
+				
+	eacContent		=	postback(actionFile, param, "POST", "XML");
+	xmlData			=	parseXMLdoc(eacContent);
+	error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+	if(error == "success"){
+		clearAllAppComp('edit');
+		setEditAppCompound();
+		$("#edit_app_comp_form").dialog("close");
+	}
+	else{
+		displayError(appCompError, "error", error);
+	}
+}
+
+function editAppCmpdFunc(){
+	cmpdName		=	$("#edit_AppCmpdName");
+	poRef			=	$("#edit_AppCmpdPORef");
+	poDate			=	$("#edit_AppCmpdPODate");
+	cmpdRate		=	$("#edit_AppCmpdRate");
+	cmpdQty			=	$("#edit_AppCmpdQty");
+	cmpdInsVal		=	$("#edit_AppCmpdInsVal");
+	appCmpdError	=	$("#edit_app_cmpd_error");
+	
+	if(cmpdName.val() == null || cmpdName.val() == ''){
+		displayError(appCmpdError, "error", "<strong>Error !</strong> - Invalid Component Name.");
+		cmpdName.focus();
+		return false;
+	}
+	else if(poRef.val() == null || poRef.val() == ''){
+		displayError(appCmpdError, "error", "<strong>Error !</strong> - Invalid P.O. Reference.");
+		poRef.focus();
+		return false;
+	}
+	else if(poDate.val() == null || poDate.val() == '' || poDate.val() == 'DD/MM/YYYY'){
+		displayError(appCmpdError, "error", "<strong>Error !</strong> - Invalid P.O. Date.");
+		poDate.focus();
+		return false;
+	}
+	else if(isNaN(cmpdRate.val().split(",").join("")) || cmpdRate.val().toNumber() <= 0){
+		displayError(appCmpdError, "error", "<strong>Error !</strong> - Invalid Rate.");
+		cmpdRate.val('0.00');
+		cmpdRate.focus();
+		return false;
+	}
+	else if(isNaN(cmpdQty.val().split(",").join("")) || cmpdQty.val().toNumber() < 0){
+		displayError(appCmpdError, "error", "<strong>Error !</strong> - Invalid Qty.");
+		cmpdQty.val('0');
+		cmpdQty.focus();
+		return false;
+	}
+	else if(isNaN(cmpdInsVal.val().split(",").join("")) || cmpdInsVal.val().toNumber() < 0){
+		displayError(appCmpdError, "error", "<strong>Error !</strong> - Invalid Qty.");
+		cmpdInsVal.val('0.00');
+		cmpdInsVal.focus();
+		return false;
+	}		
+	
+	param			=	"selecttype=CUSAPPCMPDADDUPD" +
+						"&cusid=" + EditNo +
+						"&acname=" + cmpdName.val() +
+						"&acporef=" + poRef.val() +
+						"&acpodate=" + poDate.val() +
+						"&acrate=" + cmpdRate.val()+
+						"&acqty=" + cmpdQty.val()+
+						"&insval=" + cmpdInsVal.val();
+				
+	eacContent		=	postback(actionFile, param, "POST", "XML");
+	xmlData			=	parseXMLdoc(eacContent);
+	error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+	if(error == "success"){
+		clearAllAppCmpd('edit');
+		setEditAppComponent();
+		$("#edit_app_cmpd_form").dialog("close");
+	}
+	else{
+		displayError(appCmpdError, "error", error);
+	}
+}
+
+function editItemFunc(){
+	editError		=	$('#edit_item_error');
+	editAccordion	=	$("#edit_item_accord");
+	
+	displayError(editError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");
+	param				=	"selecttype=" + "CUSEDIT" +
+							"&cusid=" + EditNo;	
+	try{
+		param		+=	getParamDataAndValidate("edit");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}
+	XMLContent			=	postback(actionFile, param, "POST", "XML");
+	xmlData				=	parseXMLdoc(XMLContent);
+	error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+	if(error == "success"){
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		$("#edit_item_form").dialog("close");
+		updatePageBehaviour();
+	}
+	else{
+		displayError(editError, "error", error);
+	}
+}
+
+function delItemFunc(){
+	delError		=	$('#del_item_error');
+	if(DeleteNo != null && DeleteNo != ""){
+		displayError(delError, "highlight", "<img src='"+scriptPath+"/images/loader_16.gif' align='absmiddle' /> <strong>Removing Data From Server . . .</strong>");
+		param			=	"selecttype=CUSDEL" + "&cusid=" + DeleteNo;
+		XMLContent		=	postback(actionFile, param, "POST", "XML");
+		xmlData			=	parseXMLdoc(XMLContent);
+		error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			listPageData($("#content_body"), XMLContent, XSLFile);
+			$("#del_item_form").dialog("close");
+		}
+		else{
+			displayError(delError, "error", error);
+			setTimeout(function(){
+				$("#del_item_form").dialog("close");
+			}, 2000);
+		}
+	}
+}
+
+function setObjFocus(ui)
+{
+	if ($(document.activeElement).attr("type") != "text" && $(document.activeElement).attr("type") != "select-one" && $(document.activeElement).attr("type") != "textarea"){
+		if($('input', ui.newContent.html()).length > 0)
+			$('#' + $('input', ui.newContent.html())[0].id).focus();
+		else if ($('textarea', ui.newContent.html()).length > 0)
+			$('#' + $('textarea', ui.newContent.html())[0].id).focus();
+		else if ($('select', ui.newContent.html()).length > 0)
+			$('#' + $('select', ui.newContent.html())[0].id).focus();
+	}  
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+	// Add Item Dialog
+	$("#new_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 850,
+		height:'auto',
+		buttons: [
+			{
+				text: "Add",
+				click: function(){
+					if(typeof addItemFunc == "function"){
+						addItemFunc();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Close",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		open: function(event, ui){
+			$("#new_item_form").css('visibility','visible');
+			$("#new_item_accord").accordion("option", "active", 0);
+			$('#new_RefNo').focus();
+		},
+		close: function(event, ui) {
+			$("#new_item_error").html("");
+			$("#new_item_error").css("display", "none");
+			clearAllAppComp('new');
+			clearAllAppCmpd('new');
+		} 
+	});
+	// Add Item Accordion
+	$("#new_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui);
+		}
+	});
+
+	$("#button_add").button().click(function(){
+		$("#new_item_form").dialog("open");
+	});
+	
+	$("#new_CompBtn").button().click(function(){
+		timenow		=	new Date();
+		timenow		=	timenow.getTime();
+		
+		getCompoundAutoList();
+		
+		tabClass	=	(appCpd.length%2)?'content_rows_light':'content_rows_dark';
+		$("#new_AppComp tr:last").after(
+			'<tr id="nAppComp_' + timenow + '" class="' + tabClass + '">' +
+				'<td align="center">' +
+					(((appCpd.length + 1) <= 9)?'0':'') + (appCpd.length + 1) +
+				'</td>' +
+				'<td>' +
+					compoundList.toSelectWithValue(compoundId, 'appCompName_' + timenow, 'appCompName_' + timenow, '', "width:95%") +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="appCompPORef_' + timenow + '" style="width:95%" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" rel="datepicker" id="appCompPODate_' + timenow + '" style="width:90%" value="DD/MM/YYYY" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'DD/MM/YYYY\')" onblur="FieldHiddenValue(this, \'out\', \'DD/MM/YYYY\')" /> ' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="appCompRate_' + timenow + '" style="width:95%" value="0.00" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" />' +
+				'</td>' +
+				'<td align="center">' +
+					'<div src="" id="dAppComp_' + timenow + '" target="absmiddle" class="removebtn" />' +
+				'</td>' +
+			'<tr>'
+		);
+		
+		$("#appCompName_" + timenow).focus();
+		eval("$(\"#dAppComp_"+timenow+"\").click(function(){ $(\"#nAppComp_"+timenow+"\").remove(); removeCompound(" + timenow + ") });");
+		eval("$(\"#appCompPODate_" + timenow + "\").datepicker({ dateFormat: 'dd/mm/yy', onClose: function(dateText, inst){ $(\"#appCompPODate_" + timenow + "\").focus(); } });");
+		appCpd.push(timenow);
+	});
+	$("#new_CmpdBtn").button().click(function(){
+		timenow		=	new Date();
+		timenow		=	timenow.getTime();
+		
+		getComponentAutoList();
+		
+		tabClass	=	(appCmpd.length%2)?'content_rows_light':'content_rows_dark';
+		$("#new_AppCmpd tr:last").after(
+			'<tr id="nAppCmpd_' + timenow + '" class="' + tabClass + '">' +
+				'<td align="center">' +
+					(((appCmpd.length + 1) <= 9)?'0':'') + (appCmpd.length + 1) +
+				'</td>' +
+				'<td>' +
+					componentList.toSelectWithValue(componentId, 'appCmpdName_' + timenow, 'appCmpdName_' + timenow, '', "width:95%") +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="appCmpdPORef_' + timenow + '" style="width:95%" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" rel="datepicker" id="appCmpdPODate_' + timenow + '" style="width:90%" value="DD/MM/YYYY" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'DD/MM/YYYY\')" onblur="FieldHiddenValue(this, \'out\', \'DD/MM/YYYY\')" /> ' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="appCmpdRate_' + timenow + '" style="width:95%" value="0.00" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="appCmpdQty_' + timenow + '" style="width:95%" value="0" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" />' +
+				'</td>' +	
+				'<td>' +
+					'<input type="text" id="appCmpdInsVal_' + timenow + '" style="width:95%" value="0" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" />' +
+				'</td>' +				
+				'<td align="center">' +
+					'<div class="removebtn" id="dAppCmpd_' + timenow + '" target="absmiddle" />' +
+				'</td>' +
+			'<tr>'
+		);
+		
+		$("#appCmpdName_" + timenow).focus();
+		eval("$(\"#dAppCmpd_"+timenow+"\").click(function(){ $(\"#nAppCmpd_"+timenow+"\").remove(); removeComponent(" + timenow + ") });");
+		eval("$(\"#appCmpdPODate_" + timenow + "\").datepicker({ dateFormat: 'dd/mm/yy', onClose: function(dateText, inst){ $(\"#appCmpdPODate_" + timenow + "\").focus(); } });");
+		appCmpd.push(timenow);
+	});
+	
+	// Edit Item Dialog
+	$("#edit_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 850,
+		height:'auto',
+		buttons: {
+			Update:function(){
+				$(this).css("default");
+				if(typeof editItemFunc == "function"){
+					editItemFunc();
+				}else{
+					$(this).dialog("close");
+				}
+			},
+			Close:function(){
+				$(this).dialog("close");
+			}
+		},
+		close: function(event, ui) {
+			clearAllAppComp('edit');
+			clearAllAppCmpd('edit');
+			$("#edit_item_error").html("");
+			$("#edit_item_error").css("display", "none");
+		} 
+	});
+	// Edit Approved Compound Dialog
+	$("#edit_app_comp_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 400,
+		height:'auto',
+		buttons: [
+			{
+				text: "Add",
+				click: function(){
+					if(typeof editAppCompFunc == "function"){
+						editAppCompFunc();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Close",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		open: function(event, ui){
+			$("#edit_app_comp_form").css('visibility','visible');
+			getCompoundAutoList();
+			$("#edit_AppCompName").removeAttr("readonly");
+			$("#edit_AppCompName").autocomplete({
+				source:compoundList
+			});
+		},
+		close: function(event, ui) {
+			$("#edit_AppCompName").val("");
+			$("#edit_AppCompPORef").val("");
+			$("#edit_AppCompPODate").val("DD/MM/YYYY");
+			$("#edit_AppCompPODate").removeClass().addClass("invisible_text");
+			$("#edit_AppCompRate").val("0.00");
+			$("#edit_AppCompRate").removeClass().addClass("invisible_text");
+			$("#edit_app_comp_error").html("");
+			$("#edit_app_comp_error").css("display", "none");
+		} 
+	});
+	// Edit Approved Component Dialog
+	$("#edit_app_cmpd_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 400,
+		height:'auto',
+		buttons: [
+			{
+				text: "Add",
+				click: function(){
+					if(typeof editAppCmpdFunc == "function"){
+						editAppCmpdFunc();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Close",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		open: function(event, ui){
+			$("#edit_app_cmpd_form").css('visibility','visible');
+			getComponentAutoList();
+			$("#edit_AppCmpdName").removeAttr("readonly");
+			$("#edit_AppCmpdName").autocomplete({
+				source:componentList
+			});
+		},
+		close: function(event, ui) {
+			$("#edit_AppCmpdName").val("");
+			$("#edit_AppCmpdPORef").val("");
+			$("#edit_AppCmpdPODate").val("DD/MM/YYYY");
+			$("#edit_AppCmpdPODate").removeClass().addClass("invisible_text");
+			$("#edit_AppCmpdRate").val("0.00");
+			$("#edit_AppCmpdRate").removeClass().addClass("invisible_text");
+			$("#edit_AppCmpdQty").val("0");
+			$("#edit_AppCmpdQty").removeClass().addClass("invisible_text");			
+			$("#edit_AppCmpdInsVal").val("0.00");
+			$("#edit_AppCmpdInsVal").removeClass().addClass("invisible_text");				
+			$("#edit_app_cmpd_error").html("");
+			$("#edit_app_cmpd_error").css("display", "none");
+		} 
+	});
+	// Add Item Accordion
+	$("#edit_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui);
+		}
+	});
+	$("#edit_AppCompPODate").datepicker({
+		dateFormat: 'dd/mm/yy',
+		onClose: function(dateText, inst){
+			$("#edit_AppCompPODate").focus();
+		}
+	});
+	$("#edit_AppCmpdPODate").datepicker({
+		dateFormat: 'dd/mm/yy',
+		onClose: function(dateText, inst){
+			$("#edit_AppCmpdPODate").focus();
+		}
+	});
+	$("#edit_CompBtn").button().click(function(){
+		$("#edit_app_comp_form").dialog("open");
+	});
+	$("#edit_CmpdBtn").button().click(function(){
+		$("#edit_app_cmpd_form").dialog("open");
+	});
+	
+	// Delete Item Dialog
+	$("#del_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 400,
+		buttons: [
+			{
+				text: "Yes",
+				click: function(){
+					if(typeof delItemFunc == "function"){
+						delItemFunc();
+					}else{
+						$(this).dialog("close");
+					}
+				}
+			},
+			{
+				text: "No",
+				click: function() { $(this).dialog("close"); }
+			}
+		],
+		close: function(event, ui) {
+			$("#del_item_error").html("");
+			$("#del_item_error").css("display", "none");
+		}
+	});
+	
+	getPageData();
+});

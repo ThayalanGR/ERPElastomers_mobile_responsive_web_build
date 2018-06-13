@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+   <xsl:template match="/"> 
+		<table id="resultTable" class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="4%">ID</th>
+					<th width="8%">Date</th> 
+					<th width="20%">Description</th> 					
+					<th width="15%">Link(If Any)</th>
+					<th width="10%">Responsibility</th>
+					<th width="12%">Status</th>
+					<th width="8%">Tgt. Corr. Action</th>
+					<th width="8%">Tgt. Closure</th>
+					<th width="8%">Pending From</th>
+					<th>#</th>
+				</tr>
+			</thead>
+			<tbody>
+            <xsl:for-each select="xmldata/root/data/row">
+				<tr style="font-size:8px;">
+					<td>
+						<xsl:value-of select="complaintid"/>
+					</td>
+					<td align="center">
+						<xsl:value-of select='compdate' />
+					</td>
+					<td>
+						<xsl:value-of select="description"/>
+					</td>
+					<td align="left">
+						<a>
+							<xsl:attribute name="href"><xsl:value-of select="filepath"/><xsl:value-of select="sketch_file_name"/></xsl:attribute>
+							<xsl:attribute name="target">_blank</xsl:attribute>
+							<xsl:value-of select="sketch_file_name"/>
+						</a>
+					</td>					
+					<td>
+						<xsl:value-of select="responsibility"/>
+					</td>
+					<td align="center">
+						<xsl:if test="status = 1">
+							Pend. Feedback
+						</xsl:if>
+						<xsl:if test="status = 2">
+							Pend. Corr. Action
+						</xsl:if>
+						<xsl:if test="status = 3">
+							Pend. Prev. Action
+						</xsl:if>
+						<xsl:if test="status = 4">
+							Pend. Closure
+						</xsl:if>	
+						<xsl:if test="status = 5">
+							Closed
+						</xsl:if>
+					</td>
+					<td align="center">
+						<xsl:value-of select='corr_action_target' />
+					</td>
+					<td align="center">
+						<xsl:value-of select='closure_target' />
+					</td>					
+					<td align="center">
+						<xsl:if test="status = 1">
+							<xsl:value-of select='compdate' />
+						</xsl:if>
+						<xsl:if test="status = 2">
+							<xsl:value-of select='feedback_date' />
+						</xsl:if>
+						<xsl:if test="status = 3">
+							<xsl:value-of select='corr_action_on' />
+						</xsl:if>
+						<xsl:if test="status = 4">
+							<xsl:value-of select='prev_action_on' />
+						</xsl:if>
+						<xsl:if test="status = 5">
+							<xsl:value-of select='closure_on' />
+						</xsl:if>
+					</td>
+					<td align="right">
+						<span class="link">
+							<xsl:attribute name="compid" ><xsl:value-of select="complaintid"/></xsl:attribute>
+							<xsl:attribute name="class" >view_button link</xsl:attribute>
+								View 
+						</span>
+					</td>					
+				</tr>
+            </xsl:for-each>		
+			</tbody> 
+		</table>
+    </xsl:template>		
+</xsl:stylesheet>
+		

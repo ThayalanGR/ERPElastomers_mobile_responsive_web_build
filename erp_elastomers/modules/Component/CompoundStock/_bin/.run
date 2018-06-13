@@ -1,0 +1,167 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+compoundId 		=	new Array();
+compoundList	=	new Array();
+details			= 	"";
+var XSLFile			=	[XSLPath + "_.1.design", XSLPath + "_.2.design", XSLPath + "_.3.design" ];
+	
+function getCompoundAutoList(){
+	objCpdList		=	postback(actionFile,"selecttype=CPDATLIST&outtype=xml", "POST", "XML");
+	cpdXML			=	parseXMLdoc(objCpdList);
+	rowXML			=	cpdXML.getElementsByTagName("row");
+	for(sl=0; sl<rowXML.length; sl++){
+		compoundId[sl]		=	rowXML[sl].childNodes[0].firstChild.nodeValue;
+		compoundList[sl]	=	rowXML[sl].childNodes[1].firstChild.nodeValue;
+	}
+}
+
+function getStockData(){
+	item_code	=	$("#item_code").val();
+	item_id		=	"";
+	to_date   	=	$("#to_date").val();
+	from_date 	=	$("#from_date").val();
+	for(cl=0; cl<compoundList.length; cl++){
+		if(compoundList[cl] == item_code){
+			item_id	=	compoundId[cl];
+			break;
+		}
+	}
+	
+	if(item_id != null && item_id != ""){
+		if(item_id != "" && to_date != null && to_date != "" && from_date != null && from_date != ""){
+			$("#listings").css({ visibility:'hidden' });
+			$("#listings tr:gt(0)").remove();
+			param		=	"selecttype=GETDETAIL" +
+							"&outtype=xml" +
+							"&compcode=" + item_id +
+							"&from_date=" + from_date +
+							"&to_date=" + to_date;
+			details		=	postback(actionFile, param, "POST", "XML");
+			listPageData($("#content_body"), details, XSLFile[0]);
+			$("#open_stock").html($(details).find("opening_stock").html().toNumber().toCurrency(3));
+			$("#close_stock").html($(details).find("closing_stock").html().toNumber().toCurrency(3));
+			$("#receipts").html($(details).find("total_receipt").html().toNumber().toCurrency(3));
+			$("#issue").html($(details).find("total_issue").html().toNumber().toCurrency(3));
+		}
+	}else{
+		if((from_date != null && from_date != "")&&(to_date != null && to_date != "")){
+		
+			param		=	"selecttype=GETDETAIL" +
+								"&outtype=xml" +
+								"&compcode=" + item_id +
+								"&from_date=" + from_date +
+								"&to_date=" + to_date;
+			details		=	postback(actionFile, param, "POST", "XML");
+			//alert(details);
+			//$("#content_body").html(details);	return false;
+			listPageData($("#content_body"), details, XSLFile[1]);
+		}
+		$("#open_stock").html("0.000");
+		$("#receipts").html("0.000");
+		$("#issue").html("0.000");
+		$("#close_stock").html("0.000");
+		
+	}
+	if(item_id == "" && details != "")
+	{
+		$("#button_submit").css('visibility', 'visible');
+		$("#button_submit_val").css('visibility', 'visible');
+	}
+	else
+	{
+		$("#button_submit").css('visibility', 'hidden');
+		$("#button_submit_val").css('visibility', 'hidden');
+	}
+}
+
+function submitPrint(isHtmlCont,xslFile){
+	windowName	=	"PrintWindow";
+	var tDate 	= 	new Date();
+	today		=	tDate.getDate()+"-"+(tDate.getMonth()+1)+"-"+tDate.getFullYear();
+	$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");	
+	customer	=	$("#recvFrom").val();
+	fromDate	=	$("#from_date").val();
+	toDate		=	$("#to_date").val();
+	if(isHtmlCont == 1){
+		customer	=	getUrlParameter('cust');	
+		mix_type	=	getUrlParameter('mixtype');
+		pMonLDate 	= 	new Date(tDate.getFullYear(), tDate.getMonth(), 0);
+		htmlCont	=	postback(actionFile, "selecttype=GETDETAIL&from_date="+pMonLDate.getFullYear()+"-"+(pMonLDate.getMonth()+1)+"-"+"01&to_date="+pMonLDate.getFullYear()+"-"+(pMonLDate.getMonth()+1)+"-"+pMonLDate.getDate()+"&conToHTML=1&xslfile="+xslFile, "POST", "XML");
+		fromDate	=	"01-"+(pMonLDate.getMonth()+1)+"-"+pMonLDate.getFullYear();
+		toDate		=	pMonLDate.getDate()+"-"+(pMonLDate.getMonth()+1)+"-"+pMonLDate.getFullYear();			
+		$("#print_body").html(htmlCont);
+		windowName	=	"_self";	
+	}
+	else
+	{
+		listPageData($("#print_body"), details, xslFile);
+	}	
+	$("#hdr_date").html(today);
+	if( customer != '')
+	{
+		$("#hdr_for").html( " for " + customer );
+	}
+	else
+	{
+		$("#hdr_for").html('');
+	}
+	$("#hdr_title").html( " from: " + fromDate + " to: " + toDate);
+	var DocumentContainer = document.getElementById('print_item_form');
+	var WindowObject = window.open("",windowName);
+	WindowObject.document.writeln(DocumentContainer.innerHTML);	
+	loader = document.createElement('link');
+	loader.href = "/style/printTable.css";
+	loader.rel = "stylesheet";	
+	WindowObject.document.head.appendChild(loader);	
+	WindowObject.document.close();
+	WindowObject.focus();
+}
+
+// -------------------------------------------------------------------------------------------------------------------------------------- //
+
+$(document).ready(function(){
+	getCompoundAutoList();
+	errDefault		=	$(".window_error");
+	errMsgDefault	=	'<div class="warning_txt"><span>No Data Available . . .</span></div>';
+	errDefault.html(errMsgDefault);	
+	
+	$("#item_code").autocomplete({
+		source:compoundList,
+		close:function(event, ui){
+			getStockData();
+		}
+	});
+	
+	$("#from_date").datepicker({
+		dateFormat: 'dd/mm/yy',
+		changeMonth:true,
+		changeYear:true,
+		onClose:function(dateTxt, inst){
+			getStockData();
+		}
+	});
+	$("#to_date").datepicker({
+		dateFormat: 'dd/mm/yy',
+		changeMonth:true,
+		changeYear:true,
+		onClose:function(dateTxt, inst){
+			getStockData();
+		}
+	});
+	
+	$("#button_submit").button().click(function(){		
+		submitPrint(0,XSLFile[1]);
+	});	
+	
+	$("#button_submit_val").button().click(function(){		
+		submitPrint(0,XSLFile[2]);
+	});		
+	
+	$("#button_submit_psvs").button().click(function(){
+		openInvoice({invID:null,mod:null});
+	});	
+
+	if (getUrlParameter('type') == 'stocklist')
+	{
+		submitPrint(1,XSLFile[1]);
+	}		
+});

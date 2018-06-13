@@ -1,0 +1,399 @@
+<?php
+	session_start();
+	global $cpd_grp_email,$grn_emailadd,$grn_role;
+	header("Content-Type: text/xml");
+	if ( isset($_FILES['file'])) {
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$ramgrns_upload_dir;
+		$ticket = uniqid(rand(), true);
+		$storagename 	= $ticket."uploaded_file.csv";
+		try 
+		{
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			}
+			// You should also check filesize here. 
+			if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			}
+			if( 'text/csv' == $_FILES['file']['type'] ||  'application/vnd.ms-excel' == $_FILES['file']['type'] ) 
+			{
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					echo $_FILES['file']["name"] . " already exists. ";
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath . $storagename))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+					$sql_items		=	"insert into tbl_invoice_grn(grnId, grnDate, invPoRef, invNo, invDate, invIssuer, invSupId, invSupName,invSupDetail,invSupGSTN,invHSNCode,invGSTRate,
+																		invRamId, invRamName, invGrade, invUom,invPOQty,invRecvQty,invRAMRate,invTotal,invCGSTVal,invSGSTVal,invIGSTVal,invInsVal,
+																		invFreightVal,invGrandTotal, invTestCert, invExpiryDate, entry_on, entry_by) values";
+					$sql_qan		=	"insert into tbl_rawmaterial_qan(qanId, grnId, ramId, ramQanParamRef, ramQanValue, ramStatus, qanDate, ramQanRemarks,ramApproveStatus,ramStoreDate, entry_on, entry_by,update_on,update_by) values ";
+
+					$sql_items_sub	=	"";
+					$sql_qan_sub	=	"";
+					$qanCodeArray	=	@getSettingsData("qancode");
+					$grnArray 		= 	array();
+					$delimiter 		= 	",";
+					if (($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+					{
+						while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE)
+						{
+							$grnArray[] = $row ; 
+						}
+						fclose($handle);
+					}
+					$grnFillArr		=	array();
+					$avlQtyOutput	=	array();
+					$grnCount		=	0;
+					$loc_sql		=	@getMySQLData("select value from tbl_settings where name='mixLocCode'");
+					$locCode		=	$loc_sql['data'][0]['value'];					
+					$vendName		= 	$_POST['vendname'];
+					$userId			=	$_SESSION['userdetails']['userId'];	
+					for($i=0;$i<count($grnArray);$i++)
+					{				
+						$poId 			= 	trim($grnArray[$i][2], "$locCode");
+						$po_data		=  	@getMySQLData("select purId,quantity,uom from tbl_invoice_purchase where purId = '$poId'" );
+						$purQty			=	$po_data['data'][0]['quantity'];
+						$uom			=	$po_data['data'][0]['uom'];
+						if($purQty > 0)
+						{					
+							$supName 		= 	$grnArray[$i][3];
+							$sup_data		=  	@getMySQLData("select supId, supEmail, concat( supName, '<br/>', supAddress1,'<br/>') as address,supGSTN from tbl_supplier where upper(supName) = upper('$supName')" );
+							$supId			=	$sup_data['data'][0]['supId'];
+							$supAdd			=	$sup_data['data'][0]['address'];
+							$supEmail		=	$sup_data['data'][0]['supEmail'];
+							$supGSTN		=	$sup_data['data'][0]['supGSTN'];
+							if($supId != null && $supId != "" && $supGSTN != null && $supGSTN != "")
+							{
+								$ramName	=	$grnArray[$i][4];
+								$ramGrade	=	$grnArray[$i][5];
+								$ram_data	=  	@getMySQLData("select ramId,ramUnit from tbl_rawmaterial where upper(ramName)  = upper('$ramName') and upper(ramGrade) = upper('$ramGrade') and status >0" );
+								$ramId		=	$ram_data['data'][0]['ramId'];
+								if($ramId != null && $ramId != "")
+								{									
+									$codeNo							=	$grnArray[$i][0];
+									$grndate						=	$grnArray[$i][1];
+									$invoiceno						=	$grnArray[$i][6];
+									$invoicedate					=	$grnArray[$i][7];
+									$invqty							=	@preg_replace("/[,]/", "", $grnArray[$i][8]);
+									$ramrate						=	@preg_replace("/[,]/", "", $grnArray[$i][9]);
+									$invTotal						=	@preg_replace("/[,]/", "", $grnArray[$i][10]);									
+									$cgstval						=	@preg_replace("/[,]/", "", $grnArray[$i][11]);
+									$sgstval						=	@preg_replace("/[,]/", "", $grnArray[$i][12]);
+									$igstval						=	@preg_replace("/[,]/", "", $grnArray[$i][13]);
+									$insurance						=	@preg_replace("/[,]/", "", $grnArray[$i][14]);
+									$freight						=	@preg_replace("/[,]/", "", $grnArray[$i][15]);					
+									$grandtotal						=	@preg_replace("/[,]/", "", $grnArray[$i][16]);
+									$testcert						=	$grnArray[$i][17];
+									$expirydate						=	$grnArray[$i][18];
+									$hsncode						=	$grnArray[$i][19];
+									$gstrate						=	@preg_replace("/[,]/", "", $grnArray[$i][20]);
+									$qanCodeNo						=	@getRegisterNo($qanCodeArray[0], $qanCodeArray[1]+$i);	
+									
+									$sql_items_sub					.=	"('$codeNo', '$grndate', '$poId','$invoiceno','$invoicedate', '$vendName','$supId','$supName', '$supAdd', '$supGSTN', '$hsncode', '$gstrate',
+																		'$ramId', '$ramName', '$ramGrade', '$uom','$purQty', '$invqty','$ramrate','$invTotal','$cgstval','$sgstval','$igstval','$insurance',
+																		'$freight','$grandtotal','$testcert','$expirydate', now(), '$userId')";
+									$sql_qan_sub 					.=	"('$qanCodeNo', '$codeNo', '$ramId', '0', '0', '1', now(), 'Handled at Vendor End','1', now(),now(), '$userId', now(), '$userId')";
+									if($i < count($grnArray)-1){
+										$sql_items_sub	.=	" , ";	
+										$sql_qan_sub	.=	" , ";
+									}	
+									$grnFillArr[$i]['codeNo']		=	$codeNo;
+									$grnFillArr[$i]['purId']		=	$poId;
+									$grnFillArr[$i]['purQty']		=	$purQty;
+									$grnFillArr[$i]['recvQty']		=	$invqty;
+									$grnFillArr[$i]['ramId']		=	$ramId;
+									$grnFillArr[$i]['ramRate']		=	$ramrate;
+									$grnFillArr[$i]['supEmail']		=	$supEmail;
+									$grnCount++;									
+								}
+								else
+								{
+									throw new RuntimeException('No Raw material such as : ' .$ramName.' and Grade as: '.$ramGrade .' in row number : '. ($i+1));
+								}
+							}
+							else
+							{
+								throw new RuntimeException('No Supplier or Supplier GSTN Not updated for supplier : ' .$supName. ' in row number : '. ($i+1));
+							}
+						}
+						else
+						{
+							throw new RuntimeException('No Purchase Order such as : ' .$poId. ' in row number : '. ($i+1));
+						}							
+					}
+					$grnArray 		= 	array();
+					$status			= 	"";
+					if($grnCount > 0)
+					{
+						$sql_items		.=	$sql_items_sub;
+						$sql_qan		.=	$sql_qan_sub;
+						//echo $sql_items."<br>".$sql_qan; exit();
+						$output		=	@getMySQLData($sql_items,"xml");
+						$status		=	split("<status>", $output);
+						$status		=	split("</status>", $status[1]);
+						$status		=	$status[0];
+						if($status == "success"){						
+							$qanOutput	=	@getMySQLData($sql_qan,"xml");
+							$status		=	split("<status>", $qanOutput);
+							$status		=	split("</status>", $status[1]);
+							$status		=	$status[0];							
+							if($status == "success"){
+								// Update Settings
+								@getMySQLData("update tbl_settings set auto_inc='".($qanCodeArray[1]+$grnCount)."' where name='qancode'");													
+								$output = "<grnadd>
+											<status>$status</status>
+											<noofgrns>$grnCount</noofgrns>
+										</grnadd>";	
+							
+								// close & send the result to user & then send emails									
+								closeConnForAsyncProcess($output);							
+							
+								for($lp=0;$lp<count($grnFillArr);$lp++){
+									// Close Purchase Order
+									$checkData		=	@getMySQLData("select sum(invRecvQty) as recvQty from tbl_invoice_grn where invPoRef='".$grnFillArr[$lp]['purId']."'"	);
+									$qty			=	$checkData['data'][0]['recvQty'];
+									if($qty >= $grnFillArr[$lp]['purQty']){
+										@getMySQLData("update tbl_invoice_purchase set status=2 where purId='".$grnFillArr[$lp]['purId']."'");
+									}
+									else{
+										@getMySQLData("update tbl_invoice_purchase set grn_count=grn_count+1 where purId='".$grnFillArr[$lp]['purId']."'");
+									}
+									// Update RAM Approved Rate
+									@getMySQLData("update tbl_rawmaterial set ramApprovedRate ='".$grnFillArr[$lp]['ramRate']."' where ramId = '".$grnFillArr[$lp]['ramId']."'");
+									//update stock availablity
+									@getMySQLData("update tbl_invoice_grn set avlQty='".$grnFillArr[$lp]['recvQty']."' where grnId='".$grnFillArr[$lp]['codeNo']."'");									
+									// send email
+									$aEmail 		= 	new AsyncCreatePDFAndEmail("Compound/GRNRegister",$grnFillArr[$lp]['codeNo'], explode(',',$grnFillArr[$lp]['supEmail']),$cpd_grp_email,"Goods Receipt Note:".$grnFillArr[$lp]['codeNo'],"Dear Sir/Madam,\n Please find the attached GRN for the material provided against Purchase Order: ".$grnFillArr[$lp]['purId']);									
+									$aEmail->start();
+								}
+								if(!rename($uploadPath . $storagename, $uploadPath.$_FILES['file']["name"]))
+								{
+									throw new RuntimeException('Warning! Failed to rename the file: '.$uploadPath . $storagename.' to :'.$uploadPath.$_FILES['file']["name"]);
+								}								
+								exit();
+							}
+							else
+							{							
+								throw new RuntimeException('Updation of GRN failed due to : '. $qanOutput.' Please Do it Manually');
+							}
+						}
+						else
+						{
+							throw new RuntimeException('Creation Of GRN failed due to : '. $output);
+						}
+					}
+					else
+					{	
+						throw new RuntimeException("No Records to update!");									
+					}					
+				}				
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			if(($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+			{	
+				fclose($handle);
+				$thefile = $uploadPath . $storagename;
+				unlink($thefile);
+			}				
+			echo $e->getMessage();
+		}      
+    }
+	else 
+	{ 		
+		switch($_POST["type"]){
+			case "PURDET":
+				$sql	=	"select tp.purId,DATE_FORMAT(tp.purDate, '%d-%b-%Y') as purDate,tp.description as ramName,tp.grade as ramGrade,tp.supName,tp.quantity as ramQty,
+							ifnull((select sum(tg.invRecvQty) from tbl_invoice_grn tg where tg.invPoRef=tp.purId and tg.invPoRef in (select purId from tbl_invoice_purchase where status=1) group by tg.invPoRef), 0) as recvQty
+							from tbl_invoice_purchase tp
+							where tp.status=1 order by tp.purId desc;";
+				echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+			break;
+			case "SUPLIST":
+				echo @getXML("select supid,supname, supgstn, supstate from tbl_supplier where status > 0", false);
+			break;
+			case "GETHSNCODE":
+				$invData		=	@getMySQLData("select ramhsncode from tbl_rawmaterial where ramId='".$_POST["ramid"]."'");
+				echo $invData['data'][0]['ramhsncode'];
+			break;			
+			case "GETRMLIST":
+				echo @getXML("select tr.ramid, concat(ramname , '(',ramgrade,')') as ramname,uom_short_name as ramunit, ramhsncode
+								from tbl_rawmaterial tr
+									inner join tbl_rawmaterial_sup trs on trs.ramid = tr.ramid 
+									inner join tbl_uom tu on tu.sno=tr.ramUnit
+								where tr.status > 0 and trs.supId = '".$_POST["supid"]."'", false);
+			break;			
+			case "PURRMLIST":
+					$purId	=	$_POST['purId'];
+					$sql	=	"select tp.purId,DATE_FORMAT(tp.purDate, '%d-%m-%Y') as purDate, ts.supId,ts.supName,ts.supState,ts.supGSTN,tp.ramId,tp.description as ramName,tp.grade as ramGrade,tr.ramhsncode,tp.uom as ramUnit,tp.quantity as ramQty,purDeliverAt,
+								ifnull((select sum(tg.invRecvQty) from tbl_invoice_grn tg where tg.invPoRef=tp.purId and tg.invPoRef in (select purId from tbl_invoice_purchase where status=1) group by tg.invPoRef), 0) as recvQty, tp.rate as ramRate,
+								tp.purTotal ,tp.purInsurance,tp.purFreightVal,tp.purGrandTotal 
+								from tbl_invoice_purchase tp
+									inner join tbl_supplier ts on tp.supId=ts.supId
+									inner join tbl_rawmaterial tr on tr.ramId = tp.ramId
+									where tp.purId='$purId' and tp.status=1 order by tp.purId desc;";
+					echo @getXML($sql, false);
+			break;
+			case "GRNINS":
+					$rmcode			=	$_POST['rmcode'];					
+					$purid			=	$_POST['purid'];
+					$hsncode		=	$_POST['hsncode'];
+					$invoiceno		=	$_POST['invoiceno'];
+					$invoicedate	=	$_POST['invoicedate'];
+					$issuer			=	$_POST['recvdfrom'];
+					$invqty			=	@preg_replace("/[,]/", "", $_POST['invqty']);
+					$ramrate		=	@preg_replace("/[,]/", "", $_POST['ramrate']);
+					$gstrate		=	@preg_replace("/[,]/", "", $_POST['taxrate']);
+					$cgstval		=	@preg_replace("/[,]/", "", $_POST['cgstval']);
+					$igstval		=	@preg_replace("/[,]/", "", $_POST['igstval']);
+					$sgstval		=	@preg_replace("/[,]/", "", $_POST['sgstval']);
+					$insurance		=	@preg_replace("/[,]/", "", $_POST['insurance']);
+					$freight		=	@preg_replace("/[,]/", "", $_POST['freight']);					
+					$invTotal		=	@preg_replace("/[,]/", "", $_POST['ramtot']);
+					$grandtotal		=	@preg_replace("/[,]/", "", $_POST['grandtot']);
+					$stkupdterr		=	false;
+					$compAbbr		=	$grn_role[$issuer];
+					$tcavail		=	$_POST['tcavail'];
+					$testcert		=	$_POST['testcert'];
+					$grndate		=	$_POST['grndate'];
+					if($tcavail == 'false')
+					{
+						$testcert = "N.A";
+					}
+					$expirydate		=	$_POST['expirydate'];
+
+					if($purid != ""){
+						$sql			=	"select quantity,ts.supId, ts.supName, concat( ts.supName, '<br/>', ts.supAddress1,'<br/>') as address, ts.supGSTN, tr.ramName, tr.ramGrade, tp.uom
+											from tbl_invoice_purchase tp
+												inner join tbl_supplier ts on tp.supId=ts.supId
+												inner join tbl_rawmaterial tr on tp.ramId=tr.ramId
+											where tp.purId='$purid' and tp.status=1";
+						if($purid == "NA")
+						{
+							$sql			=	"select '$invqty' as quantity,ts.supId, ts.supName, concat( ts.supName, '<br/>', ts.supAddress1,'<br/>') as address, ts.supGSTN, tr.ramName, tr.ramGrade, tu.uom_short_name as uom
+												from tbl_rawmaterial tr
+													inner join tbl_rawmaterial_sup trs on trs.ramid = tr.ramid
+													inner join tbl_supplier ts on trs.supId=ts.supId
+													inner join tbl_uom tu on tu.sno=tr.ramUnit
+												where ts.supId='".$_POST['supid']."' and tr.ramId='$rmcode'";					
+						}
+						$invData		=	@getMySQLData($sql, 'arr', '', 'lower');
+						$invData		=	$invData['data'][0];
+						$supid			=	$invData['supid'];
+						$supname		=	$invData['supname'];
+						$supaddress		=	$invData['address'];
+						$supgstn		=	$invData['supgstn'];
+						$description	=	$invData['ramname'];
+						$grade			=	$invData['ramgrade'];
+						$uom			=	$invData['uom'];
+						$orderqty		=	$invData['quantity'];
+						$codeArray		=	@getSettingsData("grncode");
+						$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+						$userId			=	$_SESSION['userdetails']['userId'];							
+						$sql_items		=	"insert into tbl_invoice_grn(grnId, grnDate, invPoRef, invNo, invDate, invIssuer, invSupId, invSupName,invSupDetail,invSupGSTN,invHSNCode,invGSTRate,
+																			invRamId, invRamName, invGrade, invUom,invPOQty,invRecvQty,invRAMRate,invTotal,invCGSTVal,invSGSTVal,invIGSTVal,invInsVal,
+																			invFreightVal,invGrandTotal, invTestCert, invExpiryDate, entry_on, entry_by) values
+																		('$codeNo', '$grndate', '$purid', '$invoiceno','$invoicedate','$issuer','$supid','$supname','$supaddress','$supgstn','$hsncode','$gstrate',
+																			'$rmcode', '$description', '$grade', '$uom','$orderqty','$invqty','$ramrate','$invTotal','$cgstval','$sgstval','$igstval','$insurance',
+																			'$freight','$grandtotal','$testcert','$expirydate', now(), '$userId')";
+						//echo $sql_items;exit();
+						$output			=	@getMySQLData($sql_items, "xml");
+						if($output != ""){
+							$status		=	split("<status>", $output);
+							$status		=	split("</status>", $status[1]);
+							$status		=	$status[0];
+							if($status == "success"){
+								// Close Purchase Order
+								if($purid != 'NA'){
+									$checkData		=	@getMySQLData("select sum(invRecvQty) as recvQty from tbl_invoice_grn where invPoRef='$purid'");
+									$qty			=	$checkData['data'][0]['recvQty'];
+									if($qty >= $orderqty){
+										$purstats	=	@getMySQLData("update tbl_invoice_purchase set status=2 where purId='$purid'", "xml");
+									}
+									else{
+										$purstats	=	@getMySQLData("update tbl_invoice_purchase set grn_count=grn_count+1 where purId='$purid'", "xml");
+									}
+								}
+								
+								// Update RAM Approved Rate
+								@getMySQLData("update tbl_rawmaterial set ramApprovedRate ='$ramrate' where ramId = '$rmcode'");
+								
+								// Update Settings
+								@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='grncode'");									
+								
+								//Update raw material store if necessary.									
+								if($compAbbr == 'vendor' || in_array($issuer, $grn_rmQualCheckNotReq))
+								{
+									$stkupdterr		=	true;
+									$qanCodeArray	=	@getSettingsData("qancode");
+									$qanCodeNo		=	@getRegisterNo($qanCodeArray[0], $qanCodeArray[1]);	
+									$qanSQL			=	"insert into tbl_rawmaterial_qan(qanId, grnId, ramId, ramQanParamRef, ramQanValue, ramStatus, qanDate, ramQanRemarks,ramApproveStatus,ramStoreDate, entry_on, entry_by,update_on,update_by) values ";
+									$qanSQL 		.=	"('$qanCodeNo', '$codeNo', '$rmcode', '0', '0', '1', now(), '".(($compAbbr == 'vendor')?"Handled at Vendor End":"Not Applicable")."','1', now(),now(), '$userId', now(), '$userId')";
+									$qanOutput		=	@getMySQLData($qanSQL);
+									if($qanOutput['status'] == "success"){
+										// Update Settings
+										@getMySQLData("update tbl_settings set auto_inc='".($qanCodeArray[1]+1)."' where name='qancode'");													
+										$avlQtyOutput	=	@getMySQLData("update tbl_invoice_grn set avlQty='$invqty' where grnId='$codeNo'");									
+										if($avlQtyOutput['status'] == "success"){
+												$stkupdterr	=	false;
+										}
+									}											
+								}									
+								
+								$output	.= "<result_set><grn>$codeNo</grn><invoice>$codeNo</invoice>";
+								if($stkupdterr)
+									$output	.= "<stkupdate>failed</stkupdate>";
+								$output	.= "</result_set>";	
+								// close & send the result to user & then send emails									
+								closeConnForAsyncProcess("<root>$output</root>");
+																	
+								// Create PDF & send email									
+								if($compAbbr != 'client')
+								{
+									$toAdd		=	explode(',',$supdata['data'][0]['supEmail']);									
+									$message	=	"Dear Sir/Madam,\n Please find the attached GRN for the material provided against Purchase Order: ".$purid;
+								}
+								else 
+								{						
+									$toAdd 		= 	$grn_emailadd[$issuer];
+									$message	=	"Dear Sir/Madam,\n Please find the attached GRN for the material provided on:".$grndate;									
+								}
+								
+								$aEmail = new AsyncCreatePDFAndEmail("Compound/GRNRegister",$codeNo, $toAdd,$cpd_grp_email,"Goods Receipt Note:".$codeNo,$message);									
+								$aEmail->start();
+								exit();
+							}								
+						}
+						else
+						{
+							$output	.= "<result_set>failed</result_set>";	
+						}
+						//echo "<root>$output</root>";
+					}
+			break;			
+			case "DELETE":
+					$purid			=	$_POST['pur'];
+					$sql			=	"update tbl_invoice_purchase set status='0' where purId='$purid' ";
+					echo @getMySQLData($sql,"xml");
+					break;
+		}
+	}	
+
+?>

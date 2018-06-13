@@ -1,0 +1,113 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	
+	switch($_POST["selecttype"]){
+		case "GETVAL":
+			$todate		=	$_POST["todate"];
+			$fromdate	=	$_POST["fromdate"];
+			$getCus		= 	$_POST["cusgrp"];
+			$operator	=	$_POST["operator"];
+			$compname	= 	$_POST["compname"];
+			$step		=	$_POST["step"];			
+			$addSql		=	"left join (select * from (SELECT poRate,cmpdId  FROM tbl_customer_cmpd_po_rate where status = 1 order by update_on desc) tbl1 group by cmpdId) tblrate on timp.cmpdid = tblrate.cmpdId";
+			if($getCus != 'ALL')
+				$addSql =	"inner join (select * from (SELECT poRate,cmpdId  FROM tbl_customer_cmpd_po_rate tccpr	inner join tbl_customer tcus on tcus.cusId = tccpr.cusId where tccpr.status = 1 and upper(cusGroup) =  '".$getCus."' order by tccpr.update_on desc) tbl1 group by cmpdId) tblrate on timp.cmpdid = tblrate.cmpdId";
+			createTempTable($fromdate, $todate);
+
+			switch($step)
+			{
+				case "1":
+					$sql_invoice	=	"select '".$getCus."' as cusgroup, tmp.operator,'' as compname,'".$step."' as step,  tmp.operator as dispname, sum(quantity) as totalplanqty,sum(quantity * poRate) as totalplanval, sum((quantity * cmpdBlankWgt)/1000) as totalcpdplan, sum(((quantity * cmpdBlankWgt)/1000) * cpdRate) as totalcpdval,sum(plannedLifts) as plannedLifts,sum(actualLifts) as actualLifts,sum(mouldQty) as mouldQty,sum(mouldQty * poRate) as totalmoldval,sum(cpdQtyUsed) as cpdQtyUsed,sum(cpdQtyUsed* cpdRate) as totalusedcpdval  
+											from  (select planRef,operator,sum(plannedLifts) as plannedLifts,sum(actualLifts) as actualLifts,sum(mouldQty) as mouldQty,sum(cpdQtyUsed) as cpdQtyUsed from tbl_moulding_receive group by planRef ) tmp
+											inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planRef 
+											inner join tbl_moulding_plan tmop on tmp.planRef = tmop.planid and ((tmop.status > 2 ) or (tmop.status = 0 and mdIssRef is NOT NULL))
+											".$addSql."
+											left join tbl_cpd_rate tcr on tcr.cpdId = timp.cmpdCpdId
+										where invDate >= '$fromdate' and invDate <= '$todate'
+										group by tmp.operator order by tmp.operator";
+					break;
+				case "2":
+					$sql_invoice	=	"select '".$getCus."' as cusgroup, '".$operator."' as operator, cmpdName as compname,'".$step."' as step, cmpdName as dispname, sum(quantity) as totalplanqty,sum(quantity * poRate) as totalplanval, sum((quantity * cmpdBlankWgt)/1000) as totalcpdplan, sum(((quantity * cmpdBlankWgt)/1000) * cpdRate) as totalcpdval,sum(plannedLifts) as plannedLifts,sum(actualLifts) as actualLifts,sum(mouldQty) as mouldQty,sum(mouldQty * poRate) as totalmoldval,sum(cpdQtyUsed) as cpdQtyUsed,sum(cpdQtyUsed* cpdRate) as totalusedcpdval  
+											from  (select planRef,operator,sum(plannedLifts) as plannedLifts ,sum(actualLifts) as actualLifts,sum(mouldQty) as mouldQty,sum(cpdQtyUsed) as cpdQtyUsed from tbl_moulding_receive group by planRef ) tmp
+											inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planRef 
+											inner join tbl_moulding_plan tmop on tmp.planRef = tmop.planid and ((tmop.status > 2 ) or (tmop.status = 0 and mdIssRef is NOT NULL))
+											".$addSql."
+											left join tbl_cpd_rate tcr on tcr.cpdId = timp.cmpdCpdId
+										where invDate >= '$fromdate' and invDate <= '$todate' and tmp.operator = '".$operator."' 
+										group by timp.cmpdId order by timp.cmpdId";
+					break;
+				case "3":
+					$sql_invoice	=	"select '".$getCus."' as cusgroup, '".$operator."' as operator, '".$compname."' as compname,'".$step."' as step, modRecRef as dispname, (plannedLifts * no_of_active_cavities) as totalplanqty,((plannedLifts * no_of_active_cavities)) * poRate as totalplanval, ((plannedLifts * no_of_active_cavities) * cmpdBlankWgt)/1000 as totalcpdplan, (((plannedLifts * no_of_active_cavities) * cmpdBlankWgt)/1000) * cpdRate as totalcpdval,plannedLifts, actualLifts,mouldQty,mouldQty * poRate as totalmoldval,cpdQtyUsed as cpdQtyUsed,cpdQtyUsed* cpdRate as totalusedcpdval  
+											from  tbl_moulding_receive tmp 
+											inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planRef 
+											".$addSql."
+											left join tbl_cpd_rate tcr on tcr.cpdId = timp.cmpdCpdId
+										where invDate >= '$fromdate' and invDate <= '$todate' and tmp.operator = '".$operator."' and timp.cmpdName = '".$compname."'
+										order by planRef";
+			}
+			//echo $sql_invoice; exit();		
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";			
+		break;
+		case "GETTOP":
+			$todate		=	$_POST["todate"];
+			$fromdate	=	$_POST["fromdate"];
+			$addSql =	"left join (select * from (SELECT poRate,cmpdId,upper(cusGroup) as cusGroup  FROM tbl_customer_cmpd_po_rate tccpr	inner join tbl_customer tcus on tcus.cusId = tccpr.cusId where tccpr.status = 1 order by tccpr.update_on desc) tbl1 group by cmpdId) tblrate on timp.cmpdid = tblrate.cmpdId";
+
+			createTempTable($fromdate, $todate);
+			$sql_invoice	=	"select cusGroup as operator, sum(quantity) as totalplanqty,sum(quantity * poRate) as totalplanval, sum((quantity * cmpdBlankWgt)/1000) as totalcpdplan, sum(((quantity * cmpdBlankWgt)/1000) * cpdRate) as totalcpdval,sum(plannedLifts) as plannedLifts,sum(actualLifts) as actualLifts,sum(mouldQty) as mouldQty,sum(mouldQty * poRate) as totalmoldval,sum(cpdQtyUsed) as cpdQtyUsed,sum(cpdQtyUsed* cpdRate) as totalusedcpdval  
+									from  (select planRef,operator,sum(plannedLifts) as plannedLifts,sum(actualLifts) as actualLifts,sum(mouldQty) as mouldQty,sum(cpdQtyUsed) as cpdQtyUsed from tbl_moulding_receive  group by planRef ) tmp
+									inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planRef 
+									inner join tbl_moulding_plan tmop on tmp.planRef = tmop.planid and ((tmop.status > 2 ) or (tmop.status = 0 and mdIssRef is NOT NULL))
+									".$addSql."
+									left join tbl_cpd_rate tcr on tcr.cpdId = timp.cmpdCpdId
+								where invDate >= '$fromdate' and invDate <= '$todate'
+								group by cusGroup order by cusGroup";
+			//echo $sql_invoice; exit();
+			
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";
+	}
+	
+	function createTempTable($fdate, $tdate){
+		$maketemp 	= 	"CREATE TEMPORARY TABLE tbl_cpd_rate (
+						  `cpdId` varchar(10) NOT NULL,
+						  `cpdRate` decimal(20,2),
+						  PRIMARY KEY(cpdId)
+						) ";	
+		$output		=	@getMySQLData($maketemp);
+		if($output['status'] != 'success'){
+			print_r($output);
+			exit();	
+		}
+		$sql		=	"select distinct cmpdCpdId from tbl_invoice_mould_plan WHERE status = 1 and invdate >= '$fdate' and invdate <= '$tdate' ";
+		$outputarr	=  @getMySQLData($sql);			
+		if($outputarr['count'] != null && $outputarr['count'] != "" && $outputarr['count'] > 0 )
+		{ 				  
+			$cpdIds	=	array();
+			foreach($outputarr['data'] as $oper){
+				array_push($cpdIds,$oper['cmpdCpdId']);								
+			}
+			$cpdIdCount		=	count($cpdIds);
+			$countBat		=	0;
+			$sql_insert		=	" insert into tbl_cpd_rate (cpdId, cpdRate) values  ";
+			while ($countBat < $cpdIdCount){
+				$sql_insert			.=	" ( '".$cpdIds[$countBat]."', ".(@getCompoundCost($cpdIds[$countBat]) + 30).") ";
+				if($countBat < $cpdIdCount -1){
+					$sql_insert		.=	" , ";
+				}
+				$countBat++;
+			} 
+		
+			$output	=	@getMySQLData($sql_insert);
+			if($output['status'] != 'success'){
+				print_r($output);
+				exit();
+			}
+		}
+	}
+
+?>

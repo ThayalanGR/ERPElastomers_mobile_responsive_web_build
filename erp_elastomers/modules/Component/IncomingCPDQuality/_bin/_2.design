@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+   <xsl:template match="/"> 
+		<table class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="5%">SNo</th>
+					<th width="15%">Batch ID</th> 
+					<th width="10%">Receipt Date</th>
+					<th width="12%">Compound Name</th>
+					<th width="12%">Compound Polymer </th>
+					<th width="10%">Hardness A</th>    
+					<th width="10%">Hardness B</th>
+					<th width="10%">Weight in Air (A)</th>
+					<th width="10%">Weight in Water (B)</th>
+					<th>Rheo Test?</th>					
+				</tr>
+			</thead>
+			<tbody>	
+            <xsl:for-each select="xmldata/root/data/row">
+				<tr>
+					<td align="left">
+						<xsl:value-of select="position()"/>
+					</td>					
+					<td align="left">
+						<xsl:value-of select="dispbatid"/>
+					</td>					  
+					<td align="center">
+						<xsl:value-of select="mixrecvdate"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="cpdname"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="cpdpolymer"/>
+					</td>
+					<td>
+						&#160;
+					</td>
+					<td>
+						&#160;
+					</td>
+					<td>
+						&#160;
+					</td>
+					<td>
+						&#160;
+					</td>
+					<td>
+						&#160;
+					</td>					
+				</tr>
+            </xsl:for-each>		
+			</tbody> 
+		</table>
+    </xsl:template>		
+</xsl:stylesheet>
+		

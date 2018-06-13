@@ -1,0 +1,317 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+cpdList			=	new Array();
+cpdData			=	new Array();
+cpdPolyList		=	new Array();
+details			= 	"";
+optChecked		=	2;
+monthNames		= 	new Array();
+monthNames[1]	= 	"January";
+monthNames[2]	= 	"February"; 
+monthNames[3]	= 	"March"; 
+monthNames[4]	= 	"April"; 
+monthNames[5]	=	"May"; 
+monthNames[6]	=	"June";
+monthNames[7]	=	"July";
+monthNames[8]	=	"August"; 
+monthNames[9]	=	"September"; 
+monthNames[10]	=	"October"; 
+monthNames[11]	=	"November"; 
+monthNames[12]	=	"December";
+var XSLFile		=	[XSLPath + "_.1.design", XSLPath + "_.2.design", XSLPath + "_.3.design"];
+
+function getBaseCpdList(){
+	objClassList	=	postback(actionFile, "selecttype=GETCPDLIST&outtype=xml", "POST", "XML");
+	classXML		=	parseXMLdoc(objClassList);
+	cpdList			=	new Array();
+	cpdData			=	new Array();
+	cpdPolyList		=	new Array();
+	$(classXML).find("row").each(function(index, element) {
+		cpdId		=	$.trim(element.childNodes[0].firstChild.nodeValue);
+		cpdName		=	$.trim(element.childNodes[1].firstChild.nodeValue);
+		cpdPolymer	=	$.trim(element.childNodes[2].firstChild.nodeValue);
+		cpdList.push(cpdName);
+		cpdPolyList[cpdName] 	=	cpdPolymer;
+		cpdData[cpdName]		=	cpdId;
+    });
+}
+
+function setCpdId(id){
+	cpdname		=	$(id).val();	
+	cpdid		=	cpdData[cpdname];
+	timenow		=	$(id).attr('id').substring(4);
+	$("#input_" + timenow).attr("cpdid",cpdid);
+	$("#label_" + timenow).html(cpdPolyList[cpdname]);
+}
+
+function getNewItem(){	
+	objList		=	$('#new_ItemList table tr');
+	ndate		=	new Date();
+	timenow		=	ndate.getTime();
+	ol			=	objList.length;
+	
+	newRow		=	"<tr class='" + ((ol%2)?'content_rows_light':'content_rows_dark') + "' id='" + timenow + "'>" +
+						"<td >"+ol+"</td>" +
+						"<td align='center'><input type='text'  id='mat_" + timenow + "' value='' style='width:95%'  /></td>" +
+						"<td id='label_" + timenow + "' style='text-align:center'>-</td>" +
+						"<td style='text-align:center'><input type='text' cpdid='' id='input_" + timenow + "' value='0.00' style='text-align:right;width:75%'  /></td>" +
+						"<td align='center'>" +
+							"<div class='removebtn' id='delrm_" + timenow + "' target='absmiddle' onClick='updateAllItems(\""+timenow+"\")'; />" +
+						"</td>"
+					"</tr>"	
+	
+	$('#new_ItemList table tr:last').after(newRow);	
+	
+	$("#mat_"+timenow).autocomplete({
+		source:cpdList,
+		close:function(event, ui){
+			setCpdId(this);
+		}
+	});
+}
+
+function updateAllItems(id){
+	$("#"+id).remove();
+	compList		=	$('#new_ItemList table tr');
+	for(index=1; index<compList.length; index++)	
+	{
+		element		=	"#"+compList[index].id;
+		$(element).removeClass((index%2)?'content_rows_dark':'content_rows_light');
+        $(element).addClass((index%2)?'content_rows_light':'content_rows_dark');
+		$(element).find("td:first").text((index));
+    }
+}
+	
+function getMaterialData(){
+	//get selected month
+	selMonth			=	$("#to_date").val();
+	spacePos			=	selMonth.indexOf(' ');
+	monthName 			=	selMonth.substring(0,spacePos);
+	year 				= 	selMonth.substring(spacePos+1,selMonth.length);
+	curMonth 			= 	monthNames.indexOf(monthName);
+	curYear				= 	year;
+	
+	//Find Previous Month
+	LastDatePrevMonth	=	new Date(curYear, curMonth-1, 0);
+	preMonthIndex		=	Number(LastDatePrevMonth.getMonth())+1;
+	preMonthName		= 	monthNames[Number(preMonthIndex)];
+	preYear				= 	LastDatePrevMonth.getFullYear();
+	preMonth			= 	preMonthName+" "+preYear;
+	
+	//get radio button value
+	opt_code			=	$(".option:checked").val();
+	rm_clause			=	$("#rmClause").val(); 
+	
+	if(opt_code == 'raw material' && rm_clause == 3)
+	{
+		$("#receive_dialog").dialog({
+			title:'Enter Required Compound Qty',
+			width:750,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons: 
+			[
+				{
+					text: "Submit",
+					click: function(){
+						newError		=	$("#error_msg");
+						cpdIds 			=	new Array();
+						cpdWgts			=	new Array();	
+						cpdNamesArr		=	new Array();
+						cpdNames		=	new Array();
+						compList		=	$('#new_ItemList table tr');
+						for(rl=1; rl<compList.length; rl++){
+							fetchId		=	$("#"+compList[rl].id).attr("id");
+							cpdName		=	$("#mat_" + fetchId).val();
+							cpdId		=	$("#input_" + fetchId).attr("cpdid");			
+							cpdQty		=	$("#input_" + fetchId).val();
+							cpdnameid   =   cpdName+ "-" +cpdQty;
+							if( cpdId == "" || cpdId == null)
+							{
+								displayError(newError, "error", "<strong>Error !</strong> - Please select a compound!!!");
+								$("#mat_"+fetchId).focus();
+								return false;
+							}							
+							else if(Number(cpdQty) == null || Number(cpdQty) <= 0 )
+							{
+								displayError(newError, "error", "<strong>Error !</strong> - Please enter correct weight for Compound: "+cpdName+".!!!");
+								$("#input_"+fetchId).focus();
+								return false;
+							}
+							else 
+							{
+								if(cpdNamesArr.indexOf(cpdName) < 0)
+								{
+									cpdNamesArr.push(cpdName);
+									cpdIds.push(cpdId);
+									cpdWgts.push(cpdQty);
+									cpdNames.push(cpdnameid);
+								}
+								else
+								{
+									displayError(newError, "error", "<strong>Error !</strong> - Same compound selected More than once!!!");
+									$("#mat_"+fetchId).focus();
+									return false;
+								}
+							}
+						}
+						if(cpdIds.length > 0)
+						{					
+							$(this).dialog("close");
+							param	=	"selecttype=GETCPDDETAIL" +
+													"&outtype=xml" +
+													"&cpdNames=" + cpdNames +
+													"&cpdQty=" + cpdQty +
+													"&opt_code=" + opt_code +
+													"&rm_clause=" + rm_clause +
+													"&value=" + selMonth +
+													"&preMonth="+preMonth +
+													"&curMonthIndex="+curMonth;
+							for(rm=0; rm<cpdIds.length; rm++){
+								param = param + "&cpdids[]=" + cpdIds[rm] ;
+								param = param + "&cpdwgts["+cpdIds[rm]+"]=" + cpdWgts[rm] ;
+							}
+							//alert(param); //return false;
+							details		=	postback(actionFile, param, "POST", "XML");
+							//$("#content_body").html(details); return false;
+							listPageData($("#content_body"), details, XSLFile[0]);
+							updatePageBehaviour();	
+						}
+					}
+				},
+				{
+					text: "Close",
+					click: function(){ 
+						$(this).dialog("close"); 
+					}
+				}
+			],
+			close: function(event, ui) {
+				compList		=	$('#new_ItemList table tr');
+				for(rl=1; rl<compList.length; rl++){
+					$("#"+compList[rl].id).remove();
+				}			
+				$(this).dialog("destroy");
+			} 
+		});		
+	}
+	else
+	{
+		param	=	"selecttype=GETCPDDETAIL" +
+								"&outtype=xml" +
+								"&cpdName=" + cpdName +
+								"&opt_code=" + opt_code +
+								"&rm_clause=" + rm_clause +
+								"&value=" + selMonth +
+								"&preMonth="+preMonth +
+								"&curMonthIndex="+curMonth;
+							
+		details		=	postback(actionFile, param, "POST", "XML");
+		//$("#content_body").html(details); return false;
+		listPageData($("#content_body"), details, XSLFile[0]);
+		updatePageBehaviour();
+	}
+}
+
+function updatePageBehaviour(){
+	updateHeader();updateContent();
+	opt_code	=	$(".option:checked").val();
+	if(opt_code ==	'raw material')
+	{
+		ordQtyTot		=	0;
+		valTot			=	0;
+		shortTot		=	0;
+		
+		$("#content_body table tr").each(function(index, element) {
+			oqTot		=	($(this).find("th:eq(1)").html())?Number($(this).find("th:eq(1)").html().split(",").join("")):0;
+			vTot		=	($(this).find("th:eq(2)").html())?Number($(this).find("th:eq(2)").html().split(",").join("")):0;
+			sTot		=	($(this).find("th:eq(3)").html())?Number($(this).find("th:eq(3)").html().split(",").join("")):0;
+			
+			ordQtyTot	=	ordQtyTot + (isNaN(oqTot) ?0 :oqTot);
+			valTot		=	valTot + (isNaN(vTot) ?0 :vTot);
+			shortTot	=	shortTot + (isNaN(sTot) ?0 :sTot);
+		});
+		$("#req_total").html(ordQtyTot.toCurrency(3));
+		$("#instock_total").html(valTot.toCurrency(3));	
+		$("#shortage_total").html(shortTot.toCurrency(3));
+	}
+	else
+	{
+		valTot			=	0;
+		shortTot		=	0;
+		
+		$("#content_body table tr").each(function(index, element) {
+			vTot		=	($(this).find("th:eq(1)").html())?Number($(this).find("th:eq(1)").html().split(",").join("")):0;
+			sTot		=	($(this).find("th:eq(2)").html())?Number($(this).find("th:eq(2)").html().split(",").join("")):0;
+			
+			valTot		=	valTot + (isNaN(vTot) ?0 :vTot);
+			shortTot	=	shortTot + (isNaN(sTot) ?0 :sTot);
+		});
+		
+		$("#val_total").html(valTot.toCurrency(3));
+		$("#cpd_total").html(shortTot.toCurrency(3));
+	}
+
+}
+
+// -------------------------------------------------------------------------------------------------------------------------------------- //
+
+$(document).ready(function(){
+	$("#new_CPDButton").button().click(function(){getNewItem();});
+	
+	$(".option").change(function(){
+		if($(this).val()=='compound'){
+			optChecked		=	1;
+			$("#compound").show();
+			$("#compound1").show();
+			$("#raw_material").hide();
+			$("#raw_material1").hide();
+			getMaterialData();		
+		}
+		else{
+			optChecked		=	2;
+			$("#compound").hide();
+			$("#compound1").hide();
+			$("#raw_material").show();
+			$("#raw_material1").show();
+			getMaterialData();
+		}								 
+	});
+	
+	getBaseCpdList();
+	getMaterialData();
+
+	//MonthPicker
+	$('#to_date').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	}).bind('monthpicker-click-month', function (e, month) {
+    	getMaterialData();
+	})
+
+	$("#button_submit").button().click(function(){
+		
+		$("#print_item_form").css('visibility', 'visible');	
+			
+		$("#print_item_form").dialog({
+										modal:true,
+										minWidth:'1200',
+										resizable:false,									
+										open: function(event, ui) {
+											listPageData($("#print_body"), details, XSLFile[optChecked]);
+											var today = new Date();											
+											$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+											$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");
+											var hdrTitle = (optChecked == 1)?"Compound":"Raw Material";
+											$("#hdr_title").html(hdrTitle);
+										}									
+									});		
+		var DocumentContainer = document.getElementById('print_item_form');
+		$("#print_item_form").dialog('close');
+		var WindowObject = window.open("","PrintWindow");
+		WindowObject.document.writeln(DocumentContainer.innerHTML);		
+		WindowObject.document.close();
+		WindowObject.focus();
+	});
+	
+});

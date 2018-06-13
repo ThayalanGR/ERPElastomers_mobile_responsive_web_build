@@ -1,0 +1,188 @@
+tableFilters.col_0				=	"none";
+tableFilters.col_10				=	"none";
+tableFilters.col_11				=	"none";
+tableFilters.sort_config		=	{ sort_types:['none','us', 'date','string','string','string','string','us','us','us','none','none'] };
+tableFilters.col_operation		=	{ 
+									   id: ["qty_total","val_total"], 
+									   col: [7,9],
+									   operation: ["sum","sum"],
+									   decimal_precision: [0,2]
+									};
+tableFilters.on_after_operation	=	formatTotals;
+var TF_01						=	null;
+var needTFRefresh				=	false;
+
+function formatTotals()
+{
+	tf_Id('qty_total').innerHTML = tf_Id('qty_total').innerHTML.toCurrency();
+	tf_Id('val_total').innerHTML = tf_Id('val_total').innerHTML.toCurrency(2);
+}
+
+function updateData(){
+	
+	$('#input_select_all').click(function(event) {  
+		if(this.checked) { 
+			$('.checkbox1').each(function() { 
+				this.checked = true;                
+			});
+		}else{
+			$('.checkbox1').each(function() { 
+				this.checked = false;                        
+			});         
+		}
+	});
+	
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('invid');
+		invtype	=	$(this).attr('invtype');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({mod:invtype, invID:mRecId});
+		}
+	});
+	
+	$(".view_list_button").click(function(){
+		mRecId	=	$(this).attr('invid');
+		invtype	=	$(this).attr('invtype');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({mod:"list", invID:mRecId,invType:invtype});
+		}
+	});	
+	
+	$(".label_button").click(function(){
+		mRecId		=	$(this).attr('invid');
+		invtype		=	$(this).attr('invtype');
+		cmpdId		=	$(this).attr('invcode');
+		packQty		=	postback(actionFile,"selecttype=GETPACKQTY&cmpdid="+cmpdId,"POST","XML");		
+		contBatch	=	"<table width='100%'>";
+		contBatch	+=	'<tr height="30px">'+
+								'<td align="right" width="75%"> Please enter Packing Qty </td>'+
+								'<td align="left"> <input type="text" id="packqty" value='+((packQty>0)?packQty:100)+' style="text-align:right;width:80%;" /> </td>'+
+							'</tr>';
+		contBatch	+=	"</table>";		
+		$('#view_dialog').html(contBatch).dialog({
+			title:'Packing Qty Entry',
+			width:300,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Print':function(){
+					if(!(confirm("This will automatically print Labels for this invoice. Do you want to continue?" )))
+					{
+						return false;
+					}
+					$(this).dialog('close');
+					if(mRecId != null && mRecId != ""){
+						resOut	=	postback(actionFile,"selecttype=PRINTLABEL&packqty="+$("#packqty").val()+"&invid="+mRecId+"&cmpdid="+cmpdId,"POST","XML");
+						if(resOut == 1)
+							alert("Label Printout Sent Sucessfully!");
+						else
+							alert("Label Printout Not Sent Due To Error!!!");					
+					}	
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}					
+			},
+			close:function(){
+				$(this).dialog('destroy');
+			}
+		});		
+
+	});	
+	
+	$(".email_button").click(function(){
+		mRecId		=	$(this).attr('invid');
+		mCusEmail	=	$(this).attr('cusemail');
+		if(mCusEmail != null && mCusEmail != ""){
+			openInvoice({mod:'cpd', invID:mRecId,cusEmail:mCusEmail});
+		}
+		else{
+			alert("No email address available for Customer. Please update the same in the Customer Master!");
+		}
+	});	
+
+	$(".email_tc_button").click(function(){
+		mRecId		=	$(this).attr('invid');
+		mCusEmail	=	$(this).attr('cusemail');
+		if(mCusEmail != null && mCusEmail != ""){
+			openInvoice({mod:'testcert', invID:mRecId,cusEmail:mCusEmail});
+		}
+		else{
+			alert("No email address available for Customer. Please update the same in the Customer Master!");
+		}
+	});		
+	
+}
+
+
+$(document).ready(function(){
+	
+	updatePageBehaviour();	
+
+	$(".email_coverpage_button").click(function(){
+			var resOut = postback(actionFile, "selecttype=SENDCOVERPAGE&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST","XML");
+			if(resOut == 'success')
+				alert("Sales Report Sent Sucessfully!");
+			else
+				alert("Sales Report Not sent due to error: " + resOut);
+	});	
+
+	$(".email_fulldetails_button").click(function(){
+			var resOut = postback(actionFile, "selecttype=SENDFULLDET&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST","XML");
+			if(resOut == 'success')
+				alert("Sales Report Sent Sucessfully!");
+			else
+				alert("Sales Report Not sent due to error: " + resOut);
+	});	
+
+	$(".email_cpddetails_button").click(function(){
+			var resOut = postback(actionFile, "selecttype=SENDCPDDET&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST","XML");
+			if(resOut == 'success')
+				alert("Compound Report Sent Sucessfully!");
+			else
+				alert("Compound Report Not sent due to error: " + resOut);
+	});			     
+});
+
+function updatePageBehaviour(){	
+	var objCompList = postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&invtype="+$("#invoicetype").val(), "POST","XML");
+	xmlData		=	$(objCompList);
+	rowCount	=	xmlData.find("root:eq(0) count:eq(0)").text();	
+	listPageData($("#content_body"), objCompList, XSLFile);
+	if(rowCount > 0)
+	{
+		TF_01	=	setFilterGrid("resultTable",tableFilters);
+		if(needTFRefresh)
+			TF_01.RefreshGrid();	
+		needTFRefresh 	=	true;
+	}
+	updateData();
+
+}
+
+function submitPrint(){
+	invoiceType = $("#invoicetype").val();
+	invIds 		= 	new Array();
+	var a = TF_01.GetFilteredDataCol(1);
+	$.each(a,function(index,value) {
+		chkObj	=	$('#'+value);
+		if(chkObj.attr('checked') == true)
+		{
+			invIds.push(chkObj.attr('invid'));				
+		}
+	});		
+	
+	if(invIds == null || invIds.length <= 0 )
+	{
+		alert("Please select atleast one Invoice for Printing");
+		return false;
+	}
+	else if (  invoiceType == 'cmpd')
+	{
+		openInvoice({mod:'cmpd', invID:invIds});
+	}
+	else
+	{
+		openInvoice({mod:invoiceType, invID:invIds});
+	}
+}

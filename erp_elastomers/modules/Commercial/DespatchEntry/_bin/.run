@@ -1,0 +1,218 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+invList		= 	new Array();
+
+function waitAndCall()
+{
+	setTimeout(function(){createAutoComplete();}, 1000);
+}
+
+function createAutoComplete(){
+	
+	invRef			=	$("#invRef").val();
+	if(invRef != "" && invRef != null)
+	{
+		var mouldList   =	postback(actionFile,"type=GETDEF&invref="+invRef.toLowerCase(),"POST","XML");
+		//alert(mouldList);
+		invXML			=	parseXMLdoc(mouldList);
+		rowXML			=	invXML.getElementsByTagName("row");	
+		if(rowXML[0] != null && rowXML[0] != "undefined")
+		{
+			row			=	rowXML[0].childNodes;
+			data		=	new Array();		
+			for(cx=0; cx<row.length; cx++){
+				data[row[cx].nodeName]	=	(row[cx].firstChild)?row[cx].firstChild.nodeValue:'';
+			}
+			invId		=	data['invid'];
+			docType		=	data['doctype'];
+			invQty		=	data['invqty'];
+			if(invList.indexOf(invId) == -1)
+			{
+				invList.push(invId);
+				addr		=	data['invconsignee'].split("|");
+				consignee	=	addr[0]; //+"<BR />"+addr[2];
+				numPacks	=	getCurrency(data['numpacks'],0);
+				objList		=	$('#content_body table tr');
+				ol			=	objList.length;
+				nextRow		=	ol + 1;
+				newRow		=	"<tr class='" + ((ol%2)?'content_rows_light':'content_rows_dark') + "' id='" + nextRow + "' docid='" + invId + "' doctype='" + docType + "' invqty = '"+ invQty + "'>" +
+									"<td width='5%'>"+ nextRow +"</td>" +
+									"<td width='8%'>"+invId+"</td>" +
+									"<td width='8%'>"+data['invdate']+"</td>" +
+									"<td width='25%'>"+consignee+"</td>" +
+									"<td width='20%'>"+data['partnumber']+"</td>" +
+									"<td width='8%' align='right'>"+getCurrency(invQty,0)+"</td>" +
+									"<td width='12%' align='right'>"+getCurrency(data['invgrandtotal'],2)+"</td>" +
+									"<td width='8%' align='right'><input id='input_"+ nextRow +"' style='width:50%;text-align:right' class='invisible_text' value='"+numPacks+"' tabindex='2' onFocus=\"FieldHiddenValue(this, 'in', '"+numPacks+"')\" onBlur=\"FieldHiddenValue(this, 'out', '"+numPacks+"')\"></input></td>" +
+									"<td align='center'>" +
+										"<div class='removebtn' id='delrm_" + nextRow + "' target='absmiddle' />" +
+									"</td>" +						
+								"</tr>"	;	
+				
+				if(ol > 0)
+				{	
+					$('#content_body table tr:last').after(newRow);			
+				}
+				else
+				{	
+					$('.window_error').html("");
+					newTable	=	"<table border='0' cellpadding='6' cellspacing='0' width='100%'>"+newRow+"</table>";
+					$('#content_body').html(newTable);
+					
+				}
+				
+				$("#delrm_" + nextRow).click(new Function("$(\"#"+nextRow+"\").remove(); updateAllItems();"));	
+			}
+			else
+			{
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Item:"+invId+" Already Added!!!" );		
+			}		
+		}
+		else
+		{
+			displayError($("#new_item_error"), "error", "<strong>Error !</strong> - No Such Item "+invRef+" or Item Already Despatched!!!" );	
+		}
+		$("#invRef").val('');
+		
+	}
+
+}
+
+function updateAllItems(){
+	$("#content_body table tr").each(function(index, element) {
+		$(element).removeClass((index%2)?'content_rows_dark':'content_rows_light');
+        $(element).addClass((index%2)?'content_rows_light':'content_rows_dark');
+		$(element).find("td:first").text((index+1));
+    });
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+
+	$("#invRef").focus();	
+
+	$("#button_submit").button().click(function(){
+		newError	=	$("#new_item_error");
+		pickedBy	=	$("#new_PickedBy");
+		vechNumber	=	$("#new_VehicleNum");
+		if(pickedBy.val() == null || pickedBy.val() == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - Pickup Person Name Missing.");
+			pickedBy.focus();
+			return false;
+		}
+		else if(vechNumber.val() == null || vechNumber.val() == "" ){
+			displayError(newError, "error", "<strong>Error !</strong> - Vehicle Number Missing.");
+			vechNumber.focus();
+			return false;
+		}		
+		invIds 		= 	new Array();		
+		invTypes 	= 	new Array();
+		invQtys		= 	new Array();
+		numPacks	= 	new Array();
+		planList	=	$('#content_body table tr');
+		for(rl=0; rl<planList.length; rl++){
+			fetchId		=	$("#"+planList[rl].id).attr("id");			
+			numPack		=	$("#input_" + fetchId).val();
+			if (numPack.toNumber() > 0)
+			{
+				numPacks.push(numPack);
+				invIds.push($("#"+fetchId).attr("docid"));				
+				invTypes.push($("#"+fetchId).attr("doctype"));
+				invQtys.push($("#"+fetchId).attr("invqty"));
+			}
+			else
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Please enter correct Packet Numbers: "+fetchId+".");
+				$("#input_"+fetchId).focus();
+				return false;
+			}
+		}
+		if(invIds.length > 0)
+		{
+			param			=	"type=" + "INSDESPDETS" +
+								"&pickedby=" + pickedBy.val() +
+								"&vehnumber="+vechNumber.val() ;
+			arrParams		=	"";
+			for(rm=0; rm<invIds.length; rm++){
+				arrParams = arrParams + "&docIds[]=" + invIds[rm] ;
+				arrParams = arrParams + "&docTypes[]=" + invTypes[rm] ;
+				arrParams = arrParams + "&totQtys[]=" + invQtys[rm] ;
+				arrParams = arrParams + "&numPacks[]=" + numPacks[rm] ;
+			}
+			param	= param + arrParams;			
+			confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Update Despatch Details?</b></td></tr>' +
+				'</table>'	;		
+			$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Despatch Entry',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons: [
+														{
+															text: "Yes",
+															click: function(){
+																$(this).dialog("close");
+																//alert(param); return false;
+																error	=	postback(actionFile,param,"POST","XML");
+																if(error == "success"){
+																	displayError(newError, "highlight", "<strong>Info !</strong> - Despatch Details Updated Successfully");
+																	setTimeout(function(){window.location.reload();}, 500);
+																}
+																else{
+																	displayError(newError, "error", "<strong>Error !</strong> - Failed to Create Plans - " + error );
+																	return false;
+																}																
+															}
+														},
+														{
+															text: "No",
+															click: function() { $(this).dialog("close"); }
+														}
+													],
+													close: function(event, ui) {
+															$(this).dialog("destroy");
+													} 
+			});
+		}
+		else	
+		{
+			displayError(newError, "error", "<strong>Error !</strong> - Please enter values for atleast one invoice!");
+			return false;			
+		}
+	});	
+
+	//Cancel Items
+	$("#button_cancel").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+			'<tr><td><b>Are you Sure to Clear All Details?</b></td></tr>' +
+			'</table>'	;		
+		$("#confirm_dialog").html(confirmCont).dialog({
+												title:'Despatch Entry',
+												width:450,
+												height:'auto',
+												resizable:false,
+												modal:true,
+												buttons: [
+													{
+														text: "Yes",
+														click: function(){
+															$(this).dialog("close");
+															window.location.reload();
+														}
+													},
+													{
+														text: "No",
+														click: function() { $(this).dialog("close"); }
+													}
+												],
+												close: function(event, ui) {
+														$(this).dialog("destroy");
+												} 
+			});	
+	});
+	
+
+});

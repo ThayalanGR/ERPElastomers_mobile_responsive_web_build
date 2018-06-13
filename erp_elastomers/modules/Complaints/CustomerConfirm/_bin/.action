@@ -1,0 +1,34 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "NEWCOMPLIST":
+			$sql	=	"select complaintId,DATE_FORMAT(complaintDate, '%d-%b-%Y') as complaintDate, DATE_FORMAT(closure_on, '%d-%b-%Y') as closure_on,concat(tcmpd.cmpdname,'(',tcmpd.cmpdrefno,')') as cmpdname,description,tcust.cusName,corrAction,prevAction,closureRemarks
+						from tbl_complaint tcomp
+							inner join tbl_customer tcust on tcomp.cusId=tcust.cusId
+							left join tbl_component tcmpd on tcmpd.cmpdId=tcomp.cmpdId							
+						where tcomp.status=5 and isInternal = 0 order by complaintDate";
+			echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+		break;
+		case "CUSTCONFINS":			
+			$compId			=	$_POST['compid'];
+			$custConfirm		=	$_POST['custconfirm'];
+			if($compId != ""){	
+				$sql_comp		=	"update tbl_complaint set 
+										cusConfRemarks = '$custConfirm',
+										status = '6',
+										cusConfDate = now()
+									where complaintId = '$compId'";
+				//echo $sql_comp ; exit();
+				$output			=	@getMySQLData($sql_comp, "xml");
+			}
+			else
+			{
+				$output	.= "<result_set>failed</result_set>";	
+			}
+			echo "<root>$output</root>";
+		break;
+
+	}
+
+?>

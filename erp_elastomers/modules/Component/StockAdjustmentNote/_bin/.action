@@ -1,0 +1,81 @@
+<?php
+	session_start();
+    header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "CNTATLIST":
+			echo @getXML("select cmpdId, cmpdRefNo, cmpdName from tbl_component");
+			exit();
+		break;
+		
+		case "CNTBOOKQTY":
+			$cntid	=	$_POST['cntid'];
+			echo @getMySQLData(	"select planref, avlQty from tbl_mould_store where status>0 and avlQty>0 and cmpdid = '$cntid' order by planref asc","xml", "xmldata", "lower");
+			exit();
+		break;	
+	
+		case "SANDETAILS":
+			if($_POST['sanid'] != ""){
+				$list	=	getXML("SELECT sanId, DATE_FORMAT(sanDate, '%d-%b-%Y') as sanDate, cmpdId, planId,
+									description, bookQty, physicalQty, exc_shrt
+									FROM tbl_moulding_san where status>0 and sanId='".$_POST['sanid']."'", false);
+				$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+				echo $list;
+			}
+			exit();
+		break;
+		
+		case "ADDSAN":
+			$planrefArray	=	$_POST['mldkey'];
+			$phyQtyArray	=	$_POST['phyqty'];
+			$cmpdId			=	$_POST['cmpdid'];
+			$cmpdData		=	@getMySQLData("select cmpdName,cmpdRefNo from tbl_component where cmpdId='".$cmpdId."'");
+			$cmpdData		=	$cmpdData['data'][0];	
+			
+			if(count($_POST) > 0 && $_POST['cmpdid'] && count($planrefArray) > 0){
+				$sanCode	=	@getRegisterData("cntstkadj");
+				$sql		=	"insert into tbl_moulding_san(sanId, sanDate, cmpdId, planId, 
+									description, bookQty, physicalQty, exc_shrt, entry_on, entry_by) values";
+				for($san=0; $san<count($planrefArray); $san++){
+					$ex_short	+=	$_POST['excshrt'][$san];				
+					$sql		.=	"(
+										'$sanCode', now(), '".$cmpdId."', '".$planrefArray[$san]."', 
+										'".$_POST['desc']."', '".$_POST['bookqty'][$san]."', '".$phyQtyArray[$san]."', '".$_POST['excshrt'][$san]."', now(), '".$_SESSION['userdetails']['userId']."'
+									)".(($san<count($planrefArray)-1)?", ":"");
+				}
+				$addSQL		=	@getMySQLData($sql);
+				if($addSQL['status'] == "success"){
+					for($keyCount=0; $keyCount<count($planrefArray); $keyCount++){
+						@getMySQLData("update tbl_mould_store set avlQty='".$phyQtyArray[$keyCount]."' where cmpdId='".$cmpdId."' and planref = '".$planrefArray[$keyCount]."'");
+					}
+					updateSettingsData(array("cntstkadj"));
+					$output	=	"
+						<addsan>
+							<status>".$addSQL['status']."</status>
+							<sanid>$sanCode</sanid>
+						</addsan>
+					";
+				}
+				else{
+					$output	=	"
+						<addsan>
+							<status>".$addSQL['status']."</status>
+						</addsan>
+					";
+				}			
+			}
+		break;
+	};
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$list	=	@getMySQLData("SELECT sanId, DATE_FORMAT(sanDate, '%d-%b-%Y') as sanDate, tms.cmpdId, cmpdName, cmpdRefNo, planId,description
+								FROM tbl_moulding_san tms
+								inner join tbl_component tc on tc.cmpdid = tms.cmpdid
+								where tms.status>0 group by sanId", "xml", "root","lower");
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

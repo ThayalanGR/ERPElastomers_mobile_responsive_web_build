@@ -1,0 +1,455 @@
+
+<!DOCTYPE html>
+
+<html lang="en-US">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <link rel="stylesheet" href="../fontawesome/web-fonts-with-css/css/fontawesome-all.css">
+        <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+        <link rel="stylesheet" href="../mobile.css">
+
+        <script src="/script/jquery.min.js" type="text/javascript"></script>
+        <script src="/script/jquery.ui.min.js" type="text/javascript"></script>
+        <script src="/script/jquery.xslt.js" type="text/javascript"></script>
+        <script src="/script/jquery.combobox.js" type="text/javascript"></script>
+        <script src="/script/jquery.tooltip.js" type="text/javascript"></script>
+        <script src="/script/jquery.filters.js" type="text/javascript"></script>
+        <script src="/script/jquery.monthpicker.js" type="text/javascript"></script>
+        <script src="/script/jquery.others.js" type="text/javascript"></script>
+
+        <script src="/script/functions.js" type="text/javascript"></script>
+        <script src="/script/general.js" type="text/javascript"></script>
+        <script src="/script/incvar.js" type="text/javascript"></script>
+		<script src="/script/TableFilter/tablefilter.js" type="text/javascript"></script>
+       
+            
+        <script src="/modules/Common/_bin/.run" type="text/javascript"></script>        <title>Meenakshi Moldings Private Limited</title>
+    </head>
+<body>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-sm-12" >
+                <div id="header">     
+                    <div class="row justify-content-between fixed-top shadow-sm " style="height:50px; background-color:white; ">
+                        <div id="homelogo" class="col-sm-2 col-md-1   mt-0 text-left ml-4 ml-md-3" style=" width: 40px;">
+                            <div class="jumbotron-fluid shadow-sm rounded-circle btn btn-primary text-center mt-1"  style="height: 40px; width:40px; background-color: white; "> 
+                                <img src="../images/mmpl logo.jpg" style="height:20px; width: 20px; " class=""  alt="logo">
+                            </div>
+                            
+                        </div>
+                        <div id="userlogo" class="col clearfix" style="">
+                                <p class="float-left text-left text-primary mt-2 ml-1" style="font-size: 13px;">
+                                    <span class="badge "><i class="fa fa-user"></i></span>sysadmin -  
+                                    <br><span class="ml-1 text-info">System Adm . . . </span>
+                                </p>
+                                <a href="/Logout" class="btn shadow-sm mr-2   mr-md-4 text-right text-primary float-right" style="padding:0px; margin-top: 12px;">
+                                    <span class="badge"><i class="fa fa-sign-out-alt   "></i></span>
+                                </a>
+                                <a href="/" class="btn shadow-sm mr-3 text-primary btn-sm  mr-md-4 text-right text-primary float-right" style="padding:0px; margin-top: 12px;">
+                                                <span class="badge"><i class="fas fa-home fa-1x " ></i></span>
+                                </a>
+                        </div>
+                    </div>
+                    <div class="row justify-content-center" style="height:100em; padding-top: 65px;" >
+                    <div class="container-fluid "> 
+                        <div class="row"  style="padding-left: 10px; padding-right: 10px; ">   
+                        
+                                <div class="col-6 btn hover1 text-center"  style="" data-toggle="modal" data-target="#NPD"><div class="mt-4 text-primary"><i class="fa fa-shield-alt fa-3x"></i><br>NPD</div></div>
+                                <div class="modal fade" id="NPD" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header " style="height: 50px; ">
+                                                <h6 class="modal-title" id="exampleModalLongTitle"><i class="fa fa-shield-alt"> </i>NPD</h6>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <i class="fas fa-home " ></i>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body container-fluid">
+                                                <div class="row">
+                                                    <a class="col btn hover1 text-center " href="/NPD/DevelopmentRequest" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Development Request</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/NPDRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>NPD Register</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/CheckFeasibility" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Check Feasibility</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/GenerateQuote" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Generate Quote</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/QuoteRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Quote Register</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/RaiseToolPO" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Raise Tool PO</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/ToolPORegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Tool PO Register</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/ToolReceiptNote" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Tool Receipt Note</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/TRNRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>TRN Register</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/ToolSamplePlan" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Tool Sample Plan</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/SamplePlanRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Sample Plan Register</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/SampleReceipt" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Sample Receipt</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/SampleLayoutInspection" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Sample Layout Inspection</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/LayoutInspectionRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Layout Inspection Register</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/SubmitForApproval" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Submit For Approval</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/ApprovalSubmissions" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Approval Submissions</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/ApproveComponent" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Approve Component</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/ApproveTool" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Approve Tool</div></a>
+                                                    
+                                                    <a class="col btn hover1 text-center " href="/NPD/ToolApprovalRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Tool Approval Register</div></a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                
+                                <div class="col-6 btn hover1 text-center"  style="" data-toggle="modal" data-target="#Compound"><div class="mt-4 text-primary"><i class="fab fa-connectdevelop fa-3x"></i><br>Compound</div></div>
+                                        <div class="modal fade" id="Compound" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                                                        <div class="modal-dialog modal-dialog-centered" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header " style="height: 50px; ">
+                                                                    <h6 class="modal-title" id="exampleModalLongTitle"><i class="fab fa-connectdevelop"> </i>Compound</h6>
+                                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                        <i class="fas fa-home " ></i>
+                                                                    </button>
+                                                                </div>
+                                                                    <div class="modal-body container-fluid"><div class="row">
+                                                            <a class="col btn hover1 text-center " href="/Compound/SupplierRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Supplier Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/MaterialRequirementPlanning" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Material Requirement Planning</div></a>
+                                                            <div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#Purchase" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>Purchase </div></div>
+                                                            <div class="collapse" id="Purchase">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/PurchaseOrder" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Purchase Order</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/PORegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>PO Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/GoodsReceiptNote" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Goods Receipt Note</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/GRNRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>GRN Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/QualityCheck" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Quality Check</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/RMQualityRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>RM Quality Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/StoreOutward" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Store Outward</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/StockAdjustmentNote" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Stock Adjustment Note</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/SANRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>SAN Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/StockLedger" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Stock Ledger</div></a>
+                                                            </div></div></div><div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#Mixing" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>Mixing </div></div>
+                                                            <div class="collapse" id="Mixing">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/MasterPlan" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Master Plan</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/MasterReceipt" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Master Receipt</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/FinalPlan" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Final Plan</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/FinalReceipt" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Final Receipt</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/MixingPlanRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Mixing Plan Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Compound/StoreReceipt" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Store Receipt</div></a>
+                                                            </div></div></div>
+                                                            <a class="col btn hover1 text-center " href="/Compound/FlashReport" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Flash Report</div></a>
+                                                            </div></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                
+                                
+                                <div class="col-6 btn hover1 text-center"  style="" data-toggle="modal" data-target="#Component"><div class="mt-4 text-primary"><i class="fas fa-puzzle-piece fa-3x"></i><br>Component</div></div>
+                                        <div class="modal fade" id="Component" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                                                        <div class="modal-dialog modal-dialog-centered" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header " style="height: 50px; ">
+                                                                    <h6 class="modal-title" id="exampleModalLongTitle"><i class="fas fa-puzzle-piece"> </i>Component</h6>
+                                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                        <i class="fas fa-home " ></i>
+                                                                    </button>
+                                                                </div>
+                                                                    <div class="modal-body container-fluid"><div class="row">
+                                                            <a class="col btn hover1 text-center " href="/Component/ComponentRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Component Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/ToolRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Tool Register</div></a>
+                                                            <div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#Blanking" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>Blanking </div></div>
+                                                            <div class="collapse" id="Blanking">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/CompoundReceipt" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Compound Receipt</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/CompoundReceiptRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Compound Receipt Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/MouldingPlan" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Moulding Plan</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/MouldingPlanRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Moulding Plan Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/CompoundReturn" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Compound Return</div></a>
+                                                            </div></div></div><div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#Moulding" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>Moulding </div></div>
+                                                            <div class="collapse" id="Moulding">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/Outward" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Outward</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/OutwardRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Outward Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/Inward" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Inward</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/InwardRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Inward Register</div></a>
+                                                            </div></div></div><div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#Deflashing" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>Deflashing </div></div>
+                                                            <div class="collapse" id="Deflashing">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/Def.Outward" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Def. Outward</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/Def.OutwardRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Def. Outward Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/Def.Inward" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Def. Inward</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/Def.InwardRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Def. Inward Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/PendingSummary" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Pending Summary</div></a>
+                                                            </div></div></div>
+                                                            <a class="col btn hover1 text-center " href="/Component/PendingItems" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Pending Items</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/ComponentReceipt" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Component Receipt</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/ComponentReceiptRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Component Receipt Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/VendorBillPassing" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Vendor Bill Passing</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/ToolTransfer" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Tool Transfer</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/ToolTransferRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Tool Transfer Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/ToolValidation" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Tool Validation</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/ToolValidationRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Tool Validation Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Component/FlashReport" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Flash Report</div></a>
+                                                            </div></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                
+                                
+                                <div class="col-6 btn hover1 text-center"  style="" data-toggle="modal" data-target="#Quality"><div class="mt-4 text-primary"><i class="fas fa-certificate fa-3x"></i><br>Quality</div></div>
+                                        <div class="modal fade" id="Quality" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                                                        <div class="modal-dialog modal-dialog-centered" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header " style="height: 50px; ">
+                                                                    <h6 class="modal-title" id="exampleModalLongTitle"><i class="fas fa-certificate"> </i>Quality</h6>
+                                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                        <i class="fas fa-home " ></i>
+                                                                    </button>
+                                                                </div>
+                                                                    <div class="modal-body container-fluid"><div class="row"><div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#ApprovedList" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>Approved List </div></div>
+                                                            <div class="collapse" id="ApprovedList">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/RawMaterial" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Raw Material</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/Compound" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Compound</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/Rejection" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Rejection</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/UoM" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>UoM</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/Class" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Class</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/Parameters" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Parameters</div></a>
+                                                            </div></div></div><div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#Non-Conformance" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>Non-Conformance </div></div>
+                                                            <div class="collapse" id="Non-Conformance">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/FlashReport" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Flash Report</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/CustomerComplaint" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Customer Complaint</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/Appraise" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Appraise</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/CorrectiveAction" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Corrective Action</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/PreventiveAction" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Preventive Action</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/Closure" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Closure</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/CustomerConfirmation" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Customer Confirmation</div></a>
+                                                            </div></div></div>
+                                                            <a class="col btn hover1 text-center " href="/Quality/CompoundApproval" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Compound Approval</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/CompoundApprovalRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Compound Approval Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/IncomingCompoundApproval" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Incoming Compound Approval</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/IncomingCompoundApprovalRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Incoming Compound Approval Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/InspectionEntry" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Inspection Entry</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/InspectionRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Inspection Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/DimensionEntry" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Dimension Entry</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/MouldingPlanVsActual" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Moulding Plan Vs Actual</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/BatchTraceability" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Batch Traceability</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Quality/KeyTraceability" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Key Traceability</div></a>
+                                                            </div></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                
+                                
+                                <div class="col-6 btn hover1 text-center"  style="" data-toggle="modal" data-target="#Sales"><div class="mt-4 text-primary"><i class="fas fa-chart-line fa-3x"></i><br>Sales</div></div>
+                                        <div class="modal fade" id="Sales" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                                                        <div class="modal-dialog modal-dialog-centered" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header " style="height: 50px; ">
+                                                                    <h6 class="modal-title" id="exampleModalLongTitle"><i class="fas fa-chart-line"> </i>Sales</h6>
+                                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                        <i class="fas fa-home " ></i>
+                                                                    </button>
+                                                                </div>
+                                                                    <div class="modal-body container-fluid"><div class="row">
+                                                            <a class="col btn hover1 text-center " href="/Sales/CustomerRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Customer Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/DespatchPlan" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Despatch Plan</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/Invoice" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Invoice</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/InvoiceDelete" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Invoice Delete</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/InvoiceRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Invoice Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/DeliveryChallan" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Delivery Challan</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/DCRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>DC Register</div></a>
+                                                            <div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#eWayBill" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>eWay Bill </div></div>
+                                                            <div class="collapse" id="eWayBill">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/Create" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Create</div></a>
+                                                            </div></div></div>
+                                                            <a class="col btn hover1 text-center " href="/Sales/DespatchEntry" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Despatch Entry</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/InwardEntry" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Inward Entry</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/ScheduleVsDespatch" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Schedule Vs Despatch</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/OpeningStockEntry" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Opening Stock Entry</div></a>
+                                                            <div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#Compound1" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>Compound  </div></div>
+                                                            <div class="collapse" id="Compound1">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/CPDScheduleEntry" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>CPD Schedule Entry</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/CPDScheduleRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>CPD Schedule Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/CPDStockLedger" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>CPD Stock Ledger</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/CPDStockAdjustmentNote" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>CPD Stock Adjustment Note</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/CPDSANRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>CPD SAN Register</div></a>
+                                                            </div></div></div>
+                                                            <div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#Component1" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>Component </div></div>
+                                                            <div class="collapse" id="Component1">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/ScheduleEntry" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Schedule Entry</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/StockLedger" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Stock Ledger</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/StockAdjustmentNote" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Stock Adjustment Note</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/SANRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>SAN Register</div></a>
+                                                            </div></div></div><div class="col btn hover1 text-center " style="" data-toggle="collapse" href="#IncomingCompound" role="button" aria-expanded="false" aria-controls="collapseExample" ><div class="text-primary dropdown-toggle"><i class="fab fa-connectdevelop fa-2x"> </i><br>Incoming Compound </div></div>
+                                                            <div class="collapse" id="IncomingCompound">
+                                                                <div class="card card-body container-fluid">
+                                                                    <div class="row">
+                                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/In-CpdStockLedger" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>In-Cpd Stock Ledger</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/In-CpdStockAdjustmentNote" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>In-Cpd Stock Adjustment Note</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Sales/In-CpdSANRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>In-Cpd SAN Register</div></a>
+                                                            </div></div></div>
+                                                            <a class="col btn hover1 text-center " href="/Sales/FlashReport" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Flash Report</div></a>
+                                                            </div></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                
+                                
+                                <div class="col-6 btn hover1 text-center"  style="" data-toggle="modal" data-target="#Management"><div class="mt-4 text-primary"><i class="fas fa-user-tie fa-3x"></i><br>Management</div></div>
+                                        <div class="modal fade" id="Management" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                                                        <div class="modal-dialog modal-dialog-centered" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header " style="height: 50px; ">
+                                                                    <h6 class="modal-title" id="exampleModalLongTitle"><i class="fas fa-user-tie"> </i>Management</h6>
+                                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                        <i class="fas fa-home " ></i>
+                                                                    </button>
+                                                                </div>
+                                                                    <div class="modal-body container-fluid"><div class="row">
+                                                            <a class="col btn hover1 text-center " href="/Management/UserRegister" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>User Register</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Management/ContributionSummary" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Contribution Summary</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Management/ProductYeild" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Product Yeild</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Management/CompoundCost" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Compound Cost</div></a>
+                                                            
+                                                            <a class="col btn hover1 text-center " href="/Management/ComponentCost" style="" ><div class="text-primary"><i class="fab fa-connectdevelop fa-2x"> </i><br>Component Cost</div></a>
+                                                            </div></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                
+                                        
+                            </div>                 
+                        </div>         
+                    </div>
+                </div>
+                <div id="content" class="" style="">  
+                    <span id="right_col">                         
+                    </span>                    
+                </div>
+                <div id="footer">
+                   
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../bootstrap/js/popper.min.js"></script>
+    <script src="../bootstrap/js/jquery-3.3.1.min.js"></script>
+    <script src="../bootstrap/js/bootstrap.min.js"></script>
+</body>
+</html>

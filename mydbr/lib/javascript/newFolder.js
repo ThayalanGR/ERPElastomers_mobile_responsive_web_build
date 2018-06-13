@@ -1,0 +1,1 @@
+$(document).ready(function(){$(".entryform tbody tr:first td").addClass("pad_top_10");$(".entryform tr:last td").addClass("pad_bot_10")});function AddNewFolder(){if(document.forms["myform"].fname.value!=""){return true}else{alert("Please enter the foldername");return false}}

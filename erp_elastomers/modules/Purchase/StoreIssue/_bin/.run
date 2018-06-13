@@ -1,0 +1,191 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+ramList				= new Array();
+ramData				= new Array();
+
+function updatePageData(){
+	var objCompList=postback(actionFile,"selecttype=MIXRAMLIST&issue_date="+$("#issueDate").val(),"POST","XML");
+	listPageData($("#content_body"), objCompList, XSLFile);	
+	getBaseRMList();
+}
+
+function setRAMId(timenow){
+	ramid = ramData[$("#mat_" + timenow).val()].id;
+	$("#"+ timenow).attr("ramid",ramid);
+	$("#label_" + timenow).html(ramid);
+	avlQty	=	ramData[$("#mat_" + timenow).val()].avlQty;
+	$("#avlqty_" + timenow).html(avlQty);	
+	$("#input_" + timenow).attr("value", '0.00');
+	$("#input_" + timenow).attr("ramid",ramid);
+	$("#input_" + timenow).attr("avlqty",avlQty);
+}
+
+function getBaseRMList(){
+	objClassList	=	postback(actionFile, "selecttype=GETRAMLIST&outtype=xml", "POST", "XML");
+	classXML		=	parseXMLdoc(objClassList);
+	ramList			=	new Array();
+	ramData			=	new Array();
+	$(classXML).find("row").each(function(index, element) {
+		rmNo		=	$.trim(element.childNodes[0].firstChild.nodeValue);
+		rmName		=	$.trim(element.childNodes[1].firstChild.nodeValue);
+		rmClass		=	$.trim(element.childNodes[2].firstChild.nodeValue);
+		rmAvlQty	=	$.trim(element.childNodes[3].firstChild.nodeValue);
+		ramList.push(rmName);
+		ramData[rmName]	=	{
+			id:rmNo,
+			cls:rmClass,
+			avlQty:rmAvlQty
+		}
+    });
+}
+
+function getNewItem(){	
+	objList		=	$('#content_body table tr');
+	ndate		=	new Date();
+	timenow		=	ndate.getTime();
+	rmList		=	ramList;
+	ol			=	objList.length;
+	
+	newRow		=	"<tr class='" + ((ol%2)?'content_rows_light':'content_rows_dark') + "' id='" + timenow + "'>" +
+						"<td width:10% id='label_" + timenow + "'>0</td>" +
+						"<td width:30%'>" + rmList.toSelectWithEmpty('mat_' + timenow, 'mat_' + timenow, null, 'width:90%;', 'onchange="setRAMId(' + timenow + ')" onkeyup="setRAMId(' + timenow + ')"', '', true) + "</td>" +
+						"<td style='width:20%;text-align:right' id='avlqty_" + timenow + "' >0.00</td>" +
+						"<td style='width:20%;text-align:right'>0.00</td>" +
+						"<td style='text-align:right'><input type='text' ramid='' avlqty='0' id='input_" + timenow + "' value='0.00' style='text-align:right;width:30%'  /></td>" +
+					"</tr>"		
+	
+	if(ol > 0)
+	{	
+		$('#content_body table tr:last').after(newRow);			
+	}
+	else
+	{	
+		$('.window_error').html("");
+		newTable	=	"<table border='0' cellpadding='6' cellspacing='0' width='100%'>"+newRow+"</table>";
+		$('#content_body').html(newTable);
+		
+	}	
+}
+
+
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+
+	$("#new_RMButton").button().click(function(){getNewItem();});
+	
+	$("#button_submit").button().click(function(){
+		newError	=	$("#error_msg");
+		issueDate	= $("#issueDate");			
+		if(issueDate.val() == null || issueDate.val() == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - Issue Date is Missing.");
+			issueDate.focus();
+			return false;
+		}		
+		issDate = issueDate.val();	
+		ramIds 		= new Array();
+		ramWgts		= new Array();
+		//grnIds		= new Array();
+		rmList		=	$('#content_body table tr');
+		for(rl=0; rl<rmList.length; rl++){
+			fetchId		=	$("#"+rmList[rl].id).attr("id");			
+			ramId		=	$("#"+rmList[rl].id).attr("ramid");	
+			ramQty		=	$("#input_" + fetchId).val();
+			avlQty		=	$("#input_" + fetchId).attr("avlQty");
+			//grnId		=	$("#input_grn_" + fetchId).val();
+			//alert(Number(ramQty));
+			//alert(grnId);
+			if(!(avlQty.toNumber() > 0))
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Please select as Raw Material for entry!!!");
+				$("#mat_"+fetchId).focus();
+				return false;			
+			}
+			else if(ramQty.toNumber() > 0)
+			{
+				if(ramQty.toNumber() <= avlQty.toNumber())
+				{
+					if(ramIds.indexOf(ramId) == -1)
+					{
+						ramIds.push(ramId);
+						ramWgts.push(ramQty.toNumber());
+						//grnIds.push(grnId);
+					}
+					else
+					{
+						displayError(newError, "error", "<strong>Error !</strong> - This Raw Material : "+ramId+" is entered more than once!");
+						$("#input_"+fetchId).focus();
+						return false;							
+					}
+				}
+				else
+				{
+					displayError(newError, "error", "<strong>Error !</strong> - Available Qty is only " + avlQty +", Please specify lesser weight for Raw Material No: "+ramId);
+					$("#input_"+fetchId).focus();
+					return false;					
+				}
+			}
+		}
+		if(ramIds.length > 0)
+		{
+			param			=	"selecttype=" + "ADDRAMISSUE" +
+								"&issue_date=" + issDate ;
+			for(rm=0; rm<ramIds.length; rm++){
+				param = param + "&ramids[]=" + ramIds[rm] ;
+				param = param + "&ramWgts[]=" + ramWgts[rm] ;
+				//param = param + "&grnIds[]=" + grnIds[rm] ;
+			}
+			//alert(param); return false;
+			confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Update?</b></td></tr>' +
+				'</table>'	;		
+			$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Stores Issue',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons: [
+														{
+															text: "Yes",
+															click: function(){
+																$(this).dialog("close");
+																var XMLContent=postback(actionFile,param,"POST","XML");
+																xmlData				=	parseXMLdoc(XMLContent);
+																error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+																if(error == "success"){
+																	displayError(newError, "highlight", "<strong>Success !</strong> - Mixing Issue Data - Updated Successfully" );
+																}
+																else{
+																	displayError(newError, "error", "<strong>Error !</strong> - Failed to update Mixing Issue Data - " + error);
+																	return false;
+																}	
+																updatePageData();		
+															}
+														},
+														{
+															text: "No",
+															click: function() { $(this).dialog("close"); }
+														}
+													],
+													close: function(event, ui) {
+															$(this).dialog("destroy");
+														} 
+													});
+		}
+		else	
+		{
+			displayError(newError, "error", "<strong>Error !</strong> - Please enter values for atleast one item for updating the Material Issue Slip!");
+			return false;			
+		}
+	});	
+
+	//Cancel Items
+	$("#button_cancel").button().click(function(){
+		updatePageData();
+	});
+	
+	updatePageData();
+
+});

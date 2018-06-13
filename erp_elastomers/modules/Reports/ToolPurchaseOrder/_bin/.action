@@ -1,0 +1,19 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	
+	switch($_POST["selecttype"]){
+		case "GETVAL":						
+			$sql_invoice	=	"select purId,DATE_FORMAT(purDate, '%d-%b-%Y') as purDate,cusName,part_number,part_description,toolSize,toolCavities,moldprocess,poValue
+									from tbl_tool_purchase ttp 										 
+										inner join tbl_develop_request tdr on ttp.rfqid=tdr.sno 
+										inner join tbl_customer tc on tdr.cusId=tc.cusId
+									where ttp.purdate >= '".$_POST["fromdate"]."' and  ttp.purdate  <= '".$_POST["todate"]."' and ttp.status != 0 order by purId desc";
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";											
+		break;
+
+	}
+
+?>

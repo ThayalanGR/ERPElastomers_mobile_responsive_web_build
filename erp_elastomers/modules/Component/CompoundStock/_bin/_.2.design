@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+	<table width="100%" border="0" class="print_table" cellspacing="0" cellpadding="0" >
+		<tr style="font-size:8px;">
+			<th width="3%" align="left">No</th>
+			<th width="15%" align="left">CPD Ref</th>
+			<th width="12%" align="right">Schedule</th>			
+			<th width="12%" align="right">Opening</th>
+			<th width="12%" align="right">Receipts</th>			
+			<th width="12%" align="right">Issues</th>
+			<th width="12%" align="right">Closing</th>	
+			<th width="12%" align="right">Bal. Schedule</th>				
+			<th align="right">Returns</th>				
+		</tr>
+		<xsl:for-each select="rootxml/root" >
+			<xsl:for-each select="rowPoly" >
+				<xsl:for-each select="row" >
+				<tr style="font-size:10px;" >
+					<xsl:if test="position() mod 2 != 0">
+						<xsl:attribute name="class">content_rows_light</xsl:attribute>
+					</xsl:if>
+					<xsl:if test="position() mod 2 != 1">
+						<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+					</xsl:if>
+					<td>
+						<xsl:value-of select="count" />
+					</td>
+					<td>
+						<xsl:value-of select="cpdref" />
+					</td>
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="total_schedule != ''">
+								<xsl:value-of select="format-number(total_schedule,'###,###,##0.000')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.000
+							</xsl:otherwise>
+						</xsl:choose>
+					</td>					
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="opening_stock != ''">
+								<xsl:value-of select="format-number(opening_stock,'###,###,##0.000')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.000
+							</xsl:otherwise>
+						</xsl:choose>
+					</td>
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="total_receipt != ''">
+								<xsl:value-of select="format-number(total_receipt - total_return,'###,###,##0.000')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.000
+							</xsl:otherwise>
+						</xsl:choose>
+					</td>
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="total_issue != ''">
+								<xsl:value-of select="format-number(total_issue - total_return,'###,###,##0.000')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.000
+							</xsl:otherwise>
+						</xsl:choose>
+					</td>
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="closing_stock != ''">
+								<xsl:value-of select="format-number(closing_stock,'###,###,##0.000')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.000
+							</xsl:otherwise>
+						</xsl:choose>
+					</td>									
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="total_schedule + total_return - total_issue - closing_stock > 0">
+								<xsl:value-of select="format-number(total_schedule + total_return - total_issue - closing_stock,'###,###,##0.000')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.000
+							</xsl:otherwise>
+						</xsl:choose>
+					</td>
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="total_return != ''">
+								<xsl:value-of select="format-number(total_return,'###,###,##0.000')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.000
+							</xsl:otherwise>
+						</xsl:choose>
+					</td>					
+				</tr>
+				</xsl:for-each>
+				<tr style="font-weight:bold;font-size:12px;">
+					<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+					<td align="center" colspan="2"><xsl:value-of select="cpdpolymer" /> Total</td>
+					<td align="right"><xsl:value-of select="format-number(schedulePolyTot,'###,###,##0.000')" /></td>
+					<td align="right"><xsl:value-of select="format-number(openStockPolyTot,'###,###,##0.000')" /></td>
+					<td align="right"><xsl:value-of select="format-number(recieptsPolyTot - returnsPolyTot,'###,###,##0.000')" /></td>
+					<td align="right"><xsl:value-of select="format-number(issuesPolyTot - returnsPolyTot,'###,###,##0.000')" /></td>
+					<td align="right"><xsl:value-of select="format-number(clsStockPolyTot,'###,###,##0.000')" /></td>
+					<td align="right"><xsl:value-of select="format-number(balSchedPolyTot,'###,###,##0.000')" /></td>
+					<td align="right"><xsl:value-of select="format-number(returnsPolyTot,'###,###,##0.000')" /></td>					
+				</tr>	
+			</xsl:for-each>
+			<tr style="font-weight:bold;font-size:14px;">
+				<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+				<td align="center" colspan="2">Grand Total</td>
+				<td align="right"><xsl:value-of select="format-number(scheduleGrdTot,'###,###,##0.000')" /></td>
+				<td align="right"><xsl:value-of select="format-number(openStockGrdTot,'###,###,##0.000')" /></td>
+				<td align="right"><xsl:value-of select="format-number(recieptsGrdTot - returnsGrdTot,'###,###,##0.000')" /></td>
+				<td align="right"><xsl:value-of select="format-number(issuesGrdTot - returnsGrdTot,'###,###,##0.000')" /></td>
+				<td align="right"><xsl:value-of select="format-number(clsStockGrdTot,'###,###,##0.000')" /></td>
+				<td align="right"><xsl:value-of select="format-number(balSchedGrdTot,'###,###,##0.000')" /></td>
+				<td align="right"><xsl:value-of select="format-number(returnsGrdTot,'###,###,##0.000')" /></td>					
+			</tr>		
+		</xsl:for-each>	
+    </table>
+</xsl:template>
+</xsl:stylesheet>

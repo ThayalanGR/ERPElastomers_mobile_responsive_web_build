@@ -1,0 +1,190 @@
+tableFilters.default_date_type 	= 	'DDMMMYYYY';
+tableFilters.col_8				=	"none";
+tableFilters.col_9				=	"none";
+tableFilters.sort_config		=	{ sort_types:['string', 'ddmmmyyyydate', 'string','string', 'us', 'us', 'us', 'string','none','none'] };	
+var TF_01						=	null;
+var needTFRefresh				=	false;
+
+$(document).ready(function(){
+	createAutoComplete();	
+	$("#button_submit").button().click(function(){
+		var inputs = $("#content_body").find(":input");
+		if(inputs.length > 0)
+		{
+			updateCont   =   '<table width="100%" >' +
+									'<tr><td><b>Are you Sure to Update the Items?</b></td></tr>' +
+									'</table>';	
+			$('#update_dialog').html(updateCont).dialog({
+				title:'Create',
+				width:300,
+				height:125,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'YES':function(){
+						$(this).dialog('close');
+						var IssSnoArray = new Array();					
+						$("#content_body table tbody tr").each(function(index, element){
+							IssSno		=	$(this).find("td:eq(8) input").attr('sno');
+							IssSnoArray.push(IssSno);
+						}); 
+						updatePlan(IssSnoArray);
+					},
+					'NO':function(){
+					   $(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+			});	
+		}
+		else
+		{			
+			displayError($('#error_msg'), "error", "<strong>Error !</strong> - No Items to be updated!!!");
+		}		
+	});
+	
+	$("#button_cancel").button().click(function(){
+		var inputs = $("#content_body").find(":input");
+		if(inputs.length > 0)
+		{
+			updateCont   =   '<table width="100%" >' +
+									'<tr><td><b>Are you Sure to Clear all the Items?</b></td></tr>' +
+									'</table>';	
+			$('#update_dialog').html(updateCont).dialog({
+				title:'Create',
+				width:300,
+				height:125,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'YES':function(){
+						$(this).dialog('close');
+						clearDC();
+					},
+					'NO':function(){
+					   $(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+			});	
+		}
+		else
+		{
+			displayError($('#error_msg'), "error", "<strong>Error !</strong> - No Items to be cleared!!!");
+		}		
+	});	
+
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function createAutoComplete(){
+	var mouldList       =	postback(actionFile,"type=GETDEF&user="+$('#operator').val(),"POST","XML");
+	//alert(mouldList);	
+	listPageData($("#content_body"), mouldList, XSLFile);
+	xmlData				=	parseXMLdoc(mouldList);
+	error				=	$(xmlData).find("count:first").text();
+	if(error > 0 ){
+		TF_01			=	setFilterGrid("resultTable",tableFilters);
+		if(needTFRefresh)
+			TF_01.RefreshGrid();
+		needTFRefresh 	=	true;
+	}
+		
+	$(".delete_button").click(function(){
+		sno      	=   $(this).attr('sno');
+		defiss		=	$(this).attr('planid');
+		mouldref	=	$(this).attr('mouldref');
+		issueCont   =   '<table width="100%" >' +
+						'<tr><td><b>Are you sure to delete this item? </b></td></tr>' +
+						'</table>';
+		$('#update_dialog').html(issueCont).dialog({
+			title:'Delete',
+			width:300,
+			height:125,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'YES':function(){
+					$(this).dialog('close');
+					var resultErr	=	postback(actionFile,"type=DELPLAN&sno="+sno+"&defiss="+defiss+"&moldref="+mouldref,"POST","XML");
+					if(resultErr != 'success')
+					{
+						displayError($('#error_msg'), "error", "<strong>Error !</strong> - Deletion of Deflashing Issue failed due to : " + resultErr);
+						return false;					
+					}
+					createAutoComplete();
+				},
+				'NO':function(){
+				   $(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});
+		
+	});
+    
+}
+
+function updatePlan(IssSnoArr){
+	param = "";
+	for(cnt=0;cnt<IssSnoArr.length;cnt++)
+	{	
+		IssNo		=	IssSnoArr[cnt];
+		recvQtyObj	=	$("#input_"+IssNo);
+		currRec		=	recvQtyObj.val();	
+		if(currRec == null || currRec == "" || currRec.toNumber() < 0 ){
+			displayError($('#error_msg'), "error", "<strong>Error !</strong> - Invalid Receipt Quantity ! ! !");			
+			recvQtyObj.focus();
+			return false;
+		}
+		else if(currRec.toNumber() > 0)
+		{				
+			preRecvQty	=	$("#received_"+IssNo).html();
+			issQty		=	recvQtyObj.attr('issqty');
+			planId		=	recvQtyObj.attr('defiss');
+			mouldref	=	recvQtyObj.attr('mouldref');
+			if((currRec.toNumber()+preRecvQty.toNumber()) <= (issQty.toNumber()* 1.1))
+			{
+				param		+=	"&issref[]="+planId+"&mouldref[]="+mouldref+"&isssno[]="+IssNo+"&recvqty[]="+currRec.toNumber()+"&prerecqty[]="+preRecvQty.toNumber()+"&issqty[]="+issQty.toNumber();			
+			}
+			else
+			{
+				displayError($('#error_msg'), "error", "<strong>Error !</strong> - Total Receipt Quantity More than 110% of Issue Quanity. ! ! !");			
+				recvQtyObj.focus();
+				return false;				
+			}
+		}		
+	}
+	if(param != null && param != "")
+	{
+		param 		= "type=INSDEFREC"+param;
+		//alert(param); return false;
+		resError	= postback(actionFile,param,"POST","XML");
+		if(resError == 'success')
+			createAutoComplete();
+		else
+			displayError($('#error_msg'), "error", "<strong>Error !</strong> - Update of Plan failed due to " + resError);
+			return false;
+	}
+	else
+	{
+		displayError($('#error_msg'), "error", "<strong>Error !</strong> - Enter some values to update. ! ! !");
+		return false;	
+	}
+}
+
+function clearDC(){    	
+	$("#content_body table tbody tr").each(function(index, element){
+		planId 	=	($(this).find("td:eq(8) input"));
+		planId.val(0);
+		planId.attr('class','invisible_text');
+	});	
+}
+

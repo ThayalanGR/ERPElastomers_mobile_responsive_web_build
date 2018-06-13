@@ -1,0 +1,145 @@
+tableFilters.sort_config		=	{ sort_types:['string','date', 'string','string','string','none','none'] };
+var TF_01						=	null;
+var needRefresh					=	false;
+
+$(document).ready(function(){
+
+	$("#app_popup").dialog({
+		autoOpen:false, 
+		width:700,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Add",
+				tabindex:2,
+				click: function(){
+					updateComplaint();
+				}
+			},
+			{ 
+				text: "Close",
+				tabindex:3,
+				click: function(){
+					$(this).dialog('close');
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error_app").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});
+
+	getPageData();
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=NEWCOMPLIST","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function openDialog(obj)
+{
+	isFR	=	$(obj).attr('isinternal');
+	$("#app_popup").dialog('open');
+	$("#app_popup").attr("compid",$(obj).attr('compid'));
+	$("#app_popup").attr("isfr",isFR);
+	$("#label_id").html($(obj).attr('desc'));
+	if(isFR == 0)
+		$('#fr_options_table').hide();
+	else
+		$('#fr_options_table').show();
+		
+}
+
+function updatePageBehaviour(){
+
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+}
+
+function updateComplaint(){	
+	appraiseError	=	$("#raise_error_app");
+	compId			=	$("#app_popup").attr('compid');
+	isFR			=	$("#app_popup").attr('isfr');
+	compDes			=	((isFR == 1)?"Flash Report":"Complaint");
+	param			=	"type=APPRINS&compid=" + compId  ;
+	actType			=	$("#label_id").html();
+	actRemarks		=	$("#new_remarks");	
+	corrTargetDate	=	$("#corr_act_target");
+	closeTargetDate	=	$("#close_target");	
+	respTaken		=	$("#cb_resp_takenup");
+	notRelated		=	$("#cb_not_related");
+	if(notRelated.is(':checked') == false && (actRemarks.val() == null || actRemarks.val().trim() == '')){
+		displayError(appraiseError, "error", "<strong>Error !</strong> - Please enter Probabale Cause with repect to " + actType + "!!!");
+		actRemarks.focus();
+		return false;
+	}
+	else if(isFR == 1 && respTaken.is(':checked') == true && (corrTargetDate.val() == "" || corrTargetDate.val() == null))
+	{
+		displayError(appraiseError, "error", "<strong>Error !</strong> - Invalid Corrective Action Target Date.");
+		corrTargetDate.focus();
+		return false;	
+	}
+	else if(isFR == 1 && respTaken.is(':checked') == true && (closeTargetDate.val() == "" || closeTargetDate.val() == null))
+	{
+		displayError(appraiseError, "error", "<strong>Error !</strong> - Invalid Closure Target Date.");
+		closeTargetDate.focus();
+		return false;	
+	}	
+	param	+=	"&acttype=" + actType+
+				"&actremarks=" + ((notRelated.is(':checked') == true)?"Not Related":actRemarks.val()) ;
+	if(isFR == 1 && respTaken.is(':checked') == true)
+	{
+		param	+=	"&corracttarget=" + corrTargetDate.val() +
+					"&closetarget=" + closeTargetDate.val() ;	
+	
+	}
+
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Update the '+ compDes+ '?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Appraise',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															//alert(param); return false;
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															xmlData				=	parseXMLdoc(XMLContent);
+															error				=	$(xmlData).find("mysql:first status:first").text();
+															if(error == "success"){																
+																alert(compDes + ":"+ compId +" Updated Sucessfully");
+																$("#app_popup").dialog("close");
+																getPageData();
+															}
+															else{
+																displayError(appraiseError, "error", "<strong>Error !</strong> - Updation of "+ compDes +" failed due to : "+ error);
+																return false;															
+															}
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+}
+
+
+
+

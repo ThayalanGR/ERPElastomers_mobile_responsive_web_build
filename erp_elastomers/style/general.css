@@ -1,0 +1,46 @@
+@charset "utf-8";
+/* CSS Document */
+
+body,td,th {
+	font-family: Verdana;
+	font-size: 12px;
+}
+body {
+	margin-left: 0px;
+	margin-top: 0px;
+	margin-right: 0px;
+	margin-bottom: 0px;
+	overflow:hidden;
+	background:url(../../images/we_bg.jpg) center center no-repeat;
+}
+
+a {
+	font-size: 10px;
+	color: #444;
+}
+a:visited {
+	color: #444;
+}
+a:hover {
+	color: #444;
+}
+a:active {
+	color: #444;
+}
+th{
+	/*background:#007D9D;*/
+	color:#444444;
+	font-weight:bold;
+	font-size:10px;
+}
+textarea{
+	font-family:verdana;
+	font-size:13px;
+	resize:none;
+}
+.float_right{
+	float:right;	
+}
+.float_left{
+	float:left;	
+}

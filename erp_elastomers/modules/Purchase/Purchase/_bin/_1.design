@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0"
+xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+<table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+	<thead>
+	<tr>
+		<th align="left" style="width:13%">RM Name</th>
+		<th align="left" style="width:12%">RM Grade</th>
+		<th align="left" style="width:10%">RM Class</th>
+		<th align="left" style="width:5%">UOM</th>
+		<th align="right" style="width:9%">MinStock</th>
+		<th align="right" style="width:9%">Awt.PO</th>
+		<th align="right" style="width:9%">Awt.GRN</th>
+		<th align="right" style="width:9%">Awt.QC</th>
+		<th align="right" style="width:9%">Awt.Rcpt</th>
+		<th align="right" style="width:9%">Stock</th>
+		<th align="right">#</th>
+	</tr>
+	</thead>
+	<tbody>
+	<xsl:for-each select="xmldata/root/data/row">
+        <tr class="content_rows_light" >
+			<xsl:if test="minstock  &gt;=  stock">
+				<xsl:attribute name="style">color:#FF0000</xsl:attribute>
+			</xsl:if>				
+            <td><xsl:value-of select="ramname" /></td>
+            <td><xsl:value-of select="ramgrade" /></td>
+            <td><xsl:value-of select="ramclass" /></td>
+            <td><xsl:value-of select="uom" /></td>
+            <td align="right"><xsl:value-of select="minstock" /></td>
+            <td align="right"><xsl:value-of select="awaitpo" /></td>
+            <td align="right"><xsl:value-of select="ramawtgrn" /></td>
+            <td align="right"><xsl:value-of select="ramawtqc" /></td>
+            <td align="right"><xsl:value-of select="ramawtrcpt" /></td>
+            <td align="right"><xsl:value-of select="stock" /></td>
+            <td align="right">
+                <a>
+                    <xsl:attribute name="class">link</xsl:attribute>
+                    <xsl:attribute name="id"><xsl:value-of select="ramid" /></xsl:attribute>
+                    <xsl:attribute name="ramname"><xsl:value-of select="ramname" /></xsl:attribute>
+                    <xsl:attribute name="ramgrade"><xsl:value-of select="ramgrade" /></xsl:attribute>
+                    <xsl:attribute name="ramunit"><xsl:value-of select="uom" /></xsl:attribute>
+                    <xsl:attribute name="ramroq"><xsl:value-of select="minstock" /></xsl:attribute>
+                    Raise PO
+                </a>
+            </td>
+        </tr>
+	</xsl:for-each>
+	</tbody>
+</table>
+</xsl:template>
+</xsl:stylesheet>

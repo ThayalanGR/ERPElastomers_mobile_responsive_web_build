@@ -1,0 +1,29 @@
+<?php
+	session_start();
+	// List Data
+	header("Content-Type: text/xml");
+	//echo "<selecttype>"+ $_POST["selecttype"]+"</selecttype>";
+	switch($_POST["selecttype"]){
+		case "SCHDEL":
+			//echo "<schRef>"+ $_POST["schRef"]+"</schRef>";
+			if($_POST['schRef'] != ""){
+				$schRef			=	$_POST['schRef'];				
+				$output			=	@getMySQLData("update tbl_scheduling set status='0' where schRef='".$schRef."'", "xml");
+			}
+		break;
+	}
+	
+
+	$sql_batch	=	"SELECT schRef,schDate, sum(schQty) as schQty,cusName FROM tbl_scheduling ts
+					inner join tbl_customer tc on tc.cusId = ts.cusId 
+					where ts.status > 0 and schOrder = 'compound'  and schMonth = '".$_POST["schMonth"]."' 
+					group by schRef 
+					order by schRef";
+	$list		=	@getMySQLData($sql_batch,"xml","root","lower");
+	$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

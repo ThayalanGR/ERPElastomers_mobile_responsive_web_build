@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+    <!ENTITY newline "&#38;#x0D;&#38;#x0A;" >
+]>
+  
+<xsl:stylesheet version="1.0"
+xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:output omit-xml-declaration="yes" indent="yes"/>
+<xsl:variable name="delimiter">
+        <xsl:text>:</xsl:text>
+</xsl:variable>
+<xsl:template name="processingTemplate">
+	<xsl:param name="datalist"/>
+	<xsl:choose>
+	<xsl:when test="contains($datalist,$delimiter)">
+			<xsl:element name="option">
+				<xsl:value-of select="substring-before($datalist,$delimiter)"/>
+			</xsl:element>
+			<xsl:call-template name="processingTemplate">
+				<xsl:with-param name="datalist" select="substring-after($datalist,$delimiter)"/>
+			</xsl:call-template>
+	</xsl:when>
+	<xsl:otherwise>
+		<xsl:element name="option">
+			<xsl:value-of select="$datalist"/>
+		</xsl:element>
+	</xsl:otherwise>	
+	</xsl:choose>
+</xsl:template>
+<!-- To Avoid infinit value in calculation -->
+<xsl:decimal-format name='infi' infinity="0" />
+<xsl:template match="/">
+<table border="0" cellpadding="4" cellspacing="0" width="100%">
+    <tr id="content_head">
+		<th width="5%" align="left">No.</th>
+		<th width="20%" align="left">RAM Name</th>
+		<th width="25%" align="left">RAM Grade</th>
+		<th width="10%" align="right">Parts</th>
+		<th width="10%" align="right">Qty/Kg</th>
+		<th width="20%" align="right">Rate/Kg</th>
+		<th align="right">Cost/Kg</th>
+    </tr>
+	<xsl:for-each select="xmldata/root/data/row">
+        <tr class="cpd_detail_rows" valign="top">
+            <xsl:if test="position() mod 2 != 0">
+                <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+            </xsl:if>
+            <xsl:if test="position() mod 2 != 1">
+                <xsl:attribute name="class">content_rows_light</xsl:attribute>
+            </xsl:if>		
+			<td><xsl:value-of select="sno" /></td>
+			<xsl:if test="ramGrade != ''">
+				<td align="left"><xsl:value-of select="ramName" /></td>
+			</xsl:if>
+			<xsl:if test="ramGrade = ''">
+				<td colspan="5" align="right"><b><xsl:value-of select="ramName" /></b></td>
+			</xsl:if>			
+			<xsl:if test="ramGrade != ''">
+				<td align="left"><xsl:value-of select="ramGrade" /></td>
+				<td align="right"><xsl:value-of select="format-number(ramParts,'###,###,##0.00')" /></td>
+				<td align="right"><xsl:value-of select="format-number(ramQty, '###,###,##0.00')" /></td>
+				<td align="right"><xsl:value-of select="format-number(ramRate, '###,###,##0.00')" /></td>
+			</xsl:if>
+			<td align="right"><xsl:value-of select="format-number(ramCost, '###,###,##0.00')" /></td>
+        </tr>
+    </xsl:for-each>
+</table>
+</xsl:template>
+</xsl:stylesheet>

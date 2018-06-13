@@ -1,0 +1,66 @@
+<?php
+
+	// Includes
+	session_start();
+	
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "GETGRN":
+			$sql =	"select t1.grnId,  DATE_FORMAT(t1.grnDate, '%d-%b-%Y') as grnDate,
+						t1.invRamId, t1.invRamName as ramName,t1.invGrade as ramGrade, t1.invRecvQty, t1.invTestCert, DATE_FORMAT(t1.invExpiryDate, '%d-%b-%Y') as testDate, t1.invSupName
+					from tbl_invoice_grn t1
+						left outer join tbl_rawmaterial_qan t2 on t1.grnId = t2.grnId
+					where t1.status>0 and  t2.grnId is Null order by t1.grnId desc";
+			//echo $sql;
+			echo '<xmldata>'.@getMySQLData($sql,'xml','root','lower').'</xmldata>';
+		break;
+		case "GETGRNDET":
+			$ramId	=	$_POST['ramid'];
+			echo getXML("SELECT t1.ramQanParamRef, t1.ramId, t2.ramName, t3.paramName,
+								t1.ramQanSpec, t1.ramQanULimit, t1.ramQanLLimit, t1.ramSamPlan
+							FROM tbl_rawmaterial_qan_param t1, tbl_rawmaterial t2, tbl_param t3
+							where t1.ramId='$ramId' and t1.ramId=t2.ramId and t1.ramQanParamRef = t3.sno;", false);
+		break;
+		case "APPROVE":
+			$ramid			=	$_POST['ramid'];
+			$grnid			=	$_POST['grnid'];
+			$approval		=	$_POST['approval'];
+			$remarks		=	$_POST['remarks'];
+			$testCertDet	= 	$_POST['tstcert'];			
+			$qalparam		=	$_POST['qalparam'];
+			$data			=	$_POST['data'];
+			$codeArray		=	@getSettingsData("qancode");
+			$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+			$userId			=	$_SESSION['userdetails']['userId'];
+			
+			if(count($qalparam) > 0){
+				$tot_recpt	=	0;
+				$sql		=	"insert into tbl_rawmaterial_qan(qanId, grnId, ramId, ramQanParamRef, ramQanValue, ramStatus, qanDate, ramQanRemarks, ramApproveStatus, ramStoreDate, entry_on, entry_by, update_on, update_by) values";
+				for($lp=0;$lp<count($qalparam);$lp++){
+					$tot_recpt	=	$tot_recpt + $data[$lp];
+					$sql 	.=	"('$codeNo', '$grnid', '$ramid', '".$qalparam[$lp]."', '".$data[$lp]."', '$approval', now(), '$remarks', 1, now(), now(), '$userId', now(), '$userId')";
+					if($lp < count($qalparam)-1){
+						$sql .=	", ";
+					}
+				}
+				//echo $sql."<br><br>";
+				$output	=	@getMySQLData($sql, "xml", 'ramQan');
+				
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					if($status == "success"){
+						@getMySQLData("update tbl_invoice_grn set invTestCert = '$testCertDet', avlQty = invRecvQty where grnId = '".$grnid."'");											
+						@updateSettingsData(array('qancode'));
+					}
+				}
+				$output			.=	"<invid>$grnid</invid>";
+			}
+			else{
+				$output		=	"<ramQan><status>Invalid Data</status></ramQan>";
+			}
+			echo '<xmldata>'.$output.'</xmldata>';
+		break; 
+	}
+?>

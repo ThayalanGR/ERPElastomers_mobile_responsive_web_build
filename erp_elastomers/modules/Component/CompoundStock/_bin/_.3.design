@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template name="recursivesum">
+	<xsl:param name="items" />
+	<xsl:param name="sumos" select="0" />
+	<xsl:param name="sumtr" select="0" />
+	<xsl:param name="sumts" select="0" />
+	<xsl:param name="sumcs" select="0" />
+	<xsl:variable name="head" select="$items[1]" />
+	<xsl:variable name="tail" select="$items[position()>1]" />
+	<xsl:variable name="thissumos" select="number(translate($head/opening_stock,',','')) * number($head/cpdcost)" />
+	<xsl:variable name="thissumtr" select="(number(translate($head/total_receipt,',','')) - number(translate($head/total_return,',',''))) * number($head/cpdcost)" />
+	<xsl:variable name="thissumts" select="(number(translate($head/total_issue,',','')) - number(translate($head/total_return,',',''))) * number($head/cpdcost)" />
+	<xsl:variable name="thissumcs" select="number(translate($head/closing_stock,',','')) * number($head/cpdcost)" />
+	<xsl:choose>
+		<xsl:when test="not($tail)">
+			<td align="right"><xsl:value-of select="format-number(openStockPolyTot,'###,###,##0.00')" /></td>
+			<td align="right">
+				<xsl:value-of select="format-number($sumos+$thissumos,'###,###,##0')" />
+			</td>			
+			<td align="right"><xsl:value-of select="format-number(recieptsPolyTot - returnsPolyTot,'###,###,##0.00')" /></td>
+			<td align="right">
+                <xsl:value-of select="format-number($sumtr+$thissumtr,'###,###,##0')" />
+			</td>			
+			<td align="right"><xsl:value-of select="format-number(issuesPolyTot - returnsPolyTot,'###,###,##0.00')" /></td>
+			<td align="right">
+                <xsl:value-of select="format-number($sumts+$thissumts,'###,###,##0')" />
+			</td>			
+			<td align="right"><xsl:value-of select="format-number(clsStockPolyTot,'###,###,##0.00')" /></td>
+			<td align="right">
+                <xsl:value-of select="format-number($sumcs+$thissumcs,'###,###,##0')" />
+			</td>	
+		</xsl:when>
+		<xsl:otherwise>
+			<xsl:call-template name="recursivesum">
+				<xsl:with-param name="sumos" select="$sumos+$thissumos" />
+				<xsl:with-param name="sumtr" select="$sumtr+$thissumtr" />
+				<xsl:with-param name="sumts" select="$sumts+$thissumts" />
+				<xsl:with-param name="sumcs" select="$sumcs+$thissumcs" />
+				<xsl:with-param name="items" select="$tail" />
+			</xsl:call-template>
+		</xsl:otherwise>
+	</xsl:choose>
+</xsl:template>
+<xsl:template name="recursivegrandtotal">
+	<xsl:param name="items" />
+	<xsl:param name="sumos" select="0" />
+	<xsl:param name="sumtr" select="0" />
+	<xsl:param name="sumts" select="0" />
+	<xsl:param name="sumcs" select="0" />
+	<xsl:variable name="head" select="$items[1]" />
+	<xsl:variable name="tail" select="$items[position()>1]" />
+	<xsl:variable name="thissumos" select="number(translate($head/openStockPolyTot,',','')) * number($head/polyCpdCost)" />
+	<xsl:variable name="thissumtr" select="(number(translate($head/recieptsPolyTot,',','')) - number(translate($head/returnsPolyTot,',',''))) * number($head/polyCpdCost)" />
+	<xsl:variable name="thissumts" select="(number(translate($head/issuesPolyTot,',','')) - number(translate($head/returnsPolyTot,',',''))) * number($head/polyCpdCost)" />
+	<xsl:variable name="thissumcs" select="number(translate($head/clsStockPolyTot,',','')) * number($head/polyCpdCost)" />
+	<xsl:choose>
+		<xsl:when test="not($tail)">
+			<td align="right"><xsl:value-of select="format-number(openStockGrdTot,'###,###,##0.00')" /></td>
+			<td align="right">
+				<xsl:value-of select="format-number($sumos+$thissumos,'###,###,##0')" />
+			</td>			
+			<td align="right"><xsl:value-of select="format-number(recieptsGrdTot - returnsGrdTot,'###,###,##0.00')" /></td>
+			<td align="right">
+                <xsl:value-of select="format-number($sumtr+$thissumtr,'###,###,##0')" />
+			</td>			
+			<td align="right"><xsl:value-of select="format-number(issuesGrdTot - returnsGrdTot,'###,###,##0.00')" /></td>
+			<td align="right">
+                <xsl:value-of select="format-number($sumts+$thissumts,'###,###,##0')" />
+			</td>			
+			<td align="right"><xsl:value-of select="format-number(clsStockGrdTot,'###,###,##0.00')" /></td>
+			<td align="right">
+                <xsl:value-of select="format-number($sumcs+$thissumcs,'###,###,##0')" />
+			</td>	
+		</xsl:when>
+		<xsl:otherwise>
+			<xsl:call-template name="recursivegrandtotal">
+				<xsl:with-param name="sumos" select="$sumos+$thissumos" />
+				<xsl:with-param name="sumtr" select="$sumtr+$thissumtr" />
+				<xsl:with-param name="sumts" select="$sumts+$thissumts" />
+				<xsl:with-param name="sumcs" select="$sumcs+$thissumcs" />
+				<xsl:with-param name="items" select="$tail" />
+			</xsl:call-template>
+		</xsl:otherwise>
+	</xsl:choose>
+</xsl:template>
+
+<xsl:template match="/">
+	<table width="100%" border="0" class="print_table" cellspacing="0" cellpadding="0" >
+		<tr style="font-size:8px;">
+			<th width="5%" align="left">No</th>
+			<th width="14%" align="left">CPD Ref</th>
+			<th width="9%" align="right">Rate<sup>Rs</sup></th>				
+			<th width="9%" align="right">Opening<sup>Kg</sup></th>
+			<th width="9%" align="right">Ope. Val.<sup>Rs</sup></th>				
+			<th width="9%" align="right">Receipts<sup>Kg</sup></th>
+			<th width="9%" align="right">Rec. Val.<sup>Rs</sup></th>				
+			<th width="9%" align="right">Issues<sup>Kg</sup></th>
+			<th width="9%" align="right">Iss. Val.<sup>Rs</sup></th>
+			<th width="9%" align="right">Closing<sup>Kg</sup></th>				
+			<th align="right">Clo. Val.<sup>Rs</sup></th>
+		</tr>
+		<xsl:for-each select="rootxml/root" >
+			<xsl:for-each select="rowPoly" >		
+				<xsl:for-each select="row" >
+				<tr style="font-size:10px;">
+					<td>
+						<xsl:value-of select="count" />
+					</td>
+					<td>
+						<xsl:value-of select="cpdref" />
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(cpdcost,'##,##,##,##0')" />
+					</td>			
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="opening_stock != ''">
+								<xsl:value-of select="format-number(opening_stock,'##,##,##,##0.00')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.000
+							</xsl:otherwise>
+						</xsl:choose>
+					</td>
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="opening_stock != ''">
+								<xsl:value-of select="format-number(number(translate(opening_stock,',','')) * number(cpdcost),'##,##,##,##0')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.00
+							</xsl:otherwise>
+						</xsl:choose>					
+					</td>					
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="total_receipt != ''">
+								<xsl:value-of select="format-number(total_receipt - total_return,'##,##,##,##0.00')" />
+							</xsl:when>
+							<xsl:otherwise>
+								-
+							</xsl:otherwise>
+						</xsl:choose>
+					</td>
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="total_receipt != ''">
+								<xsl:value-of select="format-number(number(translate(total_receipt - total_return,',','')) * number(cpdcost),'##,##,##,##0')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.00
+							</xsl:otherwise>
+						</xsl:choose>				
+					</td>					
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="total_issue != ''">
+								<xsl:value-of select="format-number(total_issue - total_return,'##,##,##,##0.00')" />
+							</xsl:when>
+							<xsl:otherwise>
+								-
+							</xsl:otherwise>
+						</xsl:choose>
+					</td>
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="total_issue != ''">
+								<xsl:value-of select="format-number(number(translate(total_issue - total_return,',','')) * number(cpdcost),'##,##,##,##0')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.00
+							</xsl:otherwise>
+						</xsl:choose>				
+					</td>					
+					<td align="right">
+						<xsl:value-of select="format-number(closing_stock,'##,##,##,##0.00')" />
+					</td>
+					<td align="right">
+						<xsl:choose>
+							<xsl:when test="closing_stock != ''">
+								<xsl:value-of select="format-number(number(translate(closing_stock,',','')) * number(cpdcost),'##,##,##,##0')" />
+							</xsl:when>
+							<xsl:otherwise>
+								0.00
+							</xsl:otherwise>
+						</xsl:choose>				
+					</td>					
+				</tr>
+				</xsl:for-each>
+				<tr style="font-weight:bold;font-size:12px;">
+					<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+					<td align="center" colspan="3"><xsl:value-of select="cpdpolymer" /> Total</td>
+					<xsl:call-template name="recursivesum">
+						<xsl:with-param name="items" select="row" />
+					</xsl:call-template>	
+				</tr>	
+			</xsl:for-each>			
+			<tr style="font-weight:bold;font-size:12px;">
+				<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+				<td align="center" colspan="3">Grand Total</td>
+				<xsl:call-template name="recursivegrandtotal">
+					<xsl:with-param name="items" select="rowPoly" />
+				</xsl:call-template>
+			</tr>		
+		</xsl:for-each>	
+    </table>
+</xsl:template>
+</xsl:stylesheet>

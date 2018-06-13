@@ -1,0 +1,247 @@
+tableFilters.sort_config		=	{ sort_types:['string','date', 'string','string','string','string','string','string','string','us','none'] };
+var TF_01						=	null;
+var needRefresh					=	false;
+
+$(document).ready(function(){
+	//create buttons 					   
+	$("#cancel_receiptnote").button();
+	$("#create_receiptnote").button();
+	$("#create_print_receiptnote").button();
+	
+	$("#sample_plan").dialog({
+		autoOpen:false, 
+		width:600,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Generate",
+				tabindex:13,
+				click: function(){
+					if(typeof createSamplePlan == 'function')
+					createSamplePlan();
+				}
+			},
+			{ 
+				text: "Generate & Print",
+				tabindex:14,
+				click:function(){
+					if(typeof createSamplePlan == 'function')
+					createSamplePlan(true);
+				}
+			},
+			{ 
+				text: "Cancel",
+				tabindex:15,
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$(this).find("form")[0].reset();
+			$("#complist").removeAttr("disabled");
+			$("#blankwgt").val(0.00);
+			$("#length").val(0.00);
+			$("#breath").val(0.00);	
+			$("#thickness").val(0.00);	
+			$("#stripwgt").val(0.00);
+			$("#stripslift").val(0);
+			$("#temperature").val(180);
+			$("#curetime").val(120);	
+			$("#pressure").val(2000);
+			$("#lifts").val(10);				
+		}
+	});	
+
+	getPageData();
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=TOOLDET","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	
+	$(".raise_plan_button").click(function(e) {
+		$("#sample_plan").dialog('open');
+		$("#sample_plan").attr("toolid",$(this).attr('toolid'));
+		$("#sample_plan").attr("noofcavs",$(this).attr('noofcavs'));
+		$("#sample_plan").attr("rfqid",$(this).attr('rfqid'));
+		$("#partnum").html($(this).attr('partnum'));
+		$("#partdesc").html($(this).attr('partdesc'));
+		if($(this).attr('compid') != "" && $(this).attr('compid') != "NA")
+		{
+			$("#complist").val($(this).attr('compid'));
+			$("#complist").attr("disabled",true);
+		}		
+		$("#blankwgt").val($(this).attr('blankwgt'));
+		$("#temperature").val($(this).attr('curetemp'));
+		$("#curetime").val($(this).attr('curetime'));
+		$("#pressure").val($(this).attr('curepress'));
+		$("#blankwgt").keydown(numbersOnly);
+		$("#length").keydown(numbersOnly);
+		$("#breath").keydown(numbersOnly);	
+		$("#thickness").keydown(numbersOnly);	
+		$("#stripwgt").keydown(numbersOnly);
+		$("#stripslift").keydown(numbersOnly);
+		$("#temperature").keydown(numbersOnly);
+		$("#curetime").keydown(numbersOnly);	
+		$("#pressure").keydown(numbersOnly);
+		$("#lifts").keydown(numbersOnly);			
+    });
+	
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+
+}
+
+function cancelReceiptNote(){
+	$("#sample_plan").dialog('close');
+}
+
+
+function raisePlan(toolid,partnum,partdesc,cpdid,noofcavs,rfqid){
+		
+}
+
+function createSamplePlan(toPrint){
+	planError		=	$("#raise_error");
+	toolId			=	$("#sample_plan").attr("toolid");
+	cpdList			=	$("#complist");
+	blankWeight		=	$("#blankwgt");
+	stripLength		=	$("#length");
+	stripBreath		=	$("#breath");	
+	stripThickness	=	$("#thickness");	
+	stripWeight		=	$("#stripwgt");
+	stripsLift		=	$("#stripslift");
+	advTemp			=	$("#temperature");
+	advCureTime		=	$("#curetime");	
+	advPressure		=	$("#pressure");
+	noOfLifts		=	$("#lifts");		
+	
+	if(cpdList.val() == null || cpdList.val() == ""){
+		displayError(planError, "error", "<strong>Error !</strong> - Please Select The Compound");
+		cpdList.focus();
+		return false;
+	}
+	else if(Number(blankWeight.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Blank Weight.");
+		blankWeight.focus();
+		return false;
+	}
+	else if(Number(stripLength.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Strip Length.");
+		stripLength.focus();
+		return false;
+	}
+	else if(Number(stripBreath.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Strip Breath.");
+		stripBreath.focus();
+		return false;
+	}
+	else if(Number(stripThickness.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Strip Thickness.");
+		stripThickness.focus();
+		return false;
+	}	
+	else if(Number(stripWeight.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Strip Weight.");
+		stripWeight.focus();
+		return false;
+	}
+	else if(Number(stripsLift.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Strips per Lift.");
+		stripsLift.focus();
+		return false;
+	}
+	else if(Number(advTemp.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Advised Temperature.");
+		advTemp.focus();
+		return false;
+	}
+	else if(Number(advCureTime.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Advised Curing Time.");
+		advCureTime.focus();
+		return false;
+	}			
+	else if(Number(advPressure.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Advised Pressure.");
+		advPressure.focus();
+		return false;
+	}
+	else if(Number(noOfLifts.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Lifts.");
+		noOfLifts.focus();
+		return false;
+	}	
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Create the Sample Plan?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Raise TRN',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															param		=	"type=" + "PLANINS" +
+																			"&toolid=" + toolId +
+																			"&noofcavs=" + $("#sample_plan").attr("noofcavs") +
+																			"&rfqid=" + $("#sample_plan").attr("rfqid") +
+																			"&operator=" + $("#operator").val() +
+																			"&plandate=" + $("#plandate").val() +
+																			"&cpdid=" + cpdList.val() +
+																			"&blankwgt=" + blankWeight.val() +
+																			"&striplen=" + stripLength.val() +
+																			"&stripbre=" + stripBreath.val() +
+																			"&stripthk=" + stripThickness.val() +
+																			"&stripwgt=" + stripWeight.val() +
+																			"&stripslift=" + stripsLift.val() +
+																			"&advtemp=" + advTemp.val() +
+																			"&advcuretime=" + advCureTime.val() +
+																			"&advpress=" + advPressure.val() +
+																			"&nooflifts=" + noOfLifts.val();																			
+															//alert(param); //return false;	
+															$("#sample_plan").dialog("close");															
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															//alert(XMLContent); //return false;
+															xmlData				=	parseXMLdoc(XMLContent);
+															error				=	$(xmlData).find("mysql:first status:first").text();
+															if(error == "success"){
+																$(xmlData).find('result_set').each(function(index, element) {
+																	planCode		=	$(this).find('planid').text();
+																});
+																
+																if(toPrint == true)
+																	openInvoice({mod:'card',invID:planCode});
+																else
+																	alert("The Sample Plan for Tool (" + toolId + ") is " + planCode);																	
+															}
+															else{
+																alert("The Sample Plan for Tool (" + toolId + ") failed due to:" + error);
+															}
+															getPageData();
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+}
+
+

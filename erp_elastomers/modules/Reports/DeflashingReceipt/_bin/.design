@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<xsl:stylesheet version="1.0"
+xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+<div id="content_head" style="padding-bottom:0px;">
+	<table border="0" cellpadding="6" cellspacing="0" width="100%">
+		<tr>
+			<th width="8%" filter="ignore" align="left">Key No</th>
+			<th width="10%" filter="date"  align="left">Issue Date</th>
+			<th width="10%" filter="date" align="left">Receipt Date</th>
+			<th width="10%" align="left">CNT Code</th>
+			<th width="20%" align="left">CNT Name</th>
+			<th width="15%" filter="currency" align="right">Issued Qty</th>
+			<th width="15%" filter="currency" align="right">Received Qty</th>
+			<th align="center">Operator</th>
+		</tr>
+	</table>
+</div>	
+<div id="window_list">
+	<div id ="content_body" >
+	<table border="0" cellpadding="6" cellspacing="0" width="100%">
+	<xsl:for-each select="xmldata/root/data/row">
+      <tr>
+           <xsl:if test="position() mod 2 != 0">
+                <xsl:attribute name="class">content_rows_light</xsl:attribute>
+            </xsl:if>
+            <xsl:if test="position() mod 2 != 1">
+                <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+            </xsl:if>
+            <td width="8%" align="left"><xsl:value-of select="planid" /></td>
+			<td width="10%" align="left"><xsl:value-of select="issdate" /></td>
+            <td width="10%" align="left"><xsl:value-of select="recdate" /></td>
+            <td width="10%" align="left"><xsl:value-of select="cmpdname" /></td>
+            <td width="20%" align="left"><xsl:value-of select="cmpdrefno" /></td>
+            <td width="15%" align="right"><xsl:value-of select='format-number(issqty, "##,##,##0")' /></td>
+            <td width="15%" align="right">
+			    <xsl:choose>
+					<xsl:when test="recvalue &gt; 0">
+						<xsl:value-of select='format-number(recvalue,"##,##,##0")'/>
+					</xsl:when>
+					<xsl:otherwise>
+						0
+					</xsl:otherwise>
+				</xsl:choose>
+			</td>
+            <td align="center"><xsl:value-of select="operator"/></td> 
+       </tr>
+	</xsl:for-each>	
+	</table>
+	</div>
+</div>
+</xsl:template>
+</xsl:stylesheet>
+
+

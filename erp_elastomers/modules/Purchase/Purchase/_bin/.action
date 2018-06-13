@@ -1,0 +1,146 @@
+<?php
+	session_start();
+	global $cpd_grp_email,$grn_role;	
+	header("Content-Type: text/xml"); 		
+	switch($_REQUEST["type"]){
+		case "NEXTID":
+			$codeArray		=	@getSettingsData("purcode");
+			$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+			echo "<id>$codeNo</id>";
+			exit();
+		break;
+		case "SUPPLIST":
+			$Id = $_REQUEST['rmId'];
+			echo getXML("SELECT tbls.supName, tbls.supId,tbls.supGSTN,tbls.supPan, tblr.ramApprovedRate,tblr.ramStdPacking 
+						FROM tbl_supplier tbls
+						LEFT JOIN tbl_rawmaterial_sup tblrs ON tbls.supId = tblrs.supId
+						INNER JOIN tbl_rawmaterial tblr ON tblr.ramId=tblrs.ramId
+						WHERE tblr.ramId = '$Id' AND tbls.status !=0  AND tblr.status !=0", false);
+		break;
+		case "LASTGRN":
+			$Id = $_REQUEST['rmId'];
+			echo getXML("SELECT grnId, DATE_FORMAT(grnDate, '%d-%m-%Y') as grnDate, invRecvQty, invRAMRate, invSupId FROM tbl_invoice_grn WHERE invRamId = '$Id' ORDER BY grnDate DESC LIMIT 1", false);
+		break;		
+		case "PURADD":
+			if(count($_REQUEST) > 0){
+				$ram			=	$_REQUEST['ram'];
+				$supplier		=	$_REQUEST['supplier'];
+				$quoteref		=	$_REQUEST['quoteref'];
+				$quotedate		=	$_REQUEST['quotedate'];
+				$deliverat		=	$_REQUEST['deliverat'];
+				$quantity		=	str2num($_REQUEST['quantity']);
+				$rate			=	str2num($_REQUEST['rate']);
+				$insurance		=	str2num($_REQUEST['insurance']);
+				$freight		=	str2num($_REQUEST['freight']);
+				$remark			=	$_REQUEST['remark'];
+				$total			=	$quantity * $rate;
+				$codeNo			=	@getRegisterData("purcode");
+				$ram_data		=	@getMySQLData("select * from tbl_rawmaterial where ramId='$ram'", "arr");
+				$ram_data		=	$ram_data['data'][0];
+				$sup_data		=	@getMySQLData("select * from tbl_supplier where supId='$supplier'", "arr");
+				$sup_data		=	$sup_data['data'][0];
+				$settings		=	@getMySQLData("select name,value from tbl_settings where name in ('gstn','pan') order by name");
+				$settings		=	$settings['data'];
+				$uom_sql		=	@getMySQLData("select * from tbl_uom where sno='".$ram_data['ramUnit']."'");
+				$uom			=	$uom_sql['data'][0]['uom_short_name'];					
+				//get quote ref
+				if($codeNo != ""){
+					$grandtotal	=	$total + $insurance + $freight;
+					$sql_ins	=	"insert into tbl_invoice_purchase (
+										purId, purDate, supId, purTo, purDeliverAt, purShipTo,
+										purPaymentTerms, yourQuote, purOurGSTN,purOurPAN,
+										ramId,uom,rate,quantity,description,grade,
+										purTotal,purInsurance,purFreightVal,purGrandTotal, entry_on, entry_by, 
+										supName, purRemarks,grn_count	
+									) 
+									values(
+											'$codeNo', '$quotedate', '$supplier', '".$sup_data['supAddress1']."', '$deliverat', '".$grn_compname[$deliverat].",<br/> ". $grn_address[$deliverat]."',
+											'".$sup_data['supCreditDays']."', '$quoteref', '".$settings[0]['value']."', '".$settings[1]['value']."',
+											'$ram', '$uom', '$rate', '$quantity', '".$ram_data['ramName']."', '".$ram_data['ramGrade']."',
+											'$total', '$insurance', '$freight', '$grandtotal', now(), '".$_SESSION['userdetails']['userId']."', 
+											'".$sup_data['supName']."', '$remark',1)";
+					//echo $sql_ins;exit();						
+					$soutput	=	@getMySQLData($sql_ins,"xml");					
+					if($soutput != ""){
+						$istatus		=	split("<status>", $soutput);
+						$istatus		=	split("</status>", $istatus[1]);
+						$istatus		=	$istatus[0];
+						
+						if($istatus == "success"){
+							// Update Settings
+							@getMySQLData("update tbl_settings set auto_inc=auto_inc + 1 where name='purcode'");
+							if($_REQUEST['sendemail'] == 'yes')
+							{									
+								// close & send the result to user & then send emails									
+								closeConnForAsyncProcess("$istatus | $codeNo");
+								// send email
+								$aEmail = new AsyncCreatePDFAndEmail("Compound/PORegister",$codeNo, explode(',',$sup_data['supEmail']),$cpd_grp_email,"Purchase Order:".$codeNo,"Dear Sir/Madam,\n Please find the attached purchase order and provide the material to $deliverat facility");									
+								$aEmail->start();
+								exit();										
+							}
+						}
+					}
+					
+				}
+			}
+			echo "$istatus | $codeNo";
+			exit();
+		break;
+		case  "RAWMATERIAL":
+			$sql		=	"SELECT * 
+							FROM (
+							select * from (select tr.ramid,ramname,ramgrade,ramactstatus,class_short_name as ramclass,uom_short_name as uom,ramMinStock as minstock, ifnull(ramAwtGRN,0) as ramAwtGRN,ifnull(ramAwtQC,0) as ramAwtQC,ifnull(ramAwtRcpt,0) as ramAwtRcpt,ifnull(ramTotStock,0) as stock,(ramMinStock - ( ifnull(ramAwtGRN,0) + ifnull(ramAwtQC,0) + ifnull(ramAwtRcpt,0) + ifnull(ramTotStock,0) ) )  AS awaitpo, tr.status, ramclass as rmcls
+								from 
+								tbl_rawmaterial tr 
+								left outer join (
+								select ramid, sum(qtyPOSent) as ramAwtGRN,sum(qtyGRNRecvd) as ramAwtQC, sum(qtyQAPassed) as ramAwtRcpt, sum(stockinHand) as ramTotStock  from 
+								(select ramid, 0 as qtyPOSent, 0 as qtyGRNRecvd, 0 as qtyQAPassed, 0 as stockinHand from tbl_rawmaterial
+								UNION ALL select ramid, (quantity - recvQty) as qtyPOSent, 0 as qtyGRNRecvd, 0 as qtyQAPassed, 0 as stockinHand from ( select tp.ramid, tp.quantity, ifnull(invRecvQty,0) as recvQty from tbl_invoice_purchase tp left outer join tbl_invoice_grn tg on tg.invPoRef = tp.purId where tp.status = 1 )tab1
+								UNION ALL select tgr.invRamId as ramid, 0 as qtyPOSent, invRecvQty as qtyGRNRecvd,0 as qtyQAPassed, 0 as stockinHand from tbl_invoice_grn tgr left outer join (select grnId from tbl_rawmaterial_qan  group by grnid) trq on tgr.grnId = trq.grnId where trq.grnId is Null 
+								UNION ALL select tgr.invRamId as ramid, 0 as qtyPOSent,0 as qtyGRNRecvd,invRecvQty as qtyQAPassed,  0 as stockinHand from tbl_invoice_grn  tgr inner join (select grnId from tbl_rawmaterial_qan where ramApproveStatus='0' and ramStatus = '1' group by grnId) trq on trq.grnId = tgr.grnId
+								UNION ALL select invRamId as ramid,0 as qtyPOSent,0 as qtyGRNRecvd, 0 as qtyQAPassed, avlQty  as stockinHand from tbl_invoice_grn  where status = 1 and avlQty > 0
+								)table1
+								group by ramid) trs on tr.ramid = trs.ramid
+									inner join tbl_uom tu on tu.sno = tr.ramUnit
+									inner join tbl_class tc on tc.sno = tr.ramClass
+								WHERE tr.STATUS != 0 AND ramactstatus = 1 AND ramMinStock >= ramTotStock AND tr.ramClass < 9)t1
+								ORDER BY stock,rmcls, ramName DESC 
+							)tbl1
+							UNION ALL
+							SELECT * 
+							FROM (
+							select * from (select tr.ramid,ramname,ramgrade,ramactstatus,class_short_name as ramclass,uom_short_name as uom,ramMinStock as minstock, ifnull(ramAwtGRN,0) as ramAwtGRN,ifnull(ramAwtQC,0) as ramAwtQC,ifnull(ramAwtRcpt,0) as ramAwtRcpt,ifnull(ramTotStock,0) as stock,(ramMinStock - ( ifnull(ramAwtGRN,0) + ifnull(ramAwtQC,0) + ifnull(ramAwtRcpt,0) + ifnull(ramTotStock,0) ) )  AS awaitpo, tr.status, ramclass as rmcls
+								from 
+								tbl_rawmaterial tr 
+								left outer join (
+								select ramid, sum(qtyPOSent) as ramAwtGRN,sum(qtyGRNRecvd) as ramAwtQC, sum(qtyQAPassed) as ramAwtRcpt, sum(stockinHand) as ramTotStock  from 
+								(select ramid, (quantity - recvQty) as qtyPOSent, 0 as qtyGRNRecvd, 0 as qtyQAPassed, 0 as stockinHand from ( select tp.ramid, tp.quantity, ifnull(invRecvQty,0) as recvQty from tbl_invoice_purchase tp left outer join tbl_invoice_grn tg on tg.invPoRef = tp.purId  where tp.status = 1 )tab1
+								UNION ALL select tgr.invRamId as ramid, 0 as qtyPOSent, invRecvQty as qtyGRNRecvd,0 as qtyQAPassed, 0 as stockinHand from tbl_invoice_grn tgr left outer join (select grnId from tbl_rawmaterial_qan  group by grnid) trq on tgr.grnId = trq.grnId where trq.grnId is Null 
+								UNION ALL select tgr.invRamId as ramid, 0 as qtyPOSent,0 as qtyGRNRecvd,invRecvQty as qtyQAPassed,  0 as stockinHand from tbl_invoice_grn  tgr inner join (select grnId from tbl_rawmaterial_qan where ramApproveStatus='0' and ramStatus = '1' group by grnId) trq on trq.grnId = tgr.grnId
+								UNION ALL select invRamId as ramid,0 as qtyPOSent,0 as qtyGRNRecvd, 0 as qtyQAPassed, avlQty  as stockinHand from tbl_invoice_grn  where status = 1 and avlQty > 0
+								)table1
+								group by ramid) trs on tr.ramid = trs.ramid
+									inner join tbl_uom tu on tu.sno = tr.ramUnit
+									inner join tbl_class tc on tc.sno = tr.ramClass
+								WHERE tr.status != 0 AND ramactstatus = 1 AND ramMinStock < ramTotStock AND tr.ramClass < 9)t1								
+								ORDER BY rmcls, ramName ASC 
+							)tbl2";	
+			$rm			=	@getMySQLData($sql, "xml", "root", "lower");
+			$output		=	"<xmldata>$rm</xmldata>";
+			if($_POST["conToHTML"] == 1)
+			{
+				//convert to HTML via server side XSLT
+				$xml = new DOMDocument;
+				$xml->loadXML($output);
+				$xsl = new DOMDocument;
+				$xsl->load($_SESSION['app']['iso_dir'].$_POST["xslfile"]);
+				$proc = new XSLTProcessor;
+				$proc->importStyleSheet($xsl);
+				echo $proc->transformToXML($xml);
+			}
+			else
+				echo $output;	
+		break;
+	}
+	
+?>

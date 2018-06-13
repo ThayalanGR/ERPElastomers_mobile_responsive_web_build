@@ -1,0 +1,189 @@
+$(document).ready(function(){
+	$("#qc_popup").dialog({
+		autoOpen:false,
+		modal:true,
+		minWidth:'700',
+		resizable:false,
+		position:['center','center'],
+		buttons: [
+			{
+				text: "Generate",
+				click: function(){
+					$(this).css("default");
+					if(typeof addQualityCheck == "function"){
+						addQualityCheck();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Generate & Print",
+				click: function(){
+					$(this).css("default");
+					if(typeof addQualityCheck == "function"){
+						addQualityCheck(true);
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Cancel",
+				click: function(){
+					$(this).dialog("close"); 
+				}
+			}
+		],
+		close:function(){
+			$("#quality_chk_comp table tr:gt(0)").remove();
+			$("#remarks").val("");
+			$("#tstcertdet").val("");
+			$("#approved").attr('checked','checked');
+			$("#approved").siblings(".ui-button[for=approved]").click();
+			$("#raise_error").css("display", "none");
+		}
+	});
+	createAutoComplete();
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function dispGRN(inpVal){
+	$("#content_footer").css({ display:'block' });
+	$("#qc_popup").dialog('open');
+	$("#tstcertdet").val($(inpVal).attr("testcert") );
+	
+	ramId	=	$(inpVal).attr("ramid");
+	grnId	=	$(inpVal).attr("grnid");
+	
+	var objLiveScreenPatientDetail = postback(actionFile, "type=GETGRNDET&ramid="+ramId, "POST", "XML");
+	$("#quality_chk_comp table tr:gt(0)").remove();
+	$("#qc_popup .ramid").val(ramId);
+	$("#qc_popup .grnid").val(grnId);
+	$(objLiveScreenPatientDetail).find("row").each(function(index, element) {
+		trClass		=	"content_rows" + ((index%2)?"_light":"_dark");
+		trData		=	"<tr id='"+ $(element).find("ramqanparamref").html() + "' class='" + trClass + "'>" +
+							"<td style=\"width:90px\">" + $(element).find("ramname").html() + "</td>" +
+							"<td style=\"width:80px\">" + $(element).find("paramname").html() + "</td>" +
+							"<td style=\"width:60px\" align='right'>" + $(element).find("ramqanspec").html() + "</td>" +
+							"<td style=\"width:90px\" align='right'>" + $(element).find("ramqanllimit").html() + "</td>" +
+							"<td style=\"width:90px\" align='right'>" + $(element).find("ramqanulimit").html() + "</td>" +
+							"<td style=\"width:90px\" align='right'>" + $(element).find("ramsamplan").html() + "</td>" +
+							"<td align='right' style='padding:3px;'><input type='text' value='0.00' class='invisible_text' style='width:90%;text-align:right;' onfocus='FieldHiddenValue(this, \"in\", \"0.00\")' onblur='FieldHiddenValue(this, \"out\", \"0.00\")' /></td><td></td>" +
+						"</tr>";
+		$("#quality_chk_comp table tr:last").after(trData);
+    });
+}
+
+function addQualityCheck(stat){
+	errObj		=	$("#raise_error");
+	ramId		=	$("#qc_popup .ramid").val();
+	grnId		=	$("#qc_popup .grnid").val();
+	remarks		=	$("#qc_popup #remarks").val();
+	tstcert		=	$("#tstcertdet").val();
+	approve		=	$("#qc_popup input[name=qty_stat]:checked").val();
+	
+	if(tstcert == null || tstcert == ''){
+		displayError(errObj, 'error', 'Please enter the Test certificate details, if No Test certificate is available  enter NA', 2500);
+		$("#tstcertdet").focus();
+		return false;
+	}
+	
+	if(approve == 0 && (remarks == null || remarks == '')){
+		displayError(errObj, 'error', 'Please enter the remarks for rejection', 2500);
+		$("#qc_popup #remarks").focus();
+		return false;
+	}	
+	
+	param		=	"type=" + "APPROVE" +
+					"&ramid=" + ramId +
+					"&grnid=" + grnId +
+					"&approval=" + approve +
+					"&tstcert=" + tstcert +
+					"&remarks=" + remarks;
+	proCont		=	true;
+	
+	$("#qc_popup .supplier_list_head .supplier_list table tr:gt(0)").each(function(index, element) {
+        qcParam		=	$(this).attr("id");
+		qcLower		=	$(this).find("td:eq(3)").text();
+		qcUpper		=	$(this).find("td:eq(4)").text();
+		qcObserv	=	$(this).find("input:text").val();
+		
+		if(qcParam == null || qcParam == ''){
+			displayError(errObj, 'error', 'Invalid Parameter at Row ' + (index+1), 2500);
+			proCont		=	false;
+			return false;
+		}
+		else if(qcLower == null || qcLower == '' || isNaN(qcLower)){
+			displayError(errObj, 'error', 'Invalid Lower Limit at Row ' + (index+1), 2500);
+			proCont		=	false;
+			return false;
+		}
+		else if(qcUpper == null || qcUpper == '' || isNaN(qcUpper)){
+			displayError(errObj, 'error', 'Invalid Upper Limit at Row ' + (index+1), 2500);
+			proCont		=	false;
+			return false;
+		}
+		else if(qcObserv == null || qcObserv == '' || isNaN(qcObserv) ){
+			displayError(errObj, 'error', 'Invalid Observation at Row ' + (index+1), 2500);
+			$(this).find("input:text").focus();
+			proCont		=	false;
+			return false;
+		}
+		else if((approve>0) && (Number(qcObserv) < Number(qcLower) || Number(qcObserv) > Number(qcUpper))){
+			displayError(errObj, 'error', 'Observation Value should be between Lower Limit and Upper Limit at Row ' + (index+1), 2500);
+			$(this).find("input:text").focus();
+			proCont		=	false;
+			return false;
+		}
+		
+		param	+=	"&qalparam[]=" + qcParam +
+					"&data[]=" + qcObserv;
+    });
+	if(proCont == true){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Create the Quality Memo?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+														title:'Qulaity Check',
+														width:450,
+														height:'auto',
+														resizable:false,
+														modal:true,
+														buttons:{
+															'Ok':function(){
+																$(this).dialog('close');															
+																$("#qc_popup").dialog('close');
+																result	=	postback(actionFile, param, "POST", "XML");
+																status	=	$(result).find("ramQan status").html();
+																invNo	=	$(result).find("invid").html();
+																if(status == "success"){
+																	if(stat == true)
+																		openInvoice({invID:invNo});
+																}
+																else{
+																	alert('Creation of Quality Control Note Failed Due to :' + status);
+																}
+																createAutoComplete();													
+															},
+															'Cancel':function(){
+																$(this).dialog('close');
+															}
+														},
+														close:function(){
+															$(this).html('').dialog('destroy');
+														}
+													});	
+	}
+}
+
+function createAutoComplete(){
+	XMLContent	=	postback(actionFile,"type=GETGRN","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	$("#qc_popup").dialog({ autoOpen:false,modal:true,minWidth:'700' });
+	$(".check_quality").click(function(){
+		dispGRN(this);
+	});	
+	updateHeader();updateContent();
+}

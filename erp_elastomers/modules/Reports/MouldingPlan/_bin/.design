@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+        <table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+		<thead>	
+			<tr>
+			  <th width="8%" align="center">Batch Date</th>
+			  <th width="15%" align="center">Operator</th>
+			  <th width="8%" align="center">Keys Planned</th>
+			  <th width="8%" align="center">Lifts Planned</th>
+			  <th width="10%" align="center" title="Planned Compound Weight">Plan. Cpd Wgt. (Kg)</th>
+			  <th width="8%" align="center">Actual Lifts</th>
+			  <th width="10%" align="center" title="Used Compound Weight">Used Cpd Wgt. (Kg)</th>
+			  <th align="center">#</th>
+			</tr>
+		</thead>
+		<tbody>			
+			<xsl:for-each select="xmldata/root/data/row">
+			<tr>
+			  <td align="left"><xsl:value-of select="plandate"/></td>	
+			  <td align="left"><xsl:value-of select="operator"/></td>
+			  <td align="right"><xsl:value-of select="format-number(noofkeys,'##,##,##0')"/></td>
+			  <td align="right"><xsl:value-of select="format-number(totlifts,'##,##,##0')"/></td>
+			  <td align="right"><xsl:value-of select="format-number(totcpdadv,'##,##,##0.000')"/></td>
+			  <td align="right"><xsl:value-of select="format-number(actuallifts,'##,##,##0')"/></td>
+			  <td align="right"><xsl:value-of select='format-number(cpdqtyused,"##,##,##0.000")'/></td>
+			  <td align="right">
+				
+				<a>
+					<xsl:attribute name="plandate"><xsl:value-of select="plandate" /></xsl:attribute>
+					<xsl:attribute name="operator"><td align="center"><xsl:value-of select="operator"/></td></xsl:attribute>
+					<xsl:attribute name="class">view_button link</xsl:attribute>
+					<xsl:if test="operator = 'In-House'">
+						Plan
+					</xsl:if>
+					<xsl:if test="operator != 'In-House'">
+						Compound Advice
+					</xsl:if>
+				</a>
+				|
+				<a>
+					<xsl:attribute name="plandate"><xsl:value-of select="plandate" /></xsl:attribute>
+					<xsl:attribute name="operator"><td align="center"><xsl:value-of select="operator"/></td></xsl:attribute>
+					<xsl:attribute name="class">view_all_button link</xsl:attribute>
+					All Moulding Plan(s)
+				</a>
+				| 
+				<a>
+					<xsl:attribute name="plandate"><xsl:value-of select="plandate" /></xsl:attribute>
+					<xsl:attribute name="operator"><td align="center"><xsl:value-of select="operator"/></td></xsl:attribute>
+					<xsl:attribute name="class">view_one_button link</xsl:attribute>
+					Moulding Plan(s) Individually
+				</a>				
+			  </td>
+			</tr>
+            </xsl:for-each>
+		</tbody>
+        </table>
+		<table border="0" cellpadding="6" cellspacing="0" width="100%">
+			<tr>
+				<th width="23%" align="center" >Grand Total</th>
+				<th width="8%" align="right" id="val_total1" >0</th>
+				<th width="8%" align="right" id="val_total2" >0</th>
+				<th width="10%" align="right" id="val_total3">0.000</th>
+				<th width="8%" align="right" id="val_total4" >0</th>
+				<th width="10%" align="right" id="val_total5">0.000</th>
+				<th align="center">&nbsp;</th>
+			</tr>				
+		</table>		
+    </xsl:template>
+</xsl:stylesheet>

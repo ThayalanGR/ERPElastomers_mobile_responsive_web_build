@@ -1,0 +1,152 @@
+<?php
+	session_start();
+	global $cpd_std_test_refnos,$cpd_grp_email,$rheodb_path;
+	header('Content-Type: text/xml');
+	
+	switch($_REQUEST["type"]){
+		case "GETITEMS":
+				$output		=	@getMySQLData("select t1.batId, SUBSTRING_INDEX(t1.batId, '_',-1) as dispBatId, t2.cpdId, t2.cpdName, t2.cpdPolymer, DATE_FORMAT(t1.batDate, '%d-%b-%Y') as mixrecvdate,t1.full_test_req,
+													'".$cpd_std_test_refnos[0]."' as hardparamref, t4.cpdQanULimit as hardulimit,t4.cpdQanLLimit as hardllimit,
+													'".$cpd_std_test_refnos[1]."' as spgrparamref, t5.cpdQanULimit as spgrulimit,t5. cpdQanLLimit as spgrllimit
+													from tbl_mixing t1
+														inner join tbl_compound t2 on t1.cpdId=t2.cpdId
+														left outer join (select * from tbl_compound_qan where (cpdQanParam = '".$cpd_std_test_refnos[0]."' or cpdQanParam = '".$cpd_std_test_refnos[1]."')) t3 on t3.batId = t1.batId 
+														left outer join	tbl_compound_qan_param t4 on t4.cpdId = t1.cpdid and t4.cpdQanParamRef  = '".$cpd_std_test_refnos[0]."'
+														left outer join	tbl_compound_qan_param t5 on t5.cpdId = t1.cpdid and t5.cpdQanParamRef  = '".$cpd_std_test_refnos[1]."'
+												where t1.status=3 and t3.batid is null  order by t1.batId asc" ,"xml","root","lower");
+			
+			echo "<xmldata>$output</xmldata>";
+		break;
+		case "GETTESTDET":
+			$cpdId		=	$_REQUEST['cpdid'];
+			$sql		=	"SELECT t1.cpdId, t2.cpdName, t1.cpdQanParamRef,t3.paramName, t1.cpdQanSpec, t1.cpdQanULimit, t1.cpdQanLLimit
+							FROM tbl_compound_qan_param t1 
+								inner join tbl_compound t2 on t1.cpdId=t2.cpdId
+								inner join tbl_param t3 on t1.cpdQanParamRef = t3.sno
+							where t1.cpdId='$cpdId' ;";
+			echo getXML($sql,false);
+		break;
+		case "GETTESTPLAN":
+			$invIDsArr	=	explode(',',$_REQUEST['invID']);
+			$invIDs		= '';
+			for($idCnt = 0; $idCnt < count($invIDsArr); $idCnt++)
+			{
+				$invIDs	.=	"'".$invIDsArr[$idCnt]."'";
+				if($idCnt < count($invIDsArr) - 1)
+					$invIDs	.= ",";
+			}
+			$sql_getcom	=	"select SUBSTRING_INDEX(t1.batId, '_',-1) as dispBatId, t2.cpdName, DATE_FORMAT(t1.batDate, '%d-%m-%y') as mixrecvdate,cpdPolymer
+							from tbl_mixing t1
+								inner join tbl_compound t2 on t1.cpdId=t2.cpdId
+							where t1.status=3 and t1.batId in ($invIDs) order by t1.batId asc";
+			echo "<xmldata>".@getMySQLData($sql_getcom,"xml","root","lower")."</xmldata>";
+		break;
+		case "APPROVE":
+			$batid			=	$_REQUEST['batid'];
+			$cpdid			=	$_REQUEST['cpdid'];
+			$qalparam		=	$_REQUEST['qalparam'];
+			$data			=	$_REQUEST['data'];
+			$sql			=	"insert into tbl_compound_qan (batId, cpdId, cpdQanParam, cpdQanValue, cpdStatus, qanDate, entry_on, entry_by, cpdApprove, cpdApproveDate,update_on,update_by) values ";
+			for($lp=0;$lp<count($qalparam);$lp++){
+				$sql 	.=	" ( '".$batid[$lp]."', '".$cpdid[$lp]."', '".$qalparam[$lp]."', '".$data[$lp]."',1,now(), now(), '".$_SESSION['userdetails']['userId']."',1,now(), now(), '".$_SESSION['userdetails']['userId']."') ";
+				if($lp < count($qalparam)-1){
+					$sql .=	" , ";
+				}
+			}			
+			$output			=	@getMySQLData($sql,"xml", "qan");
+			$resStatus 		=  "";
+			if($output != ""){
+				$status		=	split("<status>", $output);
+				$status		=	split("</status>", $status[1]);
+				$resStatus	=	$status[0];
+				if($resStatus == "success" && $_REQUEST['fulltest'] == 1)
+				{
+					@getMySQLData("update tbl_mixing set status=4 where batId='$batid[0]'");				
+				}
+			}			
+			echo trim($resStatus);
+		break; 
+		case "RUNJOB":
+			$batCount		=	0;
+			$updRecCount	=	0;		
+			$manualRun		=	$_REQUEST['manual'];
+			$settings		=	@getMySQLData("select value from tbl_settings where name = 'lastRheoDBRecNo'");
+			$lastRecNo		=	$settings['data'][0]['value'];
+			$resStatus 		=  	"success~No New Records in Rheometer DB";
+			$output			=	"";
+			$conn 			= 	new COM("ADODB.Connection") or die("ADODB Oops!");
+			try{
+				$conn->Open("DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=".$rheodb_path);
+			}
+			catch(com_exception $e) {
+				$resStatus =  "error~Unable to connect to Rheometer Database";
+			} 
+
+			$data 			= 	$conn->Execute("SELECT batch,ts2,tc90,AutoId FROM RheoData where AutoId > ".$lastRecNo." ORDER BY AutoId ASC");
+			while (!$data->EOF)
+			{
+				$batIds[$batCount]	=	$data ->Fields[0]->value ;
+				$ts2[$batCount]		=	$data ->Fields[1]->value ;
+				$tc90[$batCount]	=	$data ->Fields[2]->value ;
+				$autoId[$batCount]	=	$data ->Fields[3]->value ;
+				$batCount++;
+				$data ->MoveNext();
+			}	
+			if($data->State != 0) $data->Close();
+			if($conn->State != 0) $conn->Close();
+			$data = null;
+			$conn = null;	
+			
+			if ($batCount-1 > 0)
+			{
+				$baseSQL		=	"insert into tbl_compound_qan (batId, cpdId, cpdQanParam, cpdQanValue, cpdStatus, qanDate, entry_on, entry_by, cpdApprove, cpdApproveDate,update_on,update_by) values ";
+				$sql			=	"";
+				for($lp=0;$lp<$batCount;$lp++)
+				{
+					$batdets	=	@getMySQLData("select batId,cpdId from tbl_mixing where upper(batId) like upper('%".$batIds[$lp]."') order by batId desc limit 1");
+					$batdid		=	($batdets['data'][0]['batId'])?$batdets['data'][0]['batId']:"";
+					$cpdid		=	$batdets['data'][0]['cpdId'];
+					if($batdid != "")
+					{
+						if($sql != "")
+							$sql 	.=	" , ";
+							
+						$sql 	.=	" ( '$batdid', '$cpdid', '".$cpd_std_test_refnos[2]."', '".$ts2[$lp]."', 1, now(), now(), '".$_SESSION['userdetails']['userId']."', 1, now(), now(), '".$_SESSION['userdetails']['userId']."') ";
+						$sql 	.=	" , ";
+						$sql 	.=	" ( '$batdid', '$cpdid', '".$cpd_std_test_refnos[3]."', '".$tc90[$lp]."', 1, now(), now(), '".$_SESSION['userdetails']['userId']."', 1, now(), now(), '".$_SESSION['userdetails']['userId']."') ";
+						$updRecCount++;
+					}
+				}
+				
+				if($sql != "")
+					$output			=	@getMySQLData($baseSQL.$sql,"xml", "qan");
+				else
+					$output			=	"<status>success</status>";
+					
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$resStatus	=	$status[0];
+					if($resStatus == "success" )
+					{
+						$resStatus	.=	"~".($batCount-1)." Batches processed from Rheometer DB, ".$updRecCount." Batches updated into ERP Database";
+						@getMySQLData("update tbl_settings set value='".$autoId[$batCount-1]."' where name = 'lastRheoDBRecNo'");
+					}
+					else
+					{
+						$resStatus	=	"error~".$output;
+					}					
+				}
+			}
+			if($manualRun == "1")
+				echo $resStatus;
+			else
+			{
+				$status		=	split("~", $resStatus);
+				$pstatus 	= 	sendEmail($cpd_grp_email,"","Rheometer Updation Report Status: ".$status[0],$status[1],"");
+			}
+		break; 		
+	}
+?>
+
+

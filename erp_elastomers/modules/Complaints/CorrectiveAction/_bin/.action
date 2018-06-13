@@ -1,0 +1,40 @@
+<?php
+	session_start();
+	global $complaints_upload_dir;
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "NEWCOMPLIST":
+			$sql	=	"select complaintId,isInternal,DATE_FORMAT(complaintDate, '%d-%b-%Y') as complaintDate, DATE_FORMAT(corr_action_target, '%d-%b-%Y') as corrActDate,concat(tcmpd.cmpdname,'(',tcmpd.cmpdrefno,')') as cmpdname,description,tcust.cusName,sketch_file_name,tool_comments,cpd_comments,prod_comments,quality_comments,purchase_comments,'/".$complaints_upload_dir."' as filepath
+						from tbl_complaint tcomp
+							left join tbl_customer tcust on tcomp.cusId=tcust.cusId
+							left join tbl_component tcmpd on tcmpd.cmpdId=tcomp.cmpdId							
+						where tcomp.status=2 order by complaintDate";
+			echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+		break;
+		case "CORRINS":			
+			$compId			=	$_POST['compid'];
+			$corrAction		=	$_POST['corraction'];
+			$analType		=	$_POST['analtype'];
+			$userName		=	$_SESSION['userdetails']['fullName'];
+			if($compId != ""){	
+				$sql_comp		=	"update tbl_complaint set 
+										corrAction = '$corrAction',
+										analysisMethod = '$analType',
+										status = '3',
+										responsibility = if(responsibility = '', '$userName',responsibility),
+										corr_action_on = now(),										
+										corr_action_by = '".$_SESSION['userdetails']['userId']."'
+									where complaintId = '$compId'";
+				//echo $sql_comp ; exit();
+				$output			=	@getMySQLData($sql_comp, "xml");
+			}
+			else
+			{
+				$output	.= "<result_set>failed</result_set>";	
+			}
+			echo "<root>$output</root>";
+		break;
+
+	}
+
+?>

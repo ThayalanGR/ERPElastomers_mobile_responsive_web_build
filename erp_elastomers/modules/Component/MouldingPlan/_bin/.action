@@ -1,0 +1,249 @@
+<?php
+	session_start();
+	
+	header('Content-Type: text/xml');
+	global $cmpd_grp_email,$quality_grp_email,$cmpdMonthCode;	
+	$prodDate  	= 	$_REQUEST['plan_date'];
+	$operator	=	$_REQUEST['operator'];
+	$toolLoc	=	($operator == 'In-House')?'Store':$operator;
+	
+	switch($_REQUEST["selecttype"]){
+		case "CREATEPLAN":
+			if( is_array($_REQUEST['cmpdIds'])  != "" && is_array($_REQUEST['toolIds']) != "" && is_array($_REQUEST['numLifts'])  != "" && is_array($_REQUEST['numShifts'])  != "" )
+			{
+				$pSQL               =   " insert into tbl_moulding_plan(cmpdid, liftPlanned, operator, toolRef, planDate, planid, numShifts, entry_on, entry_by)
+														values ";
+				$sql_invoice		=	" insert into tbl_invoice_mould_plan(`invId`, `toolRef`, `no_of_cavities`, `no_of_active_cavities`, `strips_per_lift`, `blank_type`, `blank_profile`, `strip_weight`,  `strip_dim1`, `strip_dim2`, `strip_dim3`, `cmpdId`, `cmpdName`, `cmpdRefNo`, `cmpdDrawRev`, `cmpdPolymer`, `cmpdCurTime`, `cmpdCurTemp`, `cmpdPressure`, `cmpdProdWgt`,`cmpdBlankWgt`, `uom`, `quantity`, `invdate`, `planid`, `liftPlanned`, `numShifts`,`operator`, `cmpdCpdId`, `cmpdCpdName`, entry_on, entry_by) 
+														values ";
+				$sql_mldrecv		=	" insert into tbl_moulding_receive(`planRef`, `modRecRef`, `toolRef`, `operator`, `plannedLifts`, `status`) 
+														values ";
+				$pSQLadd			=	"";
+				$sql_invoice_add	=	"";
+				$sql_mldrecv_add	=	"";
+				$cmpdIds			=	$_REQUEST['cmpdIds'];
+				$toolIds			=	$_REQUEST['toolIds'];
+				$numLifts			=	$_REQUEST['numLifts'];
+				$numShifts			=	$_REQUEST['numShifts'];
+				$codeNo 			= 	"";
+				$codeArray			=	@getSettingsData("invMP");
+				$invCode			=	$codeArray[0];
+				$invNo				=	$codeArray[1];
+				list($y, $m, $d) 	= 	explode('-', $prodDate);				
+				$partPlanId			=	$cmpdMonthCode[$m+0]. $d;
+				$financialYear		= 	$y;
+				if ( $m < 4)
+				{
+					$financialYear	= 	$y - 1;
+				}
+				$financialYear		=	(string) $financialYear;
+				$lastPlanId_sql		=	@getMySQLData("SELECT count(*) as lastPlanId FROM tbl_moulding_plan where planDate = '".$prodDate."'");
+				$codeNumber 		= 	0;
+				if($lastPlanId_sql['count'] >0)
+				{
+					$codeNumber		=	$lastPlanId_sql['data'][0]['lastPlanId'];	
+				}
+				$noofPlans			=	count($cmpdIds);
+				$productivityAlert	=	"";
+				for($planCount = 0;$planCount < $noofPlans;$planCount++)
+				{
+					$cmpdid				=	$cmpdIds[$planCount];
+					$tool				=	$toolIds[$planCount];
+					$lift				=	$numLifts[$planCount];
+					$shifts				=	$numShifts[$planCount];
+					$codeNumber++;
+					if($codeNumber < 10){
+						$codeNumber	=	"0".$codeNumber;
+					}
+					$codeNo				=	$partPlanId . $codeNumber."_".substr($financialYear,-2);	
+					$pSQLadd			.=	"(
+										'$cmpdid', '$lift', '$operator', '$tool', '$prodDate', '$codeNo', '$shifts', now(), '".$_SESSION['userdetails']['userId']."'
+										)".(($planCount<$noofPlans-1)?", ":"");
+					$sql_invoice_add	.=	createInvoice($invCode,$invNo,$cmpdid,$lift,$operator,$codeNo,$tool,$prodDate,$shifts);
+					$sql_invoice_add	.=	(($planCount<$noofPlans-1)?", ":"");
+					$sql_mldrecv_add	.=	createShifts($lift,$operator,$codeNo,$tool,$shifts);
+					$sql_mldrecv_add	.=	(($planCount<$noofPlans-1)?", ":"");
+					// see if maximum productive tool is used.
+					$toolActCav_sql		=	@getMySQLData("select no_of_active_cavities from tbl_tool where tool_ref = '$tool'");
+					$toolActCav			=	$toolActCav_sql['data'][0]['no_of_active_cavities'];
+					$sql_avlTools		=	@getMySQLData("select comp_part_ref,tool_ref,no_of_active_cavities from tbl_tool where compId = '$cmpdid' and status1 > 0 and status = 'active' and tool_ref != '$tool' and no_of_active_cavities > $toolActCav and tool_ref not in ( select toolRef from tbl_moulding_plan where planDate = '$prodDate' and cmpdid = '$cmpdid' and status != 0) and tool_ref not in ( '".implode("','",$toolIds)."') ");					
+					if(count($sql_avlTools['data']) > 0)
+					{
+						$productivityAlert	.=	"In Plan Key: ". $codeNo. " for part number: ". $sql_avlTools['data'][0]['comp_part_ref']. ", tool :".$tool."(".$toolActCav.") is used when another tool : ".$sql_avlTools['data'][0]['tool_ref']. "(".$sql_avlTools['data'][0]['no_of_active_cavities'].") is available \n";						
+					}					
+					$invNo ++;
+				}
+				//echo $productivityAlert; exit();
+				/*echo $pSQL.$pSQLadd."<BR/>"; 
+				echo $sql_invoice.$sql_invoice_add."<BR/>";
+				echo $sql_mldrecv.$sql_mldrecv_add."<BR/>" ;
+				exit();*/
+				$output	=	@getMySQLData($pSQL.$pSQLadd,"xml");
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					if($status == "success"){
+						$output	.=	@getMySQLData($sql_mldrecv.$sql_mldrecv_add,"xml");
+						$output	.=	@getMySQLData($sql_invoice.$sql_invoice_add,"xml");
+						@getMySQLData("update tbl_settings set auto_inc='$invNo' where name='invMP'");
+						if ($productivityAlert != null && $productivityAlert != "")
+							$pstatus 	= sendEmail($cmpd_grp_email,$quality_grp_email,"Planning Tool Alert!",$productivityAlert,"");						
+					}
+				}
+				else{
+					echo "<mysql><status>Invalid Data / Data Missing</status></mysql>";
+					exit();
+				}				
+			}
+			else{
+				echo "<mysql><status>Invalid Data / Data Missing</status></mysql>";
+				exit();
+			}
+		break;
+		case "GETTOOLS":
+			if($_REQUEST['cmpdId'] != ""){
+				$cmpdId		=	$_REQUEST['cmpdId'];				
+				$sql_tools	=	" select tool_ref,jobworkcontrol from (select tool_ref ,ifnull((select transferee_userName from tbl_tool_transfer where tool_ref=t1.tool_ref order by ttn_date desc limit 1),'Store') as tool_location , no_of_active_cavities, (select cmpdMoldJWCont from tbl_component where cmpdId = t1.compId) as jobWorkControl from tbl_tool t1 where t1.status1 = 1 and t1.status='active' and t1.compid = '$cmpdId' ) tt where tt.tool_location = '$toolLoc' order by abs(no_of_active_cavities) desc ";
+				echo getXML($sql_tools,false);			
+				exit();
+			}
+		break;
+		case "GETTOOLDETAILS":
+			if($_REQUEST['toolRef'] != ""){
+				$toolRef		=	$_REQUEST['toolRef'];				
+				$sql_tooldets	=	"select tool_ref,no_of_active_cavities,std_lifts_per_plan,next_validation, ifnull((select sum(actualLifts)as mldQty from tbl_moulding_receive where toolRef=t1.tool_ref group by toolRef),0)as lifts_run from tbl_tool t1 where tool_ref = '$toolRef' ";
+				echo getXML($sql_tooldets,false);			
+				exit();
+			}
+		break;
+		case "CHECKTOOLUSAGE":		
+			if(is_array($_REQUEST['cmpdIds'])  != "" && is_array($_REQUEST['toolIds']) != ""){			
+				$toolIds			=	$_REQUEST['toolIds'];
+				$cmpdIds			=	$_REQUEST['cmpdIds'];
+				$noofPlans			=	count($cmpdIds);
+				$count				=	0;
+				$bestToolUsed		=	"yes";
+				for($cmpdCount = 0;$cmpdCount < $noofPlans;$cmpdCount++)
+				{
+					$cmpdid			=	$cmpdIds[$cmpdCount];
+					$tool			=	$toolIds[$cmpdCount];				
+					$sql_avlTools	=	@getMySQLData("select comp_part_ref,tool_ref,no_of_active_cavities from tbl_tool where compId = '$cmpdid' and status1 > 0  and tool_ref != '$tool' and status = 'active' and tool_ref not in ( select toolRef from tbl_moulding_plan where planDate = '$prodDate' and cmpdid = '$cmpdid' and status != 0) and tool_ref not in ( '".implode("','",$toolIds)."') and no_of_active_cavities > (select ABS(no_of_active_cavities) from tbl_tool where tool_ref = '$tool')");					
+					//echo count($sql_avlTools['data']); exit();
+					if(count($sql_avlTools['data']) > 0)
+					{
+						$count++;
+						$data			.=	"<row>";
+						$data			.=	"<cmpdname>".$sql_avlTools['data'][0]['comp_part_ref']."</cmpdname>";
+						$data			.=	"<toolref>".$sql_avlTools['data'][0]['tool_ref']."</toolref>";	
+						$data			.=	"<toolactcavs>".$sql_avlTools['data'][0]['no_of_active_cavities']."</toolactcavs>";			
+						$data			.=	"</row>";
+						$bestToolUsed	=	"no";
+					}
+				}
+				$output	= "<xmldata><root><count>".$count."</count><data>".$data."</data><status>".$bestToolUsed."</status></root></xmldata>";
+				echo $output;			
+				exit();
+			}
+		break;				
+		case "CMPDPLANLIST":
+				$sql_cntlist	=	"SELECT cmpdId,concat(cmpdName,'(',cmpdRefNo ,')') as partnumber,cmpdBlankWgt,cpdName 
+										from tbl_component tc
+										inner join tbl_compound tcpd on tcpd.cpdId = tc.cmpdCpdId
+									where tc.status>0 order by tc.cmpdName";
+				echo getXML($sql_cntlist,false);
+				exit();
+		break;
+		case "GETCMPDSTOCK":
+			$cmpdId		=	$_REQUEST['cmpdId'];
+			$sql_list	=	"select *, (schqty - despatchqty - cmpdawtplan) as awtPlan from 
+														(select round(IFNULL(cmpdawtcpdiss,0),0) as cmpdawtcpdiss,round(IFNULL(cmpdawtmldrec,0),0) as cmpdawtmldrec,round(IFNULL(cmpdawtdefiss,0),0) as cmpdawtdefiss,round(IFNULL(cmpdawtdefrec,0),0) as cmpdawtdefrec,round(IFNULL(cmpdawtqualrec,0),0) as cmpdawtqualrec,
+															IFNULL((select round(schQty,0) as schQty from tbl_scheduling where status>0 and schOrder = 'component' and schMonth = DATE_FORMAT(CURRENT_DATE,'%M %Y') and cpdId_cmpdId = tcs.cmpdId  order by entry_on desc limit 1),0) as schQty, 
+															round(IFNULL(cmpdtotstock,0),0) as cmpdStock, round( (IFNULL(cmpdawtcpdiss,0)+IFNULL(cmpdawtmldrec,0)+IFNULL(cmpdawtdefiss,0)+IFNULL(cmpdawtdefrec,0)+IFNULL(cmpdawtqualrec,0)+IFNULL(cmpdtotstock,0)),0) as cmpdAwtPlan, 
+															round(IFNULL((select sum(invQty) from tbl_invoice_sales_items tici left join tbl_invoice_sales tic on tic.invId = tici.invId where status>0 and DATE_FORMAT(invDate,'%m-%Y') = DATE_FORMAT(CURRENT_DATE,'%m-%Y') and tici.invCode = tcs.cmpdId and tici.invtype = 'cmpd' group by tici.invCode),0),0) as despatchQty,
+															round(ifnull(cpdStockQty,0),0) as cpdStock
+															from(
+										select cmpdid, sum(sumPlanned) as cmpdAwtCpdIss,sum(sumIssued) as cmpdAwtMldRec, sum(sumMoldQty) as cmpdAwtDefIss, sum(sumDefIssued) as cmpdAwtDefRec ,sum(sumAwtQual) as cmpdAwtQualRec, sum(stockinHand) as cmpdTotStock  from 
+										( 	
+											select cmpdid, quantity as sumPlanned, 0 as sumIssued, 0 as sumMoldQty, 0 as sumDefIssued,0 as sumAwtQual, 0 as stockinHand from tbl_moulding_receive tmr inner join tbl_invoice_mould_plan timp on tmr.planref = timp.planid	where tmr.status = 1 group by tmr.planref
+											UNION ALL
+											select cmpdid, 0 as sumPlanned, sum(plannedLifts * no_of_active_cavities) as sumIssued, 0 as sumMoldQty, 0 as sumDefIssued,0 as sumAwtQual, 0 as stockinHand from tbl_moulding_receive tmr inner join tbl_invoice_mould_plan timp on tmr.planref = timp.planid where tmr.status = 2 group by tmr.planref
+											UNION ALL
+											select cmpdid, 0 as sumPlanned,0 as sumIssued,sum(mouldQty) as sumMoldQty, 0 as sumDefIssued,0 as sumAwtQual, 0 as stockinHand from tbl_moulding_receive tmr inner join tbl_invoice_mould_plan timp on tmr.planref = timp.planid where tmr.status = 3 group by tmr.planref
+											UNION ALL 
+											select cmpdid,0 as sumPlanned,0 as sumIssued, quantity as sumMoldQty, 0 as sumDefIssued,0 as sumAwtQual, 0 as stockinHand from tbl_rework where status = 1 
+											UNION ALL 
+											select cmpdid,0 as sumPlanned,0 as sumIssued, 0 as sumMoldQty, (issqty - recvQty) as sumDefIssued,0 as sumAwtQual, 0 as stockinHand from (select di.cmpdid, di.issqty, if(sum(currrec) > 0,sum(currrec),0) as recvQty from tbl_deflash_issue di left outer join tbl_deflash_reciept dr on dr.defissref=di.sno where di.status = 1 group by di.defissref) tdi
+											UNION ALL 
+											select cmpdid,0 as sumPlanned,0 as sumIssued, 0 as sumMoldQty, 0 as sumDefIssued,(currrec - ifnull(mq.receiptqty,0)) as sumAwtQual, 0 as stockinHand from tbl_deflash_reciept dr inner join tbl_deflash_issue di on di.sno = dr.defissref left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 0 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = dr.sno where dr.status = 1
+											UNION ALL 
+											select cmpdid,0 as sumPlanned,0 as sumIssued, 0 as sumMoldQty, 0 as sumDefIssued,(recvqty - ifnull(mq.receiptqty,0)) as sumAwtQual, 0 as stockinHand from tbl_component_recv cr left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 1 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = cr.sno where cr.status = 1											
+											UNION ALL 
+											select cmpdid, 0 as sumPlanned, 0 as sumIssued,0 as sumMoldQty, 0 as sumDefIssued,0 as sumAwtQual, avlQty as stockinHand from tbl_mould_store where status = 1 and avlQty > 0 
+										)table1
+										where cmpdid = '$cmpdId') tcs  
+										inner join tbl_component tc on tc.cmpdId=tcs.cmpdId 
+										left outer join (select cpdId, ifnull(sum(recvQty - issuedQty),0) as cpdStockQty from tbl_component_cpd_recv where status = 1 and (recvQty - issuedQty) > 0 group by cpdId)tccr on tc.cmpdCpdId = tccr.cpdId										 
+									where tc.status=1 and tc.cmpdid = '$cmpdId')	resTbl ";
+				echo getXML($sql_list, false);
+				exit();
+		break;
+	}
+	
+	$sqlLastPlanDt	=	@getMySQLData("select planDate  from tbl_moulding_plan where operator = '$operator'and status > 0 order by plandate desc limit 1", "arr");
+	$planDate		=	$sqlLastPlanDt['data'][0]['planDate'];
+	$list			= 	'';
+	if( $planDate < $prodDate)
+	{
+		$sql_PLANInfo	=	"SELECT tc.cmpdId,concat(tc.cmpdName ,'(',tc.cmpdRefNo ,')') as partnumber, tmp.liftPlanned  , tcpd.cpdName,tcpd.cpdId, tt.tool_ref, tt.no_of_active_cavities,tmp.numShifts,tt.tool_location ,  tt.lifts_run, tmp.liftPlanned * tt.no_of_active_cavities as planqty,(tmp.liftPlanned * tt.no_of_active_cavities * tc.cmpdBlankWgt )/1000 as cpdreq,tc.cmpdBlankWgt,next_validation
+								FROM tbl_moulding_plan tmp
+								INNER JOIN tbl_component tc on tc.cmpdId  = tmp.cmpdid and tc.status > 0 ". (($operator != 'In-House')? " and cmpdMoldJWCont = 0 ":"")."
+								INNER JOIN (select *, ifnull((select transferee_userName from tbl_tool_transfer where tool_ref=t1.tool_ref order by ttn_date desc limit 1),'Store') as tool_location,ifnull((select sum(actualLifts)as mldQty from tbl_moulding_receive where toolRef=t1.tool_ref group by toolRef),0)as lifts_run from tbl_tool t1 where status1 = 1 and status='Active' ) tt on tt.tool_ref = tmp.toolRef and tt.tool_location = '$toolLoc'
+								INNER JOIN tbl_compound tcpd on tcpd.cpdId = tc.cmpdCpdId and tcpd.status > 0
+								INNER JOIN tbl_polymer_order tpo on tcpd.cpdPolymer = tpo.polyName 
+							WHERE tmp.status > 0 and tmp.operator = '$operator' and tmp.planDate = '$planDate' 
+							ORDER BY tpo.dispOrder,tcpd.cpdName,tc.cmpdName";	
+		
+		$list			=	@getMySQLData($sql_PLANInfo, "xml", "root", "lower");
+	}	
+	else
+	{
+		$list 			= 	"<root><count>0</count><status>success</status></root> ";	
+	}
+	
+	$list				=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);	
+		
+	echo "<xmldata>
+		$list		
+		$output
+	</xmldata>";
+	
+	function createInvoice($codeStr,$codeNum,$compoundid,$lift,$operator,$planid,$tool,$planDate,$numShifts){ 
+		$codeNo			=	@getRegisterNo($codeStr, $codeNum);				
+		$uom			=	"Points";
+		$sql_component 	= @getMySQLData("select * from tbl_component where cmpdId='$compoundid'");
+		extract($sql_component['data'][0]);	
+		$sql_compound 	=	@getMySQLData("select cpdPolymer from tbl_compound where cpdId='$cmpdCpdId'");
+		$cpdPolymer		=	$sql_compound['data'][0]['cpdPolymer'];
+		$sql_tool		=	@getMySQLData("select * from tbl_tool where tool_ref='$tool'");
+		extract($sql_tool['data'][0]);
+		$quan			=	$no_of_active_cavities * $lift;
+		$sql_inv		=	" ('$codeNo', '$tool', '$no_of_cavities', '$no_of_active_cavities', '$strips_per_lift', '$blanking_type', '$strip_profile', '$strip_weight_spec', '$strip_dim1_spec', '$strip_dim2_spec', '$strip_dim3_spec', '$compoundid', '$cmpdName', '$cmpdRefNo', '$cmpdDrawRev','$cpdPolymer', '$cmpdCurTime', '$cmpdTemperature', '".($cmpdPresMin." - ".$cmpdPresMax)."', '$cmpdProdWgt','$cmpdBlankWgt', '$uom', '$quan', '$planDate' , '$planid', '$lift','$numShifts', '$operator', '$cmpdCpdId', '$cmpdCpdName', now(), '".$_SESSION['userdetails']['userId']."')";		
+		//print_r($sql_inv);
+		return $sql_inv;
+	}
+	
+	function createShifts($lift,$operator,$planid,$tool,$totShifts){ 		
+		$shiftCode		=	array('', 'x', 'y', 'z');
+		$sql_inv		=	"";
+		for($shifts=1;$shifts<=$totShifts;$shifts++)	
+		{
+			$numlifts = (($shifts%2==0)?floor($lift/$totShifts):ceil($lift/$totShifts));			
+			$sql_inv	.=	"(
+							'$planid', '$planid"."-".$shiftCode[$shifts]."', '$tool', '$operator', '$numlifts', '1'
+							)".(($shifts<=$totShifts-1)?", ":"");
+		}
+		//print_r($sql_inv); exit();
+		return $sql_inv;
+	}	
+	
+?>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+		<table border="0" cellpadding="6" cellspacing="0" width="100%">
+			<xsl:for-each select="xmldata/root/data/row">
+				<tr>
+					<xsl:if test="position() mod 2 != 0"><xsl:attribute name="class">content_rows_light</xsl:attribute></xsl:if>
+					<xsl:if test="position() mod 2 != 1"><xsl:attribute name="class">content_rows_dark</xsl:attribute></xsl:if>
+					<td width="8%" align="left"><xsl:value-of select="grnid" /></td>
+					<td width="10%" align="left"><xsl:value-of select="grndate" /></td>
+					<td width="20%" align="left"><xsl:value-of select="invsupname" /></td>
+					<td width="18%" align="left"><xsl:value-of select="ramname" /></td>
+					<td width="8%" align="left"><xsl:value-of select="ramgrade" /></td>
+					<td width="8%" align="right"><xsl:value-of select="invrecvqty" /></td>
+					<td width="10%" align="center">DoE</td>
+					<td width="10%" align="center"><xsl:value-of select="testdate" /></td>
+					<td align="right">
+						<span class="link check_quality">
+							<xsl:attribute name="ramid"><xsl:value-of select="invramid"/></xsl:attribute>
+							<xsl:attribute name="grnid"><xsl:value-of select="grnid"/></xsl:attribute>
+							<xsl:attribute name="testcert"><xsl:value-of select="invtestcert"/></xsl:attribute>
+							Check
+						</span>
+					</td>
+				</tr>
+			</xsl:for-each>
+		</table>
+	</xsl:template>
+</xsl:stylesheet>

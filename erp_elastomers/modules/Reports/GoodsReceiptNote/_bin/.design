@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+			<table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+				<thead>
+				<tr>
+					<th align="left" width="3%" title="Select for Emailing">
+						<input>
+							<xsl:attribute name="id">input_select_all</xsl:attribute>
+							<xsl:attribute name="type">checkbox</xsl:attribute>
+							<xsl:attribute name="value">1</xsl:attribute>
+							<xsl:attribute name="style">text-align:right;width:90%</xsl:attribute>
+						</input>
+					</th>			   
+					<th width="6%" align="left">GRN ID</th>
+					<th width="6%" align="left">GRN Date</th>
+					<th width="5%" align="left">For</th>
+					<th width="15%" align="left">Supplier</th>  
+					<th width="12%" align="left">Material</th>
+					<th width="12%" align="left">Grade</th>
+					<th width="10%" align="right">Received Qty</th>
+					<th width="10%" align="right">Rate</th>
+					<th width="10%" align="right">Value</th>
+					<th align="right">#</th>
+				</tr>
+				</thead>
+				<tbody>
+				<xsl:for-each select="xmldata/root/data/row">
+					<tr>
+						<td align="left">
+							<xsl:choose>
+								<xsl:when test="clientrec = '1'">
+									<input>
+										<xsl:attribute name="id"><xsl:value-of select="grnid" /></xsl:attribute>
+										<xsl:attribute name="type">checkbox</xsl:attribute>
+										<xsl:attribute name="value">1</xsl:attribute>
+										<xsl:attribute name="style">text-align:right;width:90%</xsl:attribute>
+										<xsl:attribute name="class">checkbox1</xsl:attribute>
+									</input>
+								</xsl:when>
+								<xsl:otherwise>
+									&#160;
+								</xsl:otherwise>
+							</xsl:choose>										
+						</td>											
+						<td align="left"><xsl:value-of select="grnid"/></td>
+						<td align="left"><xsl:value-of select="grndate"/></td>
+						<td align="left"><xsl:value-of select="invissuer"/></td>
+						<td align="left"><xsl:value-of select="invsupname"/></td>
+						<td align="left"><xsl:value-of select="invramname"/></td>
+						<td align="left"><xsl:value-of select="invgrade"/></td>
+						<td align="right"><xsl:value-of select='format-number(recvqty,"##,##,##0.000")'/></td>
+						<td align="right"><xsl:value-of select='format-number(invramrate,"##,##,##0.00")'/></td>
+						<td align="right"><xsl:value-of select='format-number(invramrate * recvqty,"##,##,##0.00")'/></td>					
+						<td align="right">
+							<a>
+								<xsl:attribute name="invid"><xsl:value-of select="grnid" /></xsl:attribute>
+								<xsl:attribute name="class">view_button link</xsl:attribute>
+								View
+							</a>
+						</td>
+					</tr>
+				</xsl:for-each>
+				</tbody>
+			</table>
+    </xsl:template>
+</xsl:stylesheet>

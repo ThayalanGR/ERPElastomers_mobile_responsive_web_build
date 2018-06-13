@@ -1,0 +1,41 @@
+<?php
+	session_start();
+	
+	header("Content-Type: text/xml");
+	$sql	=	"select dr.issref as planId, DATE_FORMAT(issdate,'%d-%b-%Y') as issdate,
+					DATE_FORMAT(defrecdate,'%d-%b-%Y') as RecDate,tc.cmpdName, tc.cmpdRefno,  CASE WHEN dr.receivedqty = 0 THEN dr.issuedqty ELSE 0 END AS issqty,currrec as recValue,di.operator
+					from tbl_deflash_reciept dr
+					left join tbl_deflash_issue di on di.defiss = dr.issref
+					inner join tbl_component tc on di.cmpdid=tc.cmpdId
+					where dr.status>0 and defrecdate >= '".$_POST["startDate"]."' and  defrecdate <= '".$_POST["endDate"]."' order by defrecdate";
+
+	if($_POST["type"] != 'export')
+	{
+		$list	=	@getMySQLData($sql,"xml","root","lower");
+		$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);		
+		echo "<xmldata>".$list."</xmldata>";
+	}
+	else
+	{	
+		// filename for download
+		$filename = "deflash_receipts_from_".$_POST["startDate"]."_to_" . $_POST["endDate"] . ".csv";
+		header("Content-Disposition: attachment; filename=\"$filename\"");
+		header("Content-Type: application/vnd.ms-excel");	
+		$output 		=	"";
+		$outSql 		=	@getMySQLData($sql);
+		$schedDetails 	=   $outSql['data'];		
+		$output 		.= 	'"Key Ref.","Issue Date","Receipt Date","Part Number","Part Description","Issued Qty","Received Qty","Operator"';
+		$output 		.=	"\n";
+		
+		// Get Records from the table
+		foreach($schedDetails as $keys=>$values) {
+			foreach($values as $key=>$value)  {
+				$output .='"'.$value.'",';
+			}
+			$output .="\n";
+		}
+		
+		echo $output;	
+	}			
+
+?>

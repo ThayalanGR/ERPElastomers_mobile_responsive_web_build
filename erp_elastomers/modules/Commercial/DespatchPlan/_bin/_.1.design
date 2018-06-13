@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:variable name="delimiter">
+        <xsl:text>,</xsl:text>
+</xsl:variable>
+<xsl:template name="processingTemplate">
+	<xsl:param name="datalist"/>
+	<xsl:param name="cntid"/>
+	<xsl:param name="custid"/>
+	<xsl:choose>
+		<xsl:when test="contains($datalist,$delimiter)">
+			<a>
+				<xsl:attribute name="diref"><xsl:value-of select="substring-before($datalist,$delimiter)"/></xsl:attribute>
+				<xsl:attribute name="cmpdid"><xsl:value-of select="$cntid"/></xsl:attribute>
+				<xsl:attribute name="cusid"><xsl:value-of select="$custid"/></xsl:attribute>
+				<xsl:attribute name="class">edit_di_button link</xsl:attribute>
+				<xsl:value-of select="substring-before($datalist,$delimiter)"/>
+			</a>,
+			<xsl:call-template name="processingTemplate">
+				<xsl:with-param name="cntid" select="$cntid"/>
+				<xsl:with-param name="custid" select="$custid"/>			
+				<xsl:with-param name="datalist" select="substring-after($datalist,$delimiter)"/>
+			</xsl:call-template>
+		</xsl:when>
+		<xsl:otherwise>
+			<a>
+				<xsl:attribute name="cmpdid"><xsl:value-of select="$cntid"/></xsl:attribute>
+				<xsl:attribute name="cusid"><xsl:value-of select="$custid"/></xsl:attribute>			
+				<xsl:attribute name="diref"><xsl:value-of select="$datalist"/></xsl:attribute>
+				<xsl:attribute name="class">edit_di_button link</xsl:attribute>
+				<xsl:value-of select="$datalist"/>
+			</a>	
+		</xsl:otherwise>	
+	</xsl:choose>
+</xsl:template>	
+    <xsl:template match="/">  
+  		<table id="resultTable" class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th align="left" width="2%">#</th>				
+					<th align="left" width="2%">No</th>
+					<th align="left" width="16%">Customer Name</th>    
+					<th align="left" width="12%">Part Number</th> 
+					<th align="left" width="8%" >Di. Ref.</th>					
+					<th align="right" width="7%"> Di. Qty</th>
+					<th align="right" width="7%"> Di. Val.</th>
+					<th align="right" width="7%"> Des. Qty</th>
+					<th align="right" width="7%"> Des. Val.</th>
+					<th align="left" width="12%"> Inv. No.</th>
+					<th align="right" width="7%"> Pen. Qty</th>
+					<th align="right" width="7%">Pen. Val.</th>
+					<th align="right">#</th>
+				</tr>
+			</thead>
+			<tbody>	
+				<xsl:for-each select="xmldata/root/data/row">
+					<tr style="font-size:8;">
+						<td align="left">
+							<xsl:choose>
+								<xsl:when test="cusmultiinvoice = '1'">
+									<input>
+										<xsl:attribute name="id"><xsl:value-of select="position()" /></xsl:attribute>
+										<xsl:attribute name="cusid"><xsl:value-of select="cusid" /></xsl:attribute>
+										<xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+										<xsl:attribute name="porate"><xsl:value-of select="porate" /></xsl:attribute>
+										<xsl:attribute name="hsncode"><xsl:value-of select="cmpdhsn" /></xsl:attribute>
+										<xsl:attribute name="disabled">true</xsl:attribute>
+										<xsl:attribute name="type">checkbox</xsl:attribute>
+										<xsl:attribute name="value">1</xsl:attribute>
+										<xsl:attribute name="class">checkbox1</xsl:attribute>
+									</input>
+								</xsl:when>
+								<xsl:otherwise>
+									&#160;
+								</xsl:otherwise>
+							</xsl:choose>	
+						</td>					
+						<td align="left">
+							<xsl:value-of select="position()"/>
+						</td>							
+						<td align="left"  >
+							<xsl:value-of select="substring(cusname, 1, 30)"/>
+						</td>
+						<td align="left" >
+							<xsl:value-of select="substring(partnum, 1, 20)"/>
+						</td>
+						<td align="left">
+							<xsl:variable name="dataList">
+								<xsl:value-of select="di_desc"/>
+							</xsl:variable>
+							<xsl:variable name="cmpdId">
+								<xsl:value-of select="cmpdid"/>
+							</xsl:variable>
+							<xsl:variable name="cusId">
+								<xsl:value-of select="cusid"/>
+							</xsl:variable>							
+							<xsl:call-template name="processingTemplate">
+								<xsl:with-param name="datalist" select="$dataList"/>
+								<xsl:with-param name="cntid" select="$cmpdId"/>
+								<xsl:with-param name="custid" select="$cusId"/>
+							</xsl:call-template>
+							<!-- <xsl:value-of select="di_desc"/> -->
+						</td>								
+						<td align="right">
+							<xsl:value-of select='format-number(di_qty,"##,##,##0")' />
+						</td>
+						<td align="right">
+							<xsl:value-of select='format-number(di_qty * porate,"##,##,##0")' />
+						</td>						
+						<td align="right">
+							<xsl:value-of select='format-number(invqty,"##,##,##0")' />
+						</td>
+						<td align="right">
+							<xsl:value-of select='format-number(invqty * porate,"##,##,##0")' />
+						</td>
+						<td align="left">
+							<xsl:value-of select="dispinvid"/>
+						</td>						
+						<td align="right">
+							<xsl:if test="di_qty - invqty &gt; -1">
+								<a>
+									<xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+									<xsl:attribute name="pendqty"><xsl:value-of select='(di_qty - invqty)' /></xsl:attribute>
+									<xsl:attribute name="class">view_button link</xsl:attribute>
+									<xsl:value-of select='format-number(di_qty - invqty,"##,##,##0")' />
+								</a>							
+							</xsl:if>
+							<xsl:if test="di_qty - invqty &lt; 0">
+								0
+							</xsl:if>							
+						</td>
+						<td align="right">							
+							<xsl:if test="di_qty - invqty &gt; -1">
+								<xsl:value-of select='format-number((di_qty - invqty) * porate,"##,##,##0")' />
+							</xsl:if>
+							<xsl:if test="di_qty - invqty &lt; 0">
+								0
+							</xsl:if>							
+						</td>
+						<td align="right">
+							<xsl:if test="di_qty - invqty &gt; 0">
+								<xsl:choose>
+									<xsl:when test="cusmultiinvoice = '1'">
+										<a>
+											<xsl:attribute name="cmpdname"><xsl:value-of select="partnum" /></xsl:attribute>
+											<xsl:attribute name="cusid"><xsl:value-of select="cusid" /></xsl:attribute>
+											<xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+											<xsl:attribute name="porate"><xsl:value-of select="porate"/></xsl:attribute>
+											<xsl:attribute name="cusstate"><xsl:value-of select="cusstate"/></xsl:attribute>
+											<xsl:attribute name="cusgstn"><xsl:value-of select="cusgstn"/></xsl:attribute>
+											<xsl:attribute name="cuspan"><xsl:value-of select="cuspan"/></xsl:attribute>
+											<xsl:attribute name="setkeys">1</xsl:attribute>
+											<xsl:attribute name="position"><xsl:value-of select="position()"/></xsl:attribute>
+											<xsl:attribute name="class">set_button link</xsl:attribute>
+											Set Keys
+										</a>
+									</xsl:when>
+									<xsl:otherwise>
+										<a>
+											<xsl:attribute name="cmpdname"><xsl:value-of select="partnum" /></xsl:attribute>
+											<xsl:attribute name="cusid"><xsl:value-of select="cusid" /></xsl:attribute>
+											<xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+											<xsl:attribute name="porate"><xsl:value-of select="porate"/></xsl:attribute>
+											<xsl:attribute name="cusstate"><xsl:value-of select="cusstate"/></xsl:attribute>
+											<xsl:attribute name="cusgstn"><xsl:value-of select="cusgstn"/></xsl:attribute>
+											<xsl:attribute name="cuspan"><xsl:value-of select="cuspan"/></xsl:attribute>
+											<xsl:attribute name="setkeys">0</xsl:attribute>
+											<xsl:attribute name="class">raise_button link</xsl:attribute>
+											Invoice
+										</a>	
+									</xsl:otherwise>
+								</xsl:choose>							
+							</xsl:if>
+						</td>						
+                    </tr>
+				</xsl:for-each>	            	
+			</tbody> 
+		</table>
+    </xsl:template>
+</xsl:stylesheet>

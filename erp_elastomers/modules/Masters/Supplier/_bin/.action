@@ -1,0 +1,78 @@
+<?php
+
+	// Includes
+	session_start();
+	
+	// Do Actions
+	header('Content-Type: text/xml');
+	switch($_POST['selecttype']){
+		case "SUPADD":
+			if($_POST['supname'] != "" && $_POST['supaddress1'] != ""){
+				// Generate Code No
+				$codeArray		=	@getSettingsData("supcode");
+				$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+				if($codeNo != ""){
+					$output		=	@getMySQLData("insert into tbl_supplier(
+														supId, supRefNo, supName, supContName, supAddress1, 
+														supEmail, supPhone, supFax, supMobile, supBankName, supBankNo,
+														supIFSCCode, supPlace, supState, supGSTN, supPan,supCreditDays,
+														supApprovedBy, supApprovedDate, supRemarks, entry_on, entry_by
+													)
+													values(
+														'$codeNo', '".$_POST['suprefno']."', '".$_POST['supname']."', '".$_POST['supcontperson']."', '".$_POST['supaddress1']."',
+														'".$_POST['supemail']."', '".$_POST['supphone']."', '".$_POST['supfax']."', '".$_POST['supmobile']."', '".$_POST['supbankname']."', '".$_POST['supbankno']."',
+														'".$_POST['supifsc']."', '".$_POST['supplace']."', '".$_POST['supstate']."', '".$_POST['supgstn']."', '".$_POST['suppan']."', '".$_POST['supcredit']."',
+														'".$_SESSION['userdetails']['userId']."', now(), \"".$_POST['supremarks']."\", now(), '".$_SESSION['userdetails']['userId']."'
+													);", "xml");
+				}
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					
+					if($status == "success"){
+						@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='supcode'");
+					}
+				}
+			}
+			else{
+				$output = "<mysql><status>Invalid Data . . .</status></mysql>";
+			}
+		break;
+		case "SUPEDIT":
+			if($_POST['supid'] != "" && $_POST['supname'] != "" && $_POST['supaddress1'] != "" ){
+				$output		=	@getMySQLData("update tbl_supplier set
+												supRefNo='".$_POST['suprefno']."', supName='".$_POST['supname']."',
+												supContName='".$_POST['supcontperson']."', supAddress1='".$_POST['supaddress1']."',
+												supEmail='".$_POST['supemail']."', supPhone='".$_POST['supphone']."',
+												supFax='".$_POST['supfax']."', supMobile='".$_POST['supmobile']."',
+												supBankName='".$_POST['supbankname']."', supBankNo='".$_POST['supbankno']."',
+												supIFSCCode='".$_POST['supifsc']."', supPlace='".$_POST['supplace']."',
+												supState='".$_POST['supstate']."', supGSTN='".$_POST['supgstn']."',
+												supPan='".$_POST['suppan']."', supCreditDays='".$_POST['supcredit']."',
+												supApprovedBy='".$_POST['supappuser']."', supRemarks='".$_POST['supremarks']."', 
+												update_on=now(), update_by='".$_SESSION['userdetails']['userId']."'
+												where supId='".$_POST['supid']."' and status>0;", "xml");
+			}
+			else{
+				$output = "<mysql><status>Invalid Data . . .</status></mysql>";
+			}			
+		break;
+		case "SUPDEL":
+			if($_POST['supid'] != ""){
+				$output		=	@getMySQLData("update tbl_supplier set status='0' where supId='".$_POST['supid']."' and status>0;", "xml");
+			}
+		break;
+	}
+	
+	// List Data
+	$list	=	@getMySQLData("SELECT supId, supRefNo, supName, supContName, supAddress1, supEmail, supPhone, supFax,
+								supMobile, supBankName, supBankNo, supIFSCCode, supPlace, supState, supGSTN, supPan, 
+								supCreditDays, supApprovedBy, DATE_FORMAT(supApprovedDate, '%d/%m/%Y') as supApprovedDate, supRemarks
+							FROM tbl_supplier where status>0;",'xml','root','lower');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+?>

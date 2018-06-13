@@ -1,0 +1,318 @@
+tableFilters.sort_config		=	{ sort_types:['string','date', 'string','string','string','string','us','us','us','none'] };
+var TF_01						=	null;
+var needRefresh					=	false;
+
+$(document).ready(function(){
+	//create buttons 					   
+	$("#cancel_receiptnote").button();
+	$("#create_receiptnote").button();
+	
+	$("#sample_receipt").dialog({
+		autoOpen:false, 
+		width:750,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Generate",
+				tabindex:21,
+				click: function(){
+					if(typeof createSampleReceipt == 'function')
+					createSampleReceipt();
+				}
+			},
+			{ 
+				text: "Cancel",
+				tabindex:22,
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});	
+
+	getPageData();
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=PLANLIST","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	
+	$(".sample_receipt_button").click(function(e) {
+		planId			=	$(this).attr('planid');
+		$("#sample_receipt").dialog('open');
+		getString		=	"type=PLANDET&planid="+planId;
+		objPlanDetails	=	postback(actionFile, getString, "POST", "XML");
+		noofcavs		=	$(objPlanDetails).find("toolCavities").text();
+		lifts			=	$(objPlanDetails).find("liftPlanned").text();
+		$("#sample_receipt").attr("noofcavs",noofcavs);
+		$("#planid").html(planId);
+		$("#plandate").html($(objPlanDetails).find("planDate").text());
+		$("#operator").val($(objPlanDetails).find("operator").text());
+		$("#complist").val($(objPlanDetails).find("cpdId").text());
+		$("#blankwgt").keydown(numbersOnly);
+		$("#blankwgt").val($(objPlanDetails).find("cmpdBlankWgt").text());		
+		$("#length").keydown(numbersOnly);
+		$("#length").val($(objPlanDetails).find("strip_dim2").text());
+		$("#breath").keydown(numbersOnly);	
+		$("#breath").val($(objPlanDetails).find("strip_dim3").text());
+		$("#thickness").keydown(numbersOnly);
+		$("#thickness").val($(objPlanDetails).find("strip_dim1").text());	
+		$("#stripwgt").keydown(numbersOnly);
+		$("#stripwgt").val($(objPlanDetails).find("strip_weight").text());
+		$("#stripslift").keydown(numbersOnly);
+		$("#stripslift").val($(objPlanDetails).find("strips_per_lift").text());
+		$("#temperature").keydown(numbersOnly);
+		$("#temperature").val($(objPlanDetails).find("cmpdCurTemp").text());
+		$("#curetime").keydown(numbersOnly);
+		$("#curetime").val($(objPlanDetails).find("cmpdCurTime").text());	
+		$("#pressure").keydown(numbersOnly);
+		$("#pressure").val($(objPlanDetails).find("cmpdPressure").text());
+		$("#lifts").keydown(numbersOnly);
+		$("#lifts").val(lifts);
+		$("#trim_output").keydown(numbersOnly);
+		$("#trim_output").val(noofcavs * lifts);
+		$("#SHORT").keydown(numbersOnly);
+		$("#post_cure_time").keydown(numbersOnly);
+		$("#post_cure_temp").keydown(numbersOnly);		
+		calcApproved();
+    });
+	
+	$(".delete_plan_button").click(function(e) {
+		planId		=	$(this).attr('planid');
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Delete this Plan?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+			title:'Delete Plan',
+			width:650,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					delstat 	= postback(actionFile, "type=DELETE&planid="+planId, "POST", "XML");
+					xmlData		=	parseXMLdoc(delstat);
+					error		=	$(xmlData).find("status").text();
+					if(error == 'success')
+						alert("Plan: " + planId + " deleted Successfully");
+					else
+						alert("Deletion of Plan: " + planId + " failed due to : " + $(xmlData).find("errtxt").text());
+					getPageData();
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	
+    });	
+	
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+
+}
+
+function calcApproved(){
+	total		=	0;	
+	receiptqty	=	$("#trim_output").val() ;
+
+	if(!isNaN(Number(receiptqty))){
+		$(" .rejection").each(function(index, element){
+			vvl		=	$(this).val();
+			total	=	total	+	Number(vvl);
+		});
+		total		=	Number(receiptqty) - total;	
+		if(isNaN(Number(total))){
+			total	=	0;
+		}
+		
+		$("#appqty").html(getCurrency(total, 0));
+		$("#appqty").css('color', (total>0)?'#000000':'#ff0000');
+	}	
+}
+
+function createSampleReceipt(){
+	planError		=	$("#raise_error");
+	noOfCavs		=	$("#sample_receipt").attr("noofcavs");
+	cpdList			=	$("#complist");
+	blankWeight		=	$("#blankwgt");
+	stripLength		=	$("#length");
+	stripBreath		=	$("#breath");	
+	stripThickness	=	$("#thickness");	
+	stripWeight		=	$("#stripwgt");
+	stripsLift		=	$("#stripslift");
+	advTemp			=	$("#temperature");
+	advCureTime		=	$("#curetime");	
+	advPressure		=	$("#pressure");
+	noOfLifts		=	$("#lifts");
+	postCure		=	$("#post_cure_yes");
+	postCureTime	=	$("#post_cure_time");
+	postCureTemp	=	$("#post_cure_temp");
+	trimOutput		=	$("#trim_output");
+	approvedQty		=	$("#appqty");
+	maxOutput		=	Number(noOfCavs) * Number(noOfLifts.val());
+	postCureYes		=	((postCure.attr('checked'))?1:0);
+	
+	if(cpdList.val() == null || cpdList.val() == ""){
+		displayError(planError, "error", "<strong>Error !</strong> - Please Select The Compound");
+		cpdList.focus();
+		return false;
+	}
+	else if(Number(blankWeight.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Blank Weight.");
+		blankWeight.focus();
+		return false;
+	}
+	else if(Number(stripLength.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Strip Length.");
+		stripLength.focus();
+		return false;
+	}
+	else if(Number(stripBreath.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Strip Breath.");
+		stripBreath.focus();
+		return false;
+	}
+	else if(Number(stripThickness.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Strip Thickness.");
+		stripThickness.focus();
+		return false;
+	}	
+	else if(Number(stripWeight.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Strip Weight.");
+		stripWeight.focus();
+		return false;
+	}
+	else if(Number(stripsLift.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Strips per Lift.");
+		stripsLift.focus();
+		return false;
+	}
+	else if(Number(advTemp.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Advised Temperature.");
+		advTemp.focus();
+		return false;
+	}
+	else if(Number(advCureTime.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Advised Curing Time.");
+		advCureTime.focus();
+		return false;
+	}			
+	else if(Number(advPressure.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Advised Pressure.");
+		advPressure.focus();
+		return false;
+	}
+	else if(Number(noOfLifts.val()) <= 0){
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Lifts.");
+		noOfLifts.focus();
+		return false;
+	}
+	else if (postCureYes == 1 && Number(postCureTime.val()) <= 0) 
+	{
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Postcure Time!.");
+		postCureTime.focus();
+		return false;	
+	}
+	else if (postCureYes == 1 && Number(postCureTemp.val()) <= 0)
+	{
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Postcure Temp!.");
+		postCureTemp.focus();
+		return false;	
+	}
+	else if (Number(trimOutput.val()) <= 0 || Number(trimOutput.val()) > maxOutput)
+	{
+		displayError(planError, "error", "<strong>Error !</strong> - Invalid Trimming Output!.");
+		trimOutput.focus();
+		return false;	
+	}	
+	else if (Number(approvedQty.html()) <= 0)
+	{
+		displayError(planError, "error", "<strong>Error !</strong> - No Approved Samples Available!.");
+		return false;	
+	}
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Create the Sample Plan?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Raise TRN',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															param		=	"type=" + "RECINS" +
+																			"&planid=" + $("#planid").html() +
+																			"&operator=" + $("#operator").val() +
+																			"&cpdid=" + cpdList.val() +
+																			"&blankwgt=" + blankWeight.val() +
+																			"&striplen=" + stripLength.val() +
+																			"&stripbre=" + stripBreath.val() +
+																			"&stripthk=" + stripThickness.val() +
+																			"&stripwgt=" + stripWeight.val() +
+																			"&stripslift=" + stripsLift.val() +
+																			"&curetemp=" + advTemp.val() +
+																			"&curetime=" + advCureTime.val() +
+																			"&curepress=" + advPressure.val() +
+																			"&nooflifts=" + noOfLifts.val() +
+																			"&moldremarks=" + $("#mold_remarks").val() +
+																			"&postcure="  + postCureYes +
+																			"&postcuretime=" + ((postCureYes == 1)?postCureTime.val():0) +
+																			"&postcuretemp=" + ((postCureYes == 1)?postCureTemp.val():0) +
+																			"&trimoperator=" + $("#trim_operator").val() +
+																			"&trimoutput=" + trimOutput.val() +
+																			"&trimremarks=" + $("#trim_remarks").val() +
+																			"&inspector=" + $("#inspector").val() +
+																			"&appqty=" + approvedQty.html() +
+																			"&inspremark=" + $("#insp_remarks").val();
+															$(" .rejection").each(function(index, element) {
+																vvl		=	$(this).val();
+																idVal	=	$(this).attr("id");
+																if(vvl.toNumber() > 0)
+																	param	+=	"&rejname[]="+idVal+"&rejval[]="+vvl;
+															});								
+															//alert(param); return false;	
+															$("#sample_receipt").dialog("close");															
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															//alert(XMLContent); //return false;
+															xmlData				=	parseXMLdoc(XMLContent);
+															error				=	$(xmlData).find("mysql:first status:first").text();
+															if(error == "success"){
+																alert("The Sample Receipt has been Added!");																	
+															}
+															else{
+																alert("The Sample Receipt Addition failed due to:" + error);
+															}
+															getPageData();
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+}
+
+

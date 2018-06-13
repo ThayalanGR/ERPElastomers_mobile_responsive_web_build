@@ -1,0 +1,87 @@
+<?php
+	session_start();
+    header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "RAMATLIST":
+			echo @getXML("select ramId, ramName, ramGrade from tbl_rawmaterial order by ramName asc");
+			exit();
+		break;
+		
+		case "RAMBOOKQTY":
+			$ramid			=	$_POST['ramid'];
+			$selectdata 	= 	@getMySQLData("select * from tbl_invoice_grn where invRamId='$ramid' and  avlQty>0	");
+			if($selectdata['count']> 0)
+				echo @getMySQLData(	"select grnId, date_format(grnDate, '%d-%b-%Y') as grnDate, invUom as ramUoM, avlQty as bookQty	from tbl_invoice_grn where invRamId='$ramid' and  avlQty>0	order by grnDate desc",	"xml", "xmldata", "lower");
+			else
+				echo @getMySQLData(	"select grnId, date_format(grnDate, '%d-%b-%Y') as grnDate, invUom as ramUoM, avlQty as bookQty	from tbl_invoice_grn where invRamId='$ramid' order by grnDate desc limit 1",	"xml", "xmldata", "lower");
+			exit();
+		break;
+		
+		case "SANDETAILS":
+			if($_POST['sanid'] != ""){
+				$list	=	getXML("SELECT sanId, DATE_FORMAT(sanDate, '%d-%b-%Y') as sanDate, ramId, ramName, ramGrade, grnId,
+									DATE_FORMAT(grnDate, '%d-%b-%Y') as grnDate, uom, description, bookQty, physicalQty, exc_shrt
+									FROM tbl_purchase_san where status>0 and sanId='".$_POST['sanid']."'", false);
+				$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+				echo $list;
+			}
+			exit();
+		break;
+		
+		case "ADDSAN":
+			if(count($_POST) > 0 && $_POST['ramid'] && count($_POST['grnkey']) > 0){
+				$sanCode	=	@getRegisterData("ramstkadj");
+				$ramData	=	@getMySQLData("select * from tbl_rawmaterial where ramId='".$_POST['ramid']."'");
+				$ramData	=	$ramData['data'][0];
+
+				$sql		=	"insert into tbl_purchase_san(sanId, sanDate, ramId, ramName, ramGrade, grnId, grnDate,
+									uom, description, bookQty, physicalQty, exc_shrt, entry_on, entry_by) values";
+
+				for($san=0; $san<count($_POST['grnkey']); $san++){
+					$grnDate	=	date("Y-m-d", strtotime($_POST['grndate'][$san]));
+					$sql		.=	"(
+										'$sanCode', now(), '".$_POST['ramid']."', '".$ramData['ramName']."', '".$ramData['ramGrade']."', '".$_POST['grnkey'][$san]."', '$grnDate',
+										'".$_POST['uom'][$san]."', '".$_POST['desc']."', '".$_POST['bookqty'][$san]."', '".$_POST['phyqty'][$san]."', '".$_POST['excshrt'][$san]."', now(), '".$_SESSION['userdetails']['userId']."'
+									)".(($san<count($_POST['grnkey'])-1)?", ":"");
+				}
+				$addSQL			=	@getMySQLData($sql);
+				
+				if($addSQL['status'] == "success"){
+					for($sano=0; $sano<count($_POST['grnkey']); $sano++){
+						@getMySQLData("update tbl_invoice_grn set avlQty=avlQty + ".$_POST['excshrt'][$sano]." where grnId ='".$_POST['grnkey'][$sano]."'");
+					}					
+					updateSettingsData(array("ramstkadj"));
+					$output	=	"
+						<addsan>
+							<sql>$sql</sql>
+							<status>".$addSQL['status']."</status>
+							<sanid>$sanCode</sanid>
+						</addsan>
+					";
+				}
+				else{
+					$output	=	"
+						<addsan>
+							<sql>$sql</sql>
+							<status>".$addSQL['status']."</status>
+							<errno>".$addSQL['errno']."</errno>
+							<errtxt>".$addSQL['errtxt']."</errtxt>
+						</addsan>
+					";
+				}
+			}
+		break;
+		
+	}
+	// List Data
+	header("Content-Type: text/xml");
+	$list	=	getMySQLData("SELECT sanId, DATE_FORMAT(sanDate, '%d-%b-%Y') as sanDate, ramId, ramName, ramGrade, grnId,
+								DATE_FORMAT(grnDate, '%d-%b-%Y') as grnDate, uom, bookQty, physicalQty, exc_shrt
+						FROM tbl_purchase_san where status>0 group by sanId asc", 'xml', 'root', 'lower');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

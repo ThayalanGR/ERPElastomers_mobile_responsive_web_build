@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+   <xsl:template match="/"> 
+		<table class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="5%">SNo</th>
+					<th width="45%">Name</th> 
+					<th width="25%">Pending Qty.</th>
+					<th>Pending Qty. Value<sup>Rs</sup></th>					
+				</tr>
+			</thead>
+			<tbody>	
+            <xsl:for-each select="xmldata/root/data/row">
+				<tr>
+					<xsl:if test="position() mod 2 != 0">
+						<xsl:attribute name="class">content_rows_light</xsl:attribute>
+					</xsl:if>
+					<xsl:if test="position() mod 2 != 1">
+						<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+					</xsl:if>
+					<td align="left">
+						<xsl:value-of select="position()"/>
+					</td>					
+					<td align="left">
+						<span>
+							<xsl:attribute name="cusgroup"><xsl:value-of select="cusgroup"/></xsl:attribute>
+							<xsl:attribute name="operator"><xsl:value-of select="operator"/></xsl:attribute>
+							<xsl:attribute name="compname"><xsl:value-of select="compname"/></xsl:attribute>
+							<xsl:attribute name="step"><xsl:value-of select="step"/></xsl:attribute>
+							<xsl:if test="step != 3">
+								<xsl:attribute name="class">view_button link</xsl:attribute> <xsl:value-of select="dispname"/>
+							</xsl:if>
+							<xsl:if test="step = 3">
+								<a>
+									<xsl:attribute name="href">/Component/MouldingPlanRegister/page=invoice/mod=card/invID=<xsl:value-of select="planref"/></xsl:attribute>
+									<xsl:attribute name="target">new</xsl:attribute>
+									<xsl:value-of select="dispname"/>
+								</a>
+							</xsl:if>							
+						</span>	
+						
+					</td>					  
+					<td align="right">
+						<xsl:value-of select='format-number(totalpenqty,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(totalpenval,"##,##,##0")' />
+					</td>					
+				</tr>
+            </xsl:for-each>		
+			</tbody> 
+		</table>
+    </xsl:template>		
+</xsl:stylesheet>
+		

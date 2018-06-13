@@ -1,0 +1,19 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$sql_qan	=	"select rq.grnId, DATE_FORMAT(rq.qanDate, '%d-%b-%Y') as qanDate, igi.invSupName as supName, igi.invRamName, igi.invGrade, rq.ramStatus, rq.entry_on, rq.entry_by
+						from tbl_rawmaterial_qan rq
+							inner join tbl_invoice_grn igi on igi.grnId=rq.grnId
+						where rq.qanDate >= '".$_POST["fromdate"]."' and  rq.qanDate  <= '".$_POST["todate"]."'
+						group by rq.grnId  order by rq.grnId desc";
+						
+	$list		=	getMySQLData($sql_qan,'xml','root','lower');
+	$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

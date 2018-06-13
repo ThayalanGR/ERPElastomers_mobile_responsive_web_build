@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+		<table border="0" id="resultTable" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr>
+					<th align="left" width="4%">No</th>
+					<th align="left" width="6%" title="Invoice Reference">Inv. Ref.</th>
+					<th align="left" width="8%" title="Invoice Date">Inv. Date</th>
+					<th align="left" width="20%" title="Customer Name">Customer Name</th>    
+					<th align="left" width="6%" title="Business Group">Business Group</th>
+					<th align="left" width="12%" title="Compound / Component Code">CPD. / CNT. Code</th>    
+					<th align="left" width="20%" title="Compound / Component Name">CPD. / CNT. Name</th>
+					<th align="right" width="8%" title="Quantity">Qty</th>
+					<th align="right" width="10%">Value</th>
+					<th align="left" title="Select for Printing">
+						<input>
+							<xsl:attribute name="id">input_select_all</xsl:attribute>
+							<xsl:attribute name="type">checkbox</xsl:attribute>
+							<xsl:attribute name="value">1</xsl:attribute>
+							<xsl:attribute name="style">text-align:right;width:90%</xsl:attribute>
+						</input>
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+            <xsl:for-each select="xmldata/root/data/row">
+				<tr>
+					<xsl:if test="position() mod 2 != 0">
+						<xsl:attribute name="class">content_rows_light</xsl:attribute>
+					</xsl:if>
+					<xsl:if test="position() mod 2 != 1">
+					  <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+					</xsl:if>				
+					<td align="left">
+						<xsl:value-of select="position()" />
+					</td>					
+					<td align="left">
+						<xsl:value-of select="invid"/>
+					</td>					  
+					<td align="left">
+						<xsl:value-of select="invdate"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="cusname"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="cusgroup"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="invname"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="invdesc"/>
+					</td>					  
+					<td align="right">
+						<xsl:value-of select='format-number(invqty,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(value,'###,###,##0.00')" />
+					</td>
+					<td align="right">
+						<input>
+							<xsl:attribute name="id"><xsl:value-of select="invid" /></xsl:attribute>
+							<xsl:attribute name="invid"><xsl:value-of select="invid" /></xsl:attribute>
+							<xsl:attribute name="type">checkbox</xsl:attribute>
+							<xsl:attribute name="value">1</xsl:attribute>
+							<xsl:attribute name="style">text-align:right;width:90%</xsl:attribute>
+							<xsl:attribute name="class">checkbox1</xsl:attribute>
+						</input>
+					</td>
+				</tr>
+            </xsl:for-each>
+			</tbody>
+		</table> 
+    </xsl:template>
+</xsl:stylesheet>

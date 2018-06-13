@@ -1,0 +1,71 @@
+tableFilters.default_date_type 	= 	'YMD';
+tableFilters.col_operation		=	{ 
+									   id: ["val_total1","val_total2","val_total3","val_total4","val_total5"], 
+									   col: [2,3,4,5,6],
+									   operation: ["sum","sum","sum","sum","sum"],
+									   decimal_precision: [0,0,3,0,3]
+									};
+
+var TF_01	=	null;
+var needRefresh				=	false;
+
+$(document).ready(function(){
+	updatePageBehaviour();	
+});
+
+function updatePageBehaviour(){	
+	param				=	"selecttype=MOULDLIST&startDate="+$("#from_date").val()+"&endDate="+$("#to_date").val();	
+	//alert(param); return false;						
+	var objCompList		=	postback(actionFile, param, "POST", "XML");
+	//alert(objCompList); return false;
+	listPageData($("#content_body"), objCompList, XSLFile);	
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('plandate');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({mod:'plan',invID:mRecId,operator:$(this).attr('operator')});
+		}
+	});
+	
+	$(".view_all_button").click(function(){
+		mRecId	=	$(this).attr('plandate');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({mod:'card',invID:mRecId + "~all",operator:$(this).attr('operator')});
+		}
+	});		
+	
+	$(".view_one_button").click(function(){
+		mRecId	=	$(this).attr('plandate');
+		if(mRecId != null && mRecId != ""){
+			plan       =   postback(actionFile,"selecttype=GETPLANIDS&plandate="+mRecId+"&operator="+$(this).attr('operator'),"POST","XML");
+			contBatch	=	"<table width='100%'>";
+			$(plan).find('row').each(function(index, element) {   
+				planid		=	$(this).find('planid').text();	
+				contBatch	+=	'<tr>'+
+									'<td align="center" height="30px"> <a href="javascript:void(0);" onclick="openInvoice({mod:\'card\',invID:\''+planid+'\'})" >'+planid+'</a></td>'+
+								'</tr>';
+			});
+			contBatch	+=	"</table>";
+			$('#view_dialog').html(contBatch).dialog({
+				title:'View Moulding Plans',
+				width:250,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'Ok':function(){
+						$(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).dialog('destroy');
+				}
+			});
+		}
+	});
+	
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+	
+}

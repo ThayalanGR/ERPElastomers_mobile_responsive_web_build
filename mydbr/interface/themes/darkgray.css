@@ -1,0 +1,61 @@
+.row_header, .cell_ct, td.pageview_cell1, .drill_header {
+	color: white;
+	background-position: center;
+	background-color: #535353;
+}
+
+tr.odd:hover td, tr.even:hover td, td.popuprow:hover,
+div.autocomplete ul li.selected {
+	background-color: #E2E2E2 !important;
+}
+
+.title, .subtitle {
+	color: black;
+}
+
+.summary {
+	background: #F2F2F2;
+	color: black;
+}
+
+.odd {
+	background-color: #F7F7F7;
+}
+
+div.pager, button.pager {
+	background-color: #535353;
+	border-bottom: none;
+}
+
+.pageview_cell1 {
+	border-bottom: 1px solid #535353;
+}
+
+
+table.sortable thead tr .headerSortUp {
+	background-image: url(data:image/gif;base64,R0lGODlhCgAEAJEAAAAAAP///wAAAAAAACH5BAkKAAIALAAAAAAKAAQAAAIKjB+igrl63nOvAAA7);
+}
+table.sortable thead tr .headerSortDown {
+	background-image: url(data:image/gif;base64,R0lGODlhCgAEAJEAAAAAAP///wAAAAAAACH5BAkKAAIALAAAAAAKAAQAAAIKlGOZwXrcFoSpAAA7);
+}
+
+div.comment {
+	background-color: #F2F2F2;
+}
+
+.pw_reset_link, .pw_reset_link:visited {color:black;}
+
+.fc-head, .fc-head-container.fc-widget-header {
+  border-top: 1px solid black; 
+  border-bottom: 1px solid black;
+}
+.dbr_calendar .fc-day-header {
+  border-top: 1px solid black; 
+  background: #535353;
+  color: white;
+} 
+.dbr_calendar .fc-basic-view th.fc-week-number, .dbr_calendar .fc-head-container.fc-widget-header, .dbr_calendar .fc-week-number.fc-widget-header {
+  background: #535353;
+  color: white;
+  font-weight: bold;
+}

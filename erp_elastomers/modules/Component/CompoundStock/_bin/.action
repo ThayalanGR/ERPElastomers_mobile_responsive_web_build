@@ -1,0 +1,367 @@
+<?php
+	session_start();
+	global $inCpdCutoffDate;
+	header('Content-Type: text/xml');
+	switch($_REQUEST["selecttype"]){
+		case "CPDATLIST":
+			echo getXML("select cpdId, cpdName from tbl_compound where status>0 order by cpdId asc", false);
+		break;
+		case "GETDETAIL":
+			$one_day			=	24 * 60 * 60;
+			$cpdId				=	$_REQUEST['compcode'];
+			$fromDate			=	$_REQUEST['from_date'];
+			$toDate				=	$_REQUEST['to_date'];
+			$order				=	"/";
+			$replace			=	"-";
+			$fromDate			=	str_replace($order,$replace,$fromDate);
+			$toDate				=	str_replace($order,$replace,$toDate);
+			$fromdate			=	date("Y-m-d",strtotime($fromDate));
+			$todate				=	date("Y-m-d",strtotime($toDate));
+			$from_time			=	strtotime($fromdate);
+			$to_time			=	strtotime($todate);
+			$stock				=	0;
+			$lastPoly			=	"";
+			$opnStockGrdTot		=	0;
+			$recieptsGrdTot		=	0;
+			$returnsGrdTot		=	0;
+			$issuesGrdTot		=	0;
+			$clsStockGrdTot		=	0;
+			$scheduleGrdTot		=	0;
+			$balSchedGrdTot		=	0;
+			$polyCpdCost		=	0;
+			$cpdCount			=	0;
+			$opnStockPolyTot	=	0;
+			$recieptsPolyTot	=	0;
+			$returnsPolyTot		=	0;
+			$issuesPolyTot		=	0;
+			$clsStockPolyTot	=	0;	
+			$schedulePolyTot	=	0;
+			$balSchedPolyTot	=	0;
+			$return				=	"";
+			$count				=	0;
+			
+			// Get Compound Data
+			$sql				=	"select * from tbl_compound tc 
+										inner join tbl_polymer_order tpo on tpo.polyName = tc.cpdPolymer  
+										where status>0 ".((isset($cpdId) && $cpdId != "")?" and cpdId='$cpdId'":"")." order by dispOrder, cpdName";
+			$cpddata			=	@getMySQLData($sql);
+			
+			// Get Schedule Data
+			$sql_comp 			= 	"select * 
+										from (select cmpdId, cmpdBlankWgt, cmpdCpdId, schQty,cusId 
+												from tbl_scheduling t1 
+													inner join tbl_component t2 on t1.cpdId_cmpdId=t2.cmpdId 
+												where (STR_TO_DATE(concat('01',' ',schMonth),'%d %M %Y') between '".date("Y-m-01",strtotime("$fromdate"))."' and '".date("Y-m-t",strtotime("$todate"))."') and t1.status=1 and t2.status=1 and t1.entry_on > '$inCpdCutoffDate' 
+											order by t1.entry_on desc)as component 
+									group by cmpdId,cusId";
+			$scddata			=	@getMySQLData($sql_comp);
+			
+			for($r=0; $r<$cpddata['count']; $r++){
+				$cpdid				=	$cpddata['data'][$r]['cpdId'];
+				$cpdRef				=	$cpddata['data'][$r]['cpdName'];
+				$cpdPolymer			=	$cpddata['data'][$r]['cpdPolymer'];
+				
+				$tot_schqty			=	0;
+				$tot_receipt		=	0;
+				$tot_returns		=	0;
+				$tot_issue			=	0;
+				$tot_open			=	0;				
+				
+				// Get Stock List before Start Date
+				$sql			=	"select recvQty 
+										from tbl_component_cpd_recv 
+										where cpdId = '$cpdid' and status = '1' and invDate <'$fromdate' and invDate > '$inCpdCutoffDate'";
+				$stockopen		=	@getMySQLData($sql, "arr");
+				
+				// Stock Total for Opening
+				$stock_list_open	=	0;
+				for($os=0; $os<$stockopen['count']; $os++){
+					$stock_list_open	+=	$stockopen['data'][$os]['recvQty'];
+				}
+				
+				// Get SAN Before Start Date
+				$sql			=	"select  sum(exc_shrt) as exc_shrt 
+										from tbl_mixing_san tms
+											inner join tbl_component_cpd_recv mx on tms.batId = mx.batId and mx.status > 0 and mx.invDate > '$inCpdCutoffDate' 
+										where tms.cpdId='$cpdid' and tms.status=1 and tms.isIncoming = 1 and tms.sanDate < '$fromdate' ";
+				$sanopen		=	@getMySQLData($sql, "arr");
+				// Stock Total for Opening
+				for($osa=0; $osa<$sanopen['count']; $osa++){
+					$stock_list_open	+=	$sanopen['data'][$osa]['exc_shrt'];
+				}	
+				
+				// Get Issue List before Start Date
+				$sql				=	"select qtyIss
+											from tbl_moulding_issue t1 
+												inner join tbl_component_cpd_recv t2 on t1.batRef = t2.sno  and  t2.cpdId = '$cpdid' and invDate > '$inCpdCutoffDate'
+											where  t1.status > 0 and t1.issueDate <'$fromdate'";				
+				$issueopen			=	@getMySQLData($sql, "arr");
+				// Issue Total for Opening
+				$issue_list_open	=	0;
+				for($oi=0; $oi<$issueopen['count']; $oi++){
+					$issue_list_open	+=	$issueopen['data'][$oi]['qtyIss'];
+				}
+				
+				// Get Opening Stock
+				$stock			=	$stock_list_open - $issue_list_open;
+				$tot_open		=	$stock;
+				$opnStockGrdTot	+= 	$stock;
+				//added "round" for preventing "-0.000" display
+				$opening_stock	=	"<opening_stock>".round($stock,3)."</opening_stock>";
+				
+				//get Schedule Information
+				if( ($scddata['errno'] == 0)&&($scddata['count'] > 0) ){
+					foreach($scddata['data'] as $component){
+						if($component['cmpdCpdId'] == $cpdid){
+							$tot_schqty += (($component['schQty'] * $component['cmpdBlankWgt'])/1000) ;
+						}
+					}
+				}
+				
+				// Get Stock Information
+				$sql		=	" select invId, cpdId, invDate, recvQty
+										from tbl_component_cpd_recv 
+										where cpdId = '$cpdid' and status = '1' and invDate > '$inCpdCutoffDate' and invDate between '$fromdate' and '$todate'";
+				$stockdat	=	@getMySQLData($sql, "arr");
+				
+				$sql		=	"select t1.issueDate, sum(qtyIss) as qtyIss, mdIssRef
+											from tbl_moulding_issue t1 
+												inner join tbl_component_cpd_recv t2 on t1.batRef = t2.sno  and  t2.cpdId = '$cpdid'  and t2.invDate > '$inCpdCutoffDate'
+											where  t1.status > 0 and t1.issueDate between '$fromdate' and '$todate' group by mdIssRef";
+				$issue		=	@getMySQLData($sql, "arr");
+				
+				$sql		=	"select sanId, sanDate, sum(exc_shrt) as exc_shrt 
+									from tbl_mixing_san tms
+										inner join tbl_component_cpd_recv mx on tms.batId = mx.batId and mx.status > 0 and mx.invDate > '$inCpdCutoffDate' 
+								where tms.cpdId='$cpdid' and tms.status=1 and tms.isIncoming = 1 and (tms.sanDate between '$fromdate' and '$todate') group by sanId asc;";
+				$san		=	@getMySQLData($sql, "arr");				
+				
+				// Get Dates
+				$from_date	=	$from_time;
+				$to_date	=	$to_time;
+				$date_now	=	$from_date;
+				$stock_list	=	'';
+				if($stockdat['status']=="success" && $issue['status']=="success" && $san['status']=="success"){
+					
+					while($date_now <= $to_date){
+						$slist			=	array();
+						$slist_time		=	array();
+						
+						// Get Stock Data
+						for($sd=0; $sd<$stockdat['count']; $sd++){
+							$thisdate	=	strtotime($stockdat['data'][$sd]['invDate']);
+							if($thisdate == $date_now){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$stockdat['data'][$sd]['invId'];
+								$slist[$nxt]['receipt']			=	$stockdat['data'][$sd]['recvQty'];
+								$slist[$nxt]['issue']			=	0;
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						
+						// Get Issue Data
+						for($isd=0; $isd<$issue['count']; $isd++){
+							$thisdate	=	strtotime($issue['data'][$isd]['issueDate']);
+							$nxtdate	=	$date_now + $one_day;
+							if($thisdate >= $date_now && $thisdate < $nxtdate){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$issue['data'][$isd]['mdIssRef'];
+								$slist[$nxt]['receipt']			=	0;
+								$slist[$nxt]['issue']			=	$issue['data'][$isd]['qtyIss'];
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						// Get Stock Adjustments Note
+						for($stk=0; $stk<$san['count']; $stk++){
+							$thisdate	=	strtotime($san['data'][$stk]['sanDate']);
+							$nxtdate	=	$date_now + $one_day;
+							if($thisdate >= $date_now && $thisdate < $nxtdate){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$san_no	=	$san['data'][$stk]['exc_shrt'] + 0;
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$san['data'][$stk]['sanId'];
+								$slist[$nxt]['receipt']			=	($san_no > 0)?$san_no:0;
+								$slist[$nxt]['issue']			=	($san_no < 0)?preg_replace("/[-]/", "", $san_no):0;
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}						
+					
+						@array_multisort($slist_time, SORT_ASC, SORT_NUMERIC);
+						
+						for($sa=0; $sa<count($slist_time); $sa++){
+							for($sl=0; $sl<count($slist); $sl++){
+								if($slist[$sl]['time'] == $slist_time[$sa]){
+									$stock			=	(($stock + $slist[$sl]['receipt']) - $slist[$sl]['issue']);									
+									$stock_list		.=	"<row>
+										<txn_date>".$slist[$sl]['txn_date']."</txn_date>
+										<txn_doc>".$slist[$sl]['txn_doc']."</txn_doc>
+										<receipt>".(($slist[$sl]['receipt'] >= 0 && $slist[$sl]['issue'] == "-")?$slist[$sl]['receipt']:"-")."</receipt>
+										<issue>".(($slist[$sl]['receipt'] == "-" && $slist[$sl]['issue'] >= 0)?$slist[$sl]['issue']:"-")."</issue>
+										<stock>".(($stock >= 0)?$stock:"-")."</stock>
+									</row>";
+									$tot_receipt	+=	$slist[$sl]['receipt'];
+									$tot_issue		+=	$slist[$sl]['issue'];
+									$tot_returns	+=	($slist[$sl]['txn_doc'] == 'CPDRETURN')?$slist[$sl]['receipt']:0;
+									array_splice($slist, $sl, 1);
+									break;
+								}
+							}
+						}
+						
+						$date_now	+=	$one_day;
+					}
+					$statusTab		=	"<status>success</status>";
+				}
+				else if($stockdat['status']!="success"){
+					$statusTab	=	"<error>".$stockdat['errno']."</error>";
+				}
+				else if($issue['status']!="success"){
+					$statusTab	=	"<error>".$issue['errno']."</error>";	
+				}
+				else if($san['status']!="success"){
+					$statusTab	=	"<error>".$san['errno']."</error>";
+				}
+				
+				//to resolve "-0.000" issue
+				$tot_open			=	round($tot_open,3);
+				$tot_receipt		=	round($tot_receipt,3);
+				$tot_issue			=	round($tot_issue,3);
+				$stock				=	round($stock,3);
+				$tot_schqty			=	round($tot_schqty,3);
+				$tot_balSchQty		=	$tot_schqty + $tot_returns - $tot_issue - $stock;
+				if($tot_balSchQty > 0)
+					$balSchedGrdTot	+=	$tot_balSchQty;				
+				$scheduleGrdTot		+=	$tot_schqty;
+				$recieptsGrdTot		+=	$tot_receipt;
+				$returnsGrdTot		+=	$tot_returns;
+				$issuesGrdTot		+=	$tot_issue;
+				$clsStockGrdTot		+=	$stock;					
+				$tot_sch			=	"<total_schedule>".$tot_schqty."</total_schedule>";
+				$tot_rec			=	"<total_receipt>".$tot_receipt."</total_receipt>";
+				$tot_ret			=	"<total_return>".$tot_returns."</total_return>";
+				$tot_iss			=	"<total_issue>".$tot_issue."</total_issue>";
+				if($cpdId != ""){
+					$count++;
+					$countTab	=	"<count>$count</count>";
+					$return		.=	"<rootxml><root>
+										$opening_stock
+										$countTab
+										$statusTab
+										<closing_stock>".$stock."</closing_stock>
+										$tot_sch
+										$tot_rec
+										$tot_ret
+										$tot_iss
+										<stock_list><data>
+										$stock_list
+										</data>
+										</stock_list></root></rootxml>";
+				}else if($tot_open != 0 || $tot_receipt != 0 || $tot_issue != 0 || $stock != 0 || $tot_schqty != 0){
+					if($lastPoly	==	"")
+					{
+						$lastPoly	=	$cpdPolymer;
+						$return		=	"<rowPoly><cpdpolymer>$cpdPolymer</cpdpolymer>";
+					}
+					else if($lastPoly != $cpdPolymer)
+					{	
+						$return				.=	"<openStockPolyTot>$opnStockPolyTot</openStockPolyTot>
+												<schedulePolyTot>$schedulePolyTot</schedulePolyTot>
+												<recieptsPolyTot>$recieptsPolyTot</recieptsPolyTot>
+												<returnsPolyTot>$returnsPolyTot</returnsPolyTot>
+												<issuesPolyTot>$issuesPolyTot</issuesPolyTot>
+												<clsStockPolyTot>$clsStockPolyTot</clsStockPolyTot>
+												<balSchedPolyTot>$balSchedPolyTot</balSchedPolyTot>
+												<polyCpdCost>".round($polyCpdCost/$cpdCount,2)."</polyCpdCost>												
+												</rowPoly>
+												<rowPoly><cpdpolymer>$cpdPolymer</cpdpolymer>";
+						$lastPoly			=	$cpdPolymer;
+						$polyCpdCost		=	0;
+						$cpdCount			=	0;
+						$opnStockPolyTot	=	0;
+						$recieptsPolyTot	=	0;
+						$returnsPolyTot		=	0;
+						$issuesPolyTot		=	0;
+						$clsStockPolyTot	=	0;	
+						$schedulePolyTot	=	0;
+						$balSchedPolyTot	=	0;
+						
+					}
+					$cpdCount++;
+					$cpdCost			=	@getCompoundCost($cpdid);
+					$polyCpdCost		+=	$cpdCost;
+					$opnStockPolyTot	+=	$tot_open;
+					$schedulePolyTot	+=	$tot_schqty;
+					$recieptsPolyTot	+=	$tot_receipt;
+					$returnsPolyTot		+=	$tot_returns;
+					$issuesPolyTot		+=	$tot_issue;
+					$clsStockPolyTot	+=	$stock;
+					if($tot_balSchQty > 0)
+						$balSchedPolyTot	+=	$tot_balSchQty;
+					$count++;
+					$countTab	=	"<count>$count</count>";				
+					$return		.=	"<row><cpdid>$cpdid</cpdid>
+										<cpdref>$cpdRef</cpdref>
+										<cpdpolymer>$cpdPolymer</cpdpolymer>
+										<cpdcost>$cpdCost</cpdcost>
+										$opening_stock
+										$countTab
+										$statusTab
+										<closing_stock>".$stock."</closing_stock>
+										$tot_sch
+										$tot_rec
+										$tot_ret
+										$tot_iss
+										<stock_list><data>
+										$stock_list
+										</data>
+										</stock_list></row>";
+				}				
+			}
+			if(isset($cpdId) && $cpdId != "")
+			{ 
+				// do nothing
+			}
+			else
+			{
+				$return		.=	"<openStockPolyTot>$opnStockPolyTot</openStockPolyTot>
+								<schedulePolyTot>$schedulePolyTot</schedulePolyTot>
+								<recieptsPolyTot>$recieptsPolyTot</recieptsPolyTot>
+								<returnsPolyTot>$returnsPolyTot</returnsPolyTot>
+								<issuesPolyTot>$issuesPolyTot</issuesPolyTot>
+								<clsStockPolyTot>$clsStockPolyTot</clsStockPolyTot>
+								<balSchedPolyTot>$balSchedPolyTot</balSchedPolyTot>
+								<polyCpdCost>".round($polyCpdCost/$cpdCount,2)."</polyCpdCost>
+								</rowPoly>";
+			}
+			$output	= (isset($cpdId) && $cpdId != "")?$return: "<rootxml><root><count>".$cpddata['count']."</count><status>".$cpddata['status']."</status>".$return."<openStockGrdTot>$opnStockGrdTot</openStockGrdTot>
+													<scheduleGrdTot>$scheduleGrdTot</scheduleGrdTot>
+													<recieptsGrdTot>$recieptsGrdTot</recieptsGrdTot>
+													<returnsGrdTot>$returnsGrdTot</returnsGrdTot>
+													<issuesGrdTot>$issuesGrdTot</issuesGrdTot>
+													<clsStockGrdTot>$clsStockGrdTot</clsStockGrdTot>
+													<balSchedGrdTot>$balSchedGrdTot</balSchedGrdTot></root></rootxml>";			
+			if($_POST["conToHTML"] == 1)
+			{
+				//convert to HTML via server side XSLT
+				$xml = new DOMDocument;
+				$xml->loadXML($output);
+				$xsl = new DOMDocument;
+				$xsl->load($_SESSION['app']['iso_dir'].$_POST["xslfile"]);
+				$proc = new XSLTProcessor;
+				$proc->importStyleSheet($xsl);
+				echo $proc->transformToXML($xml);
+			}
+			else
+				echo $output;
+			exit();			
+		break;
+	}
+
+?>

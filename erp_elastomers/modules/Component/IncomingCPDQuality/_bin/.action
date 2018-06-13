@@ -1,0 +1,266 @@
+<?php
+	session_start();
+	global $cpd_std_test_refnos,$cpd_grp_email,$rheodb_path,$cpdtc_upload_dir;
+	$dateStart	=	'2017-03-31';
+	header('Content-Type: text/xml');
+	//header('Content-Type: text/xml');
+	if ( isset($_FILES['file'])) {
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$cpdtc_upload_dir;
+		$ticket = uniqid(rand(), true);
+		$storagename 	= $ticket."uploaded_file.csv";
+		try {
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			 }
+
+			 // You should also check filesize here. 
+			 if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			 }
+
+			 if( 'text/csv' == $_FILES['file']['type'] ||  'application/vnd.ms-excel' == $_FILES['file']['type'] ) 
+			 {
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					throw new RuntimeException( $_FILES['file']["name"] . " already exists. ");
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath . $storagename))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+					$tcArray 		= 	array();
+					$delimiter 		= 	",";
+					if (($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+					{
+						while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE)
+						{
+							$tcArray[] = $row ; 
+						}
+						fclose($handle);
+					}
+					$tcFillArr	=	array();
+					for($i=0;$i<count($tcArray);$i++)
+					{
+						$batRef 	= 	$tcArray[$i][0];
+						$batIdArr	=  	@getMySQLData("select sno, cpdId from tbl_component_cpd_recv where batId like '".$batRef."/%'");
+						$batId		=	$batIdArr['data'][0]['sno'];
+						$cpdId		=	$batIdArr['data'][0]['cpdId'];
+						if($batId != null && $batId != "")
+						{
+							$tcFillArr[$i]['batId'] 		= 	$batId;
+							$tcFillArr[$i]['cpdId']			=	$cpdId;
+							$tcFillArr[$i]['hardnessVal']	=	str2num($tcArray[$i][1]); 
+							$tcFillArr[$i]['spGravityVal']	=	str2num($tcArray[$i][2]); 
+						}
+						else
+						{
+							throw new RuntimeException('No Batch such as : ' .$batRef. ' in row number : '. ($i+1));
+						}
+					}
+					if(count($tcFillArr) > 0)
+					{	
+						$userId			=	$_SESSION['userdetails']['userId'];
+						$cpdtcsql		=	"insert into tbl_compound_ic_qan(batId, cpdId, cpdQanParam, cpdQanValue, entry_on, entry_by) values";
+						$sql_sub		=	"";
+						for($lp=0;$lp<count($tcFillArr);$lp++){
+							$sql_sub	.=	" ('".$tcFillArr[$lp]['batId']."', '".$tcFillArr[$lp]['cpdId']."', '".$cpd_std_test_refnos[0]."', '".$tcFillArr[$lp]['hardnessVal']."',now(),'$userId') ,
+											  ('".$tcFillArr[$lp]['batId']."', '".$tcFillArr[$lp]['cpdId']."', '".$cpd_std_test_refnos[1]."', '".$tcFillArr[$lp]['spGravityVal']."',now(),'$userId') ";
+											if($lp < count($tcFillArr)-1){
+												$sql_sub	.=	" , ";	
+											}
+						}
+						
+						$cpdtcsql		=	$cpdtcsql.$sql_sub;
+						$sql_query 		= 	@getMySQLData($cpdtcsql);
+						
+						$output = "<tcadd>
+										<sql>$cpdtcsql</sql>
+										<status>".$sql_query['status']."</status>
+									</tcadd>";
+						if($sql_query['status'] == "success"){
+							if(!rename($uploadPath . $storagename, $uploadPath.$_FILES['file']["name"]))
+							{
+								throw new RuntimeException('Warning! Failed to rename the file: '.$uploadPath . $storagename.' to :'.$uploadPath.$_FILES['file']["name"]);
+							}							
+						}
+						else{
+							throw new RuntimeException('Insertion of Test Certificate data failed due to :'.$sql_query['status']);						
+						}						
+						
+						echo $output;	
+					}
+					else
+					{	
+						throw new RuntimeException("No Records to update!");									
+					}						
+				}	
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			if(($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+			{	
+				fclose($handle);
+				$thefile = $uploadPath . $storagename;
+				unlink($thefile);
+			}				
+			echo "<tcadd><status>".$e->getMessage()."</status></tcadd>";
+		}      
+	} 
+	else 
+	{ 	
+		switch($_REQUEST["type"]){
+			case "GETITEMS":
+					$output		=	@getMySQLData("select t1.sno as batId, SUBSTRING_INDEX(t1.batId, '_',-1) as dispBatId, t2.cpdId, t2.cpdName, t2.cpdPolymer, DATE_FORMAT(t1.invDate, '%d-%b-%Y') as mixrecvdate,t1.full_test_req,
+														'".$cpd_std_test_refnos[0]."' as hardparamref, t4.cpdQanULimit as hardulimit,t4.cpdQanLLimit as hardllimit,
+														'".$cpd_std_test_refnos[1]."' as spgrparamref, t5.cpdQanULimit as spgrulimit,t5. cpdQanLLimit as spgrllimit
+														from tbl_component_cpd_recv t1
+															inner join tbl_compound t2 on t1.cpdId=t2.cpdId
+															left outer join (select * from tbl_compound_ic_qan where (cpdQanParam = '".$cpd_std_test_refnos[0]."' or cpdQanParam = '".$cpd_std_test_refnos[1]."')) t3 on t3.batId = t1.sno 
+															left outer join	tbl_compound_qan_param t4 on t4.cpdId = t1.cpdid and t4.cpdQanParamRef  = '".$cpd_std_test_refnos[0]."'
+															left outer join	tbl_compound_qan_param t5 on t5.cpdId = t1.cpdid and t5.cpdQanParamRef  = '".$cpd_std_test_refnos[1]."'
+													where t1.status=1 and t3.batid is null  and t1.invdate >= '$dateStart' and t1.invId != 'CPDRETURN' order by t1.batId asc" ,"xml","root","lower");
+				
+				echo "<xmldata>$output</xmldata>";
+			break;
+			case "GETTESTDET":
+				$cpdId		=	$_REQUEST['cpdid'];
+				$sql		=	"SELECT t1.cpdId, t2.cpdName, t1.cpdQanParamRef,t3.paramName, t1.cpdQanSpec, t1.cpdQanULimit, t1.cpdQanLLimit
+								FROM tbl_compound_qan_param t1 
+									inner join tbl_compound t2 on t1.cpdId=t2.cpdId
+									inner join tbl_param t3 on t1.cpdQanParamRef = t3.sno
+								where t1.cpdId='$cpdId' ;";
+				echo getXML($sql,false);
+			break;
+			case "GETTESTPLAN":
+				$invIDs	=	$_REQUEST['invID'];
+				$sql_getcom	=	"select SUBSTRING_INDEX(t1.batId, '_',-1) as dispBatId, t2.cpdName, DATE_FORMAT(t1.invDate, '%d-%m-%y') as mixrecvdate,cpdPolymer
+								from tbl_component_cpd_recv t1
+									inner join tbl_compound t2 on t1.cpdId=t2.cpdId
+								where t1.status=1 and t1.sno in ($invIDs) order by t1.batId asc";
+				echo "<xmldata>".@getMySQLData($sql_getcom,"xml","root","lower")."</xmldata>";
+			break;
+			case "APPROVE":
+				$batid			=	$_REQUEST['batid'];
+				$cpdid			=	$_REQUEST['cpdid'];
+				$qalparam		=	$_REQUEST['qalparam'];
+				$data			=	$_REQUEST['data'];
+				$sql			=	"insert into tbl_compound_ic_qan (batId, cpdId, cpdQanParam, cpdQanValue, entry_on, entry_by) values ";
+				for($lp=0;$lp<count($qalparam);$lp++){
+					$sql 	.=	" ( '".$batid[$lp]."', '".$cpdid[$lp]."', '".$qalparam[$lp]."', '".$data[$lp]."', now(), '".$_SESSION['userdetails']['userId']."') ";
+					if($lp < count($qalparam)-1){
+						$sql .=	" , ";
+					}
+				}			
+				$output			=	@getMySQLData($sql,"xml", "qan");
+				$resStatus 		=  "";
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$resStatus	=	$status[0];
+					if($resStatus == "success" && $_REQUEST['fulltest'] == 1)
+					{
+						@getMySQLData("update tbl_component_cpd_recv set full_test_req=2 where sno='$batid[0]'");
+					}
+				}
+				echo trim($resStatus);
+			break; 
+			case "RUNJOB":
+				$batCount		=	0;
+				$updRecCount	=	0;		
+				$manualRun		=	$_REQUEST['manual'];
+				$settings		=	@getMySQLData("select value from tbl_settings where name = 'lastRheoDBRecNo'");
+				$lastRecNo		=	$settings['data'][0]['value'];
+				$resStatus 		=  	"success~No New Records in Rheometer DB";
+				$output			=	"";
+				$conn 			= 	new COM("ADODB.Connection") or die("ADODB Oops!");
+				try{
+					$conn->Open("DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=".$rheodb_path);
+				}
+				catch(com_exception $e) {
+					$resStatus =  "error~Unable to connect to Rheometer Database";
+				} 
+
+				$data 			= 	$conn->Execute("SELECT batch,ts2,tc90,AutoId FROM RheoData where AutoId > ".$lastRecNo." ORDER BY AutoId ASC");
+				while (!$data->EOF)
+				{
+					$batIds[$batCount]	=	$data ->Fields[0]->value ;
+					$ts2[$batCount]		=	$data ->Fields[1]->value ;
+					$tc90[$batCount]	=	$data ->Fields[2]->value ;
+					$autoId[$batCount]	=	$data ->Fields[3]->value ;
+					$batCount++;
+					$data ->MoveNext();
+				}	
+				if($data->State != 0) $data->Close();
+				if($conn->State != 0) $conn->Close();
+				$data = null;
+				$conn = null;	
+				
+				if ($batCount-1 > 0)
+				{
+					$baseSQL		=	"insert into tbl_compound_ic_qan (batId, cpdId, cpdQanParam, cpdQanValue, entry_on, entry_by) values ";
+					$sql			=	"";
+					for($lp=0;$lp<$batCount;$lp++)
+					{
+						$batdets	=	@getMySQLData("select sno,cpdId from tbl_component_cpd_recv where upper(batId) like upper('%".$batIds[$lp]."') order by sno desc limit 1");
+						$batdid		=	($batdets['data'][0]['sno'])?$batdets['data'][0]['sno']:"";
+						$cpdid		=	$batdets['data'][0]['cpdId'];
+						if($batdid != "")
+						{
+							if($sql != "")
+								$sql 	.=	" , ";
+								
+							$sql 	.=	" ( '$batdid', '$cpdid', '".$cpd_std_test_refnos[2]."', '".$ts2[$lp]."', now(), '".$_SESSION['userdetails']['userId']."') ";
+							$sql 	.=	" , ";
+							$sql 	.=	" ( '$batdid', '$cpdid', '".$cpd_std_test_refnos[3]."', '".$tc90[$lp]."', now(), '".$_SESSION['userdetails']['userId']."') ";
+							$updRecCount++;
+						}
+					}
+					
+					if($sql != "")
+						$output			=	@getMySQLData($baseSQL.$sql,"xml", "qan");
+					else
+						$output			=	"<status>success</status>";
+						
+					if($output != ""){
+						$status		=	split("<status>", $output);
+						$status		=	split("</status>", $status[1]);
+						$resStatus	=	$status[0];
+						if($resStatus == "success" )
+						{
+							$resStatus	.=	"~".($batCount-1)." Batches processed from Rheometer DB, ".$updRecCount." Batches updated into ERP Database";
+							@getMySQLData("update tbl_settings set value='".$autoId[$batCount-1]."' where name = 'lastRheoDBRecNo'");
+						}
+						else
+						{
+							$resStatus	=	"error~".$output;
+						}					
+					}
+				}
+				if($manualRun == "1")
+					echo $resStatus;
+				else
+				{
+					$status		=	split("~", $resStatus);
+					$pstatus 	= 	sendEmail($cpd_grp_email,"","Rheometer Updation Report Status: ".$status[0],$status[1],"");
+				}
+			break; 		
+		}
+	}
+?>
+
+

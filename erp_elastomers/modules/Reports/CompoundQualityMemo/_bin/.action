@@ -1,0 +1,138 @@
+<?php
+	session_start();
+	global $cpd_std_test_refnos;
+	
+	// List Data
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "GETBATDETAILS":	
+			$sql		=	"select tciq.batId as sno, SUBSTRING_INDEX(tm.batId, '_',-1) as batId
+								from tbl_compound_qan tciq
+								inner join  tbl_mixing  tm on tm.batId = tciq.batId
+							where tm.batDate >= '".$_POST["startDate"]."' and  tm.batDate <= '".$_POST["endDate"]."' and tm.status > 2  group by tciq.batId order by tciq.batId" ;
+			$batlistdat	=	@getMySQLData($sql);
+			if($batlistdat['count'] > 0 )
+			{
+				$bat		=	$batlistdat['data'];
+				foreach($bat as $key=>$value){
+					$batlist	.=	"<option value='".$value['sno']."'>".$value['batId']."</option>";
+				}	
+			}
+			echo $batlist;
+			exit();	
+		case "GETVAL":
+			$sql	=	"select SUBSTRING_INDEX(tm.batId, '_',-1) as dispBatId, ifnull(t1.cpdQanValue,0) as hdata,ifnull(t2.cpdQanValue,0) as sgdata,ifnull(t3.cpdQanValue,0)as ts2data,ifnull(t4.cpdQanValue,0) as t90data
+								from  tbl_mixing tm 
+									left outer join tbl_compound_qan t1 on t1.batId = tm.batId and t1.cpdQanParam = ".$cpd_std_test_refnos[0]."
+									left outer join tbl_compound_qan t2 on t2.batId = tm.batId and t2.cpdQanParam = ".$cpd_std_test_refnos[1]."
+									left outer join tbl_compound_qan t3 on t3.batId = tm.batId and t3.cpdQanParam = ".$cpd_std_test_refnos[2]."
+									left outer join tbl_compound_qan t4 on t4.batId = tm.batId and t4.cpdQanParam = ".$cpd_std_test_refnos[3]."
+									inner join tbl_compound tc on tc.cpdId=tm.cpdId
+								where tm.batDate >= '".$_POST["startDate"]."' and  tm.batDate <= '".$_POST["endDate"]."' and tm.status > 2 ";
+			if ($_POST["cpdid"] != 'ALL')
+				$sql	.=	" and tm.cpdId = '".$_POST["cpdid"]."' ";
+			
+			$sql	.=	" order by tm.batId asc";
+			$list	=	@getMySQLData($sql,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";
+			exit();
+		case "GETLIMITS":
+			$sql		=	"select cpdQanParamRef , ifnull(cpdQanSpec,0) as specval, ifnull(cpdQanULimit,0) as ulval, ifnull(cpdQanLLimit,0) as llval from tbl_compound_qan_param where cpdQanParamRef  in (".implode(",",$cpd_std_test_refnos).") and cpdId = '".$_POST["cpdid"]."'";
+			$limitsdat	=	@getMySQLData($sql);
+			$limits		=	"";
+			if($limitsdat['count'] > 0 )
+			{
+				$bat		=	$limitsdat['data'];
+				foreach($bat as $key=>$value){
+					switch($value['cpdQanParamRef']){
+						case $cpd_std_test_refnos[0]:
+							$limits	.=	'"hardspec":'.$value['specval'].',"hardul":'.$value['ulval'].',"hardll":'.$value['llval'];
+							break;
+						case $cpd_std_test_refnos[1]:
+							$limits	.=	'"spgrspec":'.$value['specval'].',"spgrul":'.$value['ulval'].',"spgrll":'.$value['llval'];
+							break;
+						case $cpd_std_test_refnos[2]:
+							$limits	.=	'"ts2spec":'.$value['specval'].',"ts2ul":'.$value['ulval'].',"ts2ll":'.$value['llval'];
+							break;
+						case $cpd_std_test_refnos[3]:
+							$limits	.=	'"t90spec":'.$value['specval'].',"t90ul":'.$value['ulval'].',"t90ll":'.$value['llval'];
+							break;							
+					}
+					if($key < $limitsdat['count'] - 1)
+					{
+						$limits	.=	",";
+					}
+				}	
+			}
+			echo $limits;
+			exit();				
+	}	
+	$sql_qm			=	"select cpdName, tc.cpdId, count(batId) as totbatches
+							from tbl_mixing tm 
+								inner join tbl_compound tc on tc.cpdId=tm.cpdId								
+								inner join tbl_polymer_order tpo on tpo.polyName = tc.cpdPolymer
+							where tm.batDate >= '".$_POST["startDate"]."' and  tm.batDate <= '".$_POST["endDate"]."' and tm.status > 2  	
+							group by tc.cpdName order by tpo.dispOrder,tc.cpdName ";
+	$outputarr		=  	@getMySQLData($sql_qm);	
+	$data 			= 	"";
+	$totParams		=	array("tothard", "totsg", "totts2","tott90");
+	$specParams		=	array("spechard", "specsg", "spects2","spect90");
+	$cpParams		=	array("cphard", "cpsg", "cpts2","cpt90");
+	$cpkParams		=	array("cpkhard", "cpksg", "cpkts2","cpkt90");	
+	
+	if( ($outputarr['errno'] == 0)&&($outputarr['count'] > 0) ){
+		foreach($outputarr['data'] as $cpd){
+			$cpdId			=	$cpd['cpdId'];
+			$data			.=	"<row>";
+			$data			.=	"<cpdid>".$cpdId."</cpdid>";
+			$data			.=	"<cpdname>".$cpd['cpdName']."</cpdname>";
+			$data			.=	"<totbatches>".$cpd['totbatches']."</totbatches>";	
+			for($pcnt = 0;$pcnt < 4;$pcnt++)
+			{
+				$cpddet_sql 	= 	@getMySQLData("select count(*) as tots, cpdQanSpec, cpdQanULimit, cpdQanLLimit, AVG(cpdQanValue) as average,STDDEV_POP(cpdQanValue) as stdDeviation 
+													from  tbl_mixing tm 
+														inner join tbl_compound_qan t1 on t1.batId = tm.batId and t1.cpdQanParam = ".$cpd_std_test_refnos[$pcnt]."
+														inner join tbl_compound_qan_param t2 on t2.cpdId = tm.cpdId and t2.cpdQanParamRef = ".$cpd_std_test_refnos[$pcnt]."
+														where tm.cpdId = '$cpdId' and tm.batDate >= '".$_POST["startDate"]."' and  tm.batDate <= '".$_POST["endDate"]."' and tm.status > 2 
+													group by tm.cpdId");
+				if(($cpddet_sql['errno'] == 0)&&($cpddet_sql['count'] > 0))
+				{
+					$data			.=	"<".$totParams[$pcnt].">".$cpddet_sql['data'][0]['tots']."</".$totParams[$pcnt].">";					
+					$spec			=	$cpddet_sql['data'][0]['cpdQanSpec'];
+					$upLimit		=	$cpddet_sql['data'][0]['cpdQanULimit'];
+					$lowLimit		=	$cpddet_sql['data'][0]['cpdQanLLimit'];
+					$mean			=	$cpddet_sql['data'][0]['average'];
+					$stddev			=	$cpddet_sql['data'][0]['stdDeviation'];
+					$data			.=	"<".$specParams[$pcnt].">$spec</".$specParams[$pcnt].">";
+					$data			.=	"<".$cpParams[$pcnt].">".(($stddev > 0)?(($upLimit - $lowLimit)/(6 * $stddev)):0)."</".$cpParams[$pcnt].">";
+					$data			.=	"<".$cpkParams[$pcnt].">".(($stddev > 0)?min((($upLimit - $mean)/(3 * $stddev)),(($mean - $lowLimit)/(3 * $stddev))):0)."</".$cpkParams[$pcnt].">";
+				}
+				else
+				{
+					$data			.=	"<".$totParams[$pcnt].">0</".$totParams[$pcnt].">";					
+					$data			.=	"<".$specParams[$pcnt].">0</".$specParams[$pcnt].">";
+					$data			.=	"<".$cpParams[$pcnt].">0</".$cpParams[$pcnt].">";
+					$data			.=	"<".$cpkParams[$pcnt].">0</".$cpkParams[$pcnt].">";				
+				}
+			}
+			$data			.=	"</row>";
+		}
+	}
+
+	$output	= "<xmldata><root><count>".$outputarr['count']."</count><data>".$data."</data><status>".$outputarr['status']."</status></root></xmldata>";
+	if($_POST["conToHTML"] == 1)
+	{
+		//convert to HTML via server side XSLT
+		$xml = new DOMDocument;
+		$xml->loadXML($output);
+		$xsl = new DOMDocument;
+		$xsl->load($_SESSION['app']['iso_dir'].$_POST["xslfile"]);
+		$proc = new XSLTProcessor;
+		$proc->importStyleSheet($xsl);
+		echo $proc->transformToXML($xml);
+	}
+	else
+		echo $output;	
+	
+?>

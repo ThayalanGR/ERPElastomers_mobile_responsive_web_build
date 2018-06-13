@@ -1,0 +1,234 @@
+<?php
+	session_start();
+	global $grn_role,$cpdMonthCode,$stateList;
+	header('Content-Type: text/xml');
+	switch($_REQUEST["selecttype"]){
+		case "GETITEM":
+			$cusid		=	$_REQUEST['cusid'];
+			$dctype		=	$_REQUEST['dctype'];
+			$customer	=	$_REQUEST['customer'];
+			$incmaster	=	$_REQUEST['incmaster'];
+			$sql		=	"";
+			if($dctype == 'cpd')
+			{
+				/*$sql	=	"select tcq.cpdid, tcq.batid, DATE_FORMAT(tm.batFinalDate, '%d/%m/%Y') as batdate, tm.avlQty from tbl_compound_qan tcq
+									 inner join tbl_mixing tm on tcq.batid = tm.batid
+									 inner join tbl_mixing_recv tmr on tcq.batid = tmr.batid
+									 inner join (select distinct cpdId from tbl_customer_cpd_po_rate where cusId='$cusid' and status>0 order by poDate DESC) t2 on tcq.cpdId=t2.cpdId
+									 where tcq.cpdApprove='1' and tm.avlQty>0 and customer = '$customer'
+								group by tcq.batId ";*/
+				// changes for delinking mixing quality from invoicing
+				$sql	=	"select tm.cpdid, tm.batid, DATE_FORMAT(tm.batFinalDate, '%d/%m/%Y') as batdate, tm.avlQty from tbl_mixing tm
+									 inner join tbl_mixing_recv tmr on tm.batid = tmr.batid
+									 inner join (select cpdid from (select cpdid from tbl_customer_cpd_po_rate where cusId='$cusid' and status=1 order by update_on desc) tbl group by cpdid) t2 on tm.cpdId=t2.cpdid
+									 where tmr.status = 2 and tm.avlQty>0 " ;// and tm.customer = '$customer'";
+				if($incmaster == 1)
+					$sql	.=	"	Union
+								select t1.cpdId,batId,DATE_FORMAT('0000-00-00', '%d/%m/%Y') as batdate , (masterBatchWgt - mstrIssuedQty) as avlQty
+								from tbl_mixing t1
+								inner join (select cpdid from (select cpdid from tbl_customer_cpd_po_rate where cusId='$cusid' and status=1 order by update_on desc) tbl group by cpdid) t2 on t1.cpdId=t2.cpdid
+								where status = 2 and (masterBatchWgt - mstrIssuedQty) > 0 and batFinalDate = '0000-00-00' " ;// and customer = '$customer' ";				
+								
+				$sql	=	"select tab1.cpdid, tab1.batid, tab1.batdate, tab1.avlQty, tc.cpdName 
+								from (" .$sql.") tab1
+								inner join tbl_compound tc on tc.cpdId = tab1.cpdId
+								inner join tbl_polymer_order tpo on tc.cpdPolymer=tpo.polyName
+							order by tpo.disporder,tc.cpdName asc";
+			}
+			else if($dctype == 'cmpd')
+			{
+				$sql	=	"select tab1.cmpdid as cpdid, tab1.planref as batid, tab1.avlQty, tc.cmpdName as cpdName
+								from tbl_mould_store tab1
+								inner join tbl_component tc on tc.cmpdId = tab1.cmpdId and tc.status > 0
+							where tab1.status > 0 and tab1.avlQty > 0							
+							order by tc.cmpdName asc";
+			}
+			else 
+			{
+				$sql	=	"select ramId as ItemId, concat(ramName,'-',ramGrade ) as ItemName	from tbl_rawmaterial where status = 1";			
+			}
+
+			echo getXML($sql,false);
+			exit();
+		case "GETBATCHAVLQTY":
+			$dctype	=	$_REQUEST['dctype'];
+			$sql	=	"select avlQty from tbl_invoice_grn where grnId='".$_REQUEST['batid']."' ";
+			echo @getMySQLData($sql,"xml","root","lowercase");
+			exit();
+		case "GETBATCH4CUS":
+			$cpdid		=	$_REQUEST['cpdid'];
+			$sql		=	"select t1.ramid as cpdid, t1.grnId as batid, t2.avlQty 
+								from tbl_rawmaterial_qan t1	
+									inner join tbl_invoice_grn t2 on t2.grnId=t1.grnId and t2.avlQty > 0	
+							where t1.ramId='".$cpdid."' and t1.ramStatus=1 and t1.ramApproveStatus=1 group by qanId";						
+			echo @getXML($sql,false);
+			exit();
+		case "CSTATLIST":
+			$output		=	getXML("select t1.cusId, cusName, isCpdCust from tbl_customer t1
+									inner join (select cusId, count(cpdName) as isCpdCust from tbl_customer_cpd_po_rate where status>0 group by cusId)  t2 on t1.cusId=t2.cusId  
+								where t1.status>0 ",false);
+			echo $output;
+			exit();
+		break;
+		case "CSTDTLLIST":
+			$output		=	getXML("select * from tbl_customer where cusName='".$_REQUEST['cusid']."' and status>0",false);
+			echo $output;
+			exit();
+		break;
+		case "ADDDC":
+			$data						=	$_REQUEST['templatepost'];	
+			$addToCmpdStore				=	$data['addcmpdstore'];
+			if($addToCmpdStore == 1)
+				$codeName  				=  "intdccode";
+			else
+				$codeName  				=   "dccode";		
+			$dctype						=	$data['dctype'];			
+			$codeArray					=	@getSettingsData($codeName);
+			$codeNo						=	@getRegisterNo($codeArray[0], $codeArray[1]);
+			$custData					=	@getMySQLData("select * from tbl_customer where cusId='".$data['custid']."'");
+			$settings					=	@getMySQLData("select name,value from tbl_settings where name in ('gstn','pan') order by name");
+			$custData					=	$custData['data'][0];
+			$cusAddress					=	$custData['cusAdd1']. "<br />".	((trim($custData['cusAdd2']) != '')?$custData['cusAdd2']. "<br />":"").$custData['cusPlace']. " - " .	$custData['cusPincode']	;		
+			$cusGroup					=	$custData['cusGroup'];	
+			if($addToCmpdStore == 1 && $grn_role[$cusGroup] != 'self')
+			{
+				echo "<mysql><status>Error! Compound cannot be added as invoiced Customer does not match this ERP Customer Or is not approved Compound !</status><mysql>";
+				exit();
+			}			
+			$settings					=	$settings['data'];
+			$data['dcdate']				=	@date("Y-m-d", @strtotime($data['dcdate']));
+			$data['shipmentdate']		=	@date("Y-m-d", @strtotime($data['shipmentdate']));
+			
+			$sql_ins	=	"INSERT INTO tbl_invoice_dc (dcId, dcDate, dcCusId, dcConsignee, dcGSTN, 
+								dcPAN, dcBGSTN, dcBPAN, dcSupplyPlace, dcShipDate, dcType,  
+								dcRemarks, entry_on, entry_by) 
+							VALUES(
+								'$codeNo', '".$data['dcdate']."', '".$custData['cusId']."', '".$custData['cusName']."|".$cusAddress."','".$settings[0]['value']."', 
+								'".$settings[1]['value']."','".$custData['cusGSTN']."', '".$custData['cusPan']."', '".$stateList[$custData['cusState']]."', '".$data['shipmentdate']."','$dctype',
+								'".$data['dcremarks']."',now(), '".$_SESSION['userdetails']['userId']."')";
+			//echo "$sql_ins\n\n";
+			//exit();
+			//$output	=	"<status>success</status>" ;
+			$output	=	@getMySQLData($sql_ins, "xml"); ;
+			//echo "$output\n\n";
+			//exit();
+			
+			if($output != ""){
+				$status		=	split("<status>", $output);
+				$status		=	split("</status>", $status[1]);
+				$status		=	$status[0];
+				if($status == "success"){
+					$sql_dcitems	=	"insert into tbl_invoice_dc_items(dcId,dcItemId,dcQty,dcCode,dcName,dcDesc,dcUoM ) values	";
+					$sql_cpdins		=	"insert into tbl_component_cpd_recv(invId, invDate, cpdId, batId,recvQty) values ";
+					$subsql			=	array();
+					foreach($data['particulars'] as $key => $value){
+						for($sq=0;$sq<count($value);$sq++){
+							if($key == 'itemcode'){ $subsql[$sq]['itemcode'] = $value[$sq]; }
+							else if($key == 'batref'){ $subsql[$sq]['batref'] = $value[$sq]; }
+							else if($key == 'aplqty'){ $subsql[$sq]['aplqty'] =  $value[$sq]; }
+						}
+					}
+					$sql_sub	=	"";
+					$sql_cpdsub	=	"";
+					$assValue	=	0;
+					for($lp=0;$lp<count($subsql);$lp++){
+						$itemid		=	trim($subsql[$lp]['itemcode']);
+						$batid		=	trim($subsql[$lp]['batref']);
+						$appqty		=	@preg_replace("/[,]/", "",$subsql[$lp]['aplqty']);						
+						if($dctype == "cpd")
+						{
+							$assValue	+=	(getCompoundCost($itemid) * $appqty *  0.9);
+							$sql_bat	=	@getMySQLData("select mstrIssuedQty,avlQty,status,customer from tbl_mixing where batId='$batid'","arr");
+							$mixStatus	=	$sql_bat['data'][0]['status'];
+							$customer	=	$sql_bat['data'][0]['customer'];
+							$exAvlQty	=	$sql_bat['data'][0]['avlQty'];							
+							$avlqty		=	$exAvlQty - $appqty;
+							if($mixStatus != 2)
+							{
+								@getMySQLData("update tbl_mixing set avlQty='$avlqty' ".(($customer != $cusGroup)?", customer = '".$cusGroup."'":"")." where batId='$batid'");
+							}
+							else 
+							{
+								$exAvlQty		=	$sql_bat['data'][0]['mstrIssuedQty'];
+								$avlqty			=	$exAvlQty + $appqty;
+								@getMySQLData("update tbl_mixing set mstrIssuedQty='$avlqty' ".(($customer != $cusGroup)?", customer = '".$cusGroup."'":"")." where batId='$batid'");							
+							}							
+						
+							$cpdData	=	@getMySQLData("select * from tbl_compound where cpdId='$itemid' and status>0");
+							$sql_sub	.=	" ( '$codeNo', '$batid','$appqty',	'$itemid',
+												'".$cpdData['data'][0]['cpdName']."', '".$cpdData['data'][0]['cpdPolymer']."','".$cpdData['data'][0]['cpdUOM']."' ) ";
+							if($lp < count($subsql)-1){
+								$sql_sub	.=	" , ";	
+							}
+							if($addToCmpdStore == 1)
+							{
+								$batData	=	@getMySQLData("select batFinalDate from tbl_mixing where batId='$batid' and status>0");
+								$mixDate	=	$batData['data'][0]['batFinalDate'];
+								$partBatId	=	"";
+								if($mixDate != null && $mixDate != '0000-00-00' && $mixDate != '')
+								{
+									list($y, $m, $d) 	= 	explode('-', $mixDate);
+									$partBatId			=	"/".$d . $cpdMonthCode[$m+0];	
+								}
+								$batid 		.=	$partBatId;
+								$sql_cpdsub	.=	" ( '$codeNo', '".$data['dcdate']."', '$itemid', '$batid','$appqty' ) ";
+								if($lp < count($subsql)-1){
+									$sql_cpdsub	.=	" , ";	
+								}
+							}
+						}
+						else if($dctype == "ram")
+						{
+							$ramData	=	@getMySQLData("select * from tbl_rawmaterial t1
+															inner join tbl_class t2 on t2.sno = t1.ramClass 
+															where ramId='$itemid' and t1.status>0");
+							$assValue	+=	($ramData['data'][0]['ramApprovedRate'] * $appqty *  0.9);
+							$sql_sub	.=	" ( '$codeNo', '$batid','$appqty',	'$itemid',
+												'".$ramData['data'][0]['ramName']." - ".$ramData['data'][0]['ramGrade']."','".$ramData['data'][0]['class_name']."','".$ramData['data'][0]['ramUnit']."' ) ";
+							if($lp < count($subsql)-1){
+								$sql_sub	.=	" , ";	
+							}						
+							@getMySQLData("update tbl_invoice_grn set avlQty=avlQty - '$appqty' where grnId='$batid'");
+						}
+						else if($dctype == "cmpd")
+						{
+							$cmpdPORate	=	@getMySQLData("select poRate from tbl_customer_cmpd_po_rate	where cmpdId='$itemid' and status > 0 order by update_on limit 1");
+							$assValue	+=	($cmpdPORate['data'][0]['poRate'] * $appqty *  0.9);
+							$cmpdData	=	@getMySQLData("select * from tbl_component
+															where cmpdId='$itemid' and status>0");
+							$sql_sub	.=	" ( '$codeNo', '$batid','$appqty',	'$itemid',
+												'".$cmpdData['data'][0]['cmpdName']."', '".$cmpdData['data'][0]['cmpdRefNo']."', '0' ) ";
+							if($lp < count($subsql)-1){
+								$sql_sub	.=	" , ";	
+							}						
+							@getMySQLData("update tbl_mould_store set avlQty=avlQty - '$appqty' where planRef='$batid' and cmpdId='$itemid'");
+						}						
+					}
+					$sql_dcitems	=	$sql_dcitems.$sql_sub;
+					$sql_cpdins		=	$sql_cpdins.$sql_cpdsub;
+					//echo $sql_dcitems ."<br/>".$sql_cpdins;
+					//exit();
+					$output	.=	@getMySQLData($sql_dcitems, "xml");
+					if($output != ""){
+						$status		=	split("<status>", $output);
+						$status		=	split("</status>", $status[1]);
+						$status		=	$status[0];
+						if($status == "success"){
+							@getMySQLData("update tbl_invoice_dc set assessValue='$assValue' where dcId='$codeNo'");
+							@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='$codeName'");
+							$output	=	"<mysql><sql>$sql_dcitems</sql><dcref>$codeNo</dcref><status>success</status><errno>0</errno><errtxt></errtxt></mysql>";
+							if($addToCmpdStore == 1 && $dctype == "cpd")
+							{
+								$output	.=	@getMySQLData($sql_cpdins, "xml");
+							}
+						}
+					}					
+				}
+			}
+			
+			echo $output;
+			
+		break;
+	}	
+
+?>

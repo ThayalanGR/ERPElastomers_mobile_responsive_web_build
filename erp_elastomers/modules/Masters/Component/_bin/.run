@@ -1,0 +1,1134 @@
+qanParamIds				=	new Array();
+qanParamList			=	new Array();
+rawmaterialList			=	new Array();
+rawmaterialValList		=	new Array();
+rejectionNo				=	new Array();
+rejectionList			=	new Array();
+rejectionTypes			=	new Array();
+appDim					=	new Array();
+appRej					=	new Array();
+appIns					=	new Array();
+var TF_01				=	null;
+needRefresh				=	false;
+
+function getParamDataAndValidate(type)
+{
+	objData			=	[
+		// Object ID's
+		[
+			['RefNo', 'CompName', 'CpdRef', 'DrawRef', 'ProdWgt', 'DrawDate', 'DrawRev', 'RackNo', 'StdPckQty', 'BlankWeight', 'AMReq', 'ProdGroup','App','SubAss','Off', 'RejPer','HSNCode', 'ShelfLife','InspRate', 'moldControl', 'deflashControl'],
+			['CurTime', 'Temperature', 'Pressure', 'CurTimeMin', 'CurTimeMax', 'CurTempMin', 'CurTempMax', 'CurPresMin', 'CurPresMax', 'PostCurTime','PostCurTimeMin','PostCurTimeMax','PostCurTemp','PostCurTempMin','PostCurTempMax'],
+			['DimensionDetails'],
+			['RejectionType'],
+			['InsertRef'],			
+			['AppUser', 'AppDate', 'Remarks']
+		],
+		// Object Default Values
+		[
+			['', '', '', '', '0.00','DD/MM/YYYY', '', '', '0', '0.000', '0', '','','','0','0.00', '', '0','0.00', '', ''],
+			['MM', 'SS', '','0','0','0','0','0','0','0','0','0','0','0','0'],
+			[''],
+			[''],
+			[''],
+			['', 'DD/MM/YYYY', '']
+		],
+		// Object POST Variable
+		[
+			['cmpdrefno', 'cmpdname', 'cmpdcpdref', 'cmpddrawref', 'cmpdprodwgt', 'cmpddrawdate', 'cmpddrawrev', 'cmpdrackno', 'cmpdstdpckqty', 'cmpdblankwt', 'cmpdamr', 'cmpdprodgroup', 'cmpdapp','cmpdsubass','cmpdoff','cmpdrejper', 'cmpdhsn', 'cmpdshelflife','cmpdinsprate','cmpdmoldjwcont','cmpddeflashjwcont'],
+			['cmpdcurtime', 'cmpdtemp', 'cmpdpress', 'cmpdcurtimemin', 'cmpdcurtimemax', 'cmpdcurtempmin', 'cmpdcurtempmax', 'cmpdcurpresmin', 'cmpdcurpresmax', 'cmpdpostcurtime', 'cmpdpostcurtimemin', 'cmpdpostcurtimemax', 'cmpdpostcurtemp', 'cmpdpostcurtempmin', 'cmpdpostcurtempmax'],
+			['cmpddimdtls'],
+			['cmpdrejtype'],
+			['cmpdinsref'],			
+			['cmpdappuser', 'cmpdappdate', 'cmpdremarks']
+		],
+		// Object Error Name
+		[
+			['Description', 'Part Number', 'Compound Ref.', 'Drawing Reference', 'Product Weight', 'Date', 'Revision', 'Rack No', 'Standard Packing Qty', 'Blank Weight', 'Average Monthly Requiremnt', 'Product Group','Application','Sub Assembly','Off', 'Rejection Percent','HSN Code', 'Shelf Life','Inspection Rate','Molding Jobwork Control','Deflashing Jobwork Control'],
+			['Curing Time', 'Temperature', 'Pressure', 'Current Time Min', 'Current Time Max', 'Current Temp Min', 'Current Temp Max', 'Current Pres Min', 'Current Pres Max', 'Post Current Time', 'Post Current Time Min', 'Post Current Time Max', 'Post Current Temp', 'Post Current Temp Min', 'Post Current Temp Max'],
+			['Dimensional Details'],
+			['Rejection Type'],
+			['Insert Ref.'],			
+			['Approved User', 'Approved Date', 'Remarks']
+		],
+		// Object Mandatory
+		[
+			[true, true, true, false, false, false, false, false, false, true, false, true,false,false,false, false, true, false,false,false,false],
+			[false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+			[true],
+			[true],
+			[true],
+			[false, false, false]
+		]
+	];
+	
+	paramVal = "";
+	errObj		=	$('#'+type+'_item_error');
+	accordionObj	=	$("#"+type+"_item_accord");
+	
+	if(objData.length > 0 && objData[0].length > 0){
+		for(o=0; o<objData[0].length; o++){
+			for(j=0; j<objData[0][o].length; j++){
+				object	=	$("#" + type + "_" + objData[0][o][j]);
+				switch(objData[0][o][j]){
+					case 'DimensionDetails':
+						dimDetailsList	=	"";
+						for(ad=0; ad<appDim.length; ad++){
+							cmpdDim			=	$("#CmpdDim_"+appDim[ad]);
+							if(cmpdDim.val() != null && cmpdDim.val() != ""){
+								cmpdSpec		=	$("#CmpdSpec_"+appDim[ad]);
+								cmpdULim		=	$("#CmpdUpperLimit_"+appDim[ad]);
+								cmpdLLim		=	$("#CmpdLowerLimit_"+appDim[ad]);
+								cmpdSamplePlan	=	$("#CmpdSamplePlan_"+appDim[ad]);
+								if(cmpdSpec.val().toNumber() >= cmpdLLim.val().toNumber() && cmpdSpec.val().toNumber() <= cmpdULim.val().toNumber()){
+									dimDetailsList	+=	"&" + objData[2][o][j] + "[dim][]=" + cmpdDim.val() +
+														"&" + objData[2][o][j] + "[spec][]=" + cmpdSpec.val() + 
+														"&" + objData[2][o][j] + "[ulim][]=" + cmpdULim.val() +
+														"&" + objData[2][o][j] + "[llim][]=" + cmpdLLim.val()+
+														"&" + objData[2][o][j] + "[samplan][]=" + cmpdSamplePlan.val();
+								}
+								else
+								{
+									displayError(errObj, "error", "<strong>Error !</strong> - Please check the Spec/Lower Limit/Upper Limit values provided for the Dimension.");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);					
+									throw cmpdSpec;								
+								}								
+							}
+							else
+							{
+								displayError(errObj, "error", "<strong>Error !</strong> - Dimension Name Missing at Row " + (ad+1) + " under Dimension Details.");
+								if(accordionObj.accordion("option", "active") != o)
+									accordionObj.accordion("option", "active", o );								
+								throw cmpdDim;						
+							}
+						}
+						paramVal			+=	dimDetailsList;
+					break;
+					case 'RejectionType':
+						rejList		=	"";
+						for(ar=0; ar<appRej.length; ar++){
+							rejType		=	$("#CmpdRej_"+appRej[ar]);
+							if(rejType.val() != null && rejType.val() != ""){
+								rejList	+=	"&" + objData[2][o][j] + "[]=" + rejType.val();
+							}
+							else
+							{
+								displayError(errObj, "error", "<strong>Error !</strong> - Rejection Name Missing at Row " + (ar+1) + " under Rejection Details.");
+								if(accordionObj.accordion("option", "active") != o)
+									accordionObj.accordion("option", "active", o );								
+								throw rejType;						
+							}
+						}
+						paramVal		+=	rejList;
+					break;				
+					case 'InsertRef':
+						insList		=	"";
+						for(ai=0; ai<appIns.length; ai++){
+							insName		=	$("#CmpdIns_"+appIns[ai]);
+							if(insName.val() != null && insName.val() != ""){
+								insList	+=	"&" + objData[2][o][j] + "[]=" + insName.val();
+							}
+							else
+							{
+								displayError(errObj, "error", "<strong>Error !</strong> - Insert Name Missing at Row " + (ai+1) + " under Insert Details.");
+								if(accordionObj.accordion("option", "active") != o)
+									accordionObj.accordion("option", "active", o );								
+								throw insName;						
+							}
+						}
+						paramVal		+=	insList;
+					break;				
+					default:	
+						if(objData[4][o][j] && (object.val() == null || object.val() == "" || object.val() == objData[1][o][j]))
+						{	
+							displayError(errObj, "error", "<strong>Error !</strong> - " + objData[3][o][j] + " Missing.");
+							if(accordionObj.accordion("option", "active") != o)
+								accordionObj.accordion("option", "active", o );
+							throw object;
+						}
+						else
+						{	
+							if(object.val() != "" && object.val() != objData[1][o][j]){
+								value	=	object.val();
+								switch(objData[0][o][j]){
+									case 'Email':
+										if(!emailCheck(object.val())){
+											displayError(errObj, "error", "<strong>Error !</strong> - Invalid Email Format.");
+											if(accordionObj.accordion("option", "active") != o)
+												accordionObj.accordion("option", "active", o);
+											throw object;
+										}
+									break;
+									case 'AppDate':
+									case 'DrawDate':
+										value	=	value.split('/');
+										value	=	value[2] + '-' +  value[1] + '-' +  value[0];
+									break;
+									case 'BlankWeight':
+									case 'InspRate':									
+									case 'StdPckQty':
+									case 'Off':
+									case 'RejPer':
+									case 'AMReq':
+										if(isNaN(Number(value)) || Number(value) <= 0){
+											displayError(errObj, "error", "<strong>Error !</strong> - Invalid " + objData[3][o][j] +".");
+											if(accordionObj.accordion("option", "active") != o)
+												accordionObj.accordion("option", "active", o);
+											object.val(0);
+											throw object;
+										}
+									break;
+									case 'CpdRef':
+										paramVal	+=	"&cmpdcpdtxt=" + object.find("option:selected").text() ;
+									break;									
+								}
+								paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+							}
+							else{
+								value		=	object.val();
+								paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+							}					
+						}
+					break;
+				}
+			}
+		}
+	}
+	return paramVal;
+}
+
+function getParamList(){
+	var objParamList=postback(actionFile, "selecttype=PARAMLIST&outtype=xml", "POST", "XML");
+	paramXML			=	parseXMLdoc(objParamList);
+	qanParamIds			=	new Array();
+	qanParamList		=	new Array();
+	$(paramXML).find("row").each(function(index, element) {
+        qanParamIds.push(element.childNodes[0].firstChild.nodeValue);
+        qanParamList.push(element.childNodes[1].firstChild.nodeValue);
+    });
+}
+
+function getParamDetail(obj){
+	paramid			=	$(obj).val();
+	rowNo			= 	$(obj).attr('id').substring(8);
+	var objParList	=	postback(actionFile, "selecttype=PARAMDETAIL&paramid="+paramid+"&outtype=xml", "POST", "XML");
+	paramXML		=	parseXMLdoc(objParList);
+	rowXML			=	paramXML.getElementsByTagName("row");	
+	$("#CmpdUom_"+rowNo).html($(rowXML).find("paramUOM").text());
+	$("#CmpdTestMeth_"+rowNo).html($(rowXML).find("paramTestMethod").text());
+}
+
+function getPageData(){
+	XMLContent	=	postback(actionFile, "selecttype=CUSVIEW&outtype=xml", "POST", "XML");
+	//$("#content_body").html(XMLContent);
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	$(".edit_button").click(function(e){
+		cmpdId		=	$(this).attr('cmpdid');
+		if(cmpdId != null && cmpdId != ""){
+			editForm(cmpdId);
+		}
+		e.stopImmediatePropagation();
+	});
+	
+	$(".delete_button").click(function(e){
+		cmpdId	=	$(this).attr('cmpdid');
+		if(cmpdId != null && cmpdId != ""){
+			deleteForm(cmpdId);
+		}
+		e.stopImmediatePropagation();
+	});
+	
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh = true;
+	
+	$(".tooltip").tooltip();
+
+
+	$(".tl_option").change(function(){
+		if($(this).val()=='0'){
+			$(".tool_multi").show();
+		}else{
+			$(".tool_multi").hide();
+		}								 
+	});
+	$("#raise_toolsize").change(function(){
+		if($(this).val()=='Non-Standard'){
+			$("#raise_tool_size").show();
+		}else{
+			$("#raise_tool_size").hide();
+		}								 
+	});		
+}
+
+function getRawMaterialAutoList(){
+	var getCPDList			=	postback(actionFile, "selecttype=CUSRMATLIST&outtype=xml", "POST", "XML");
+	supXML					=	parseXMLdoc(getCPDList);
+	rowXML					=	supXML.getElementsByTagName("row");
+	for(sl=0; sl<rowXML.length; sl++){
+		rawmaterialList[sl]		=	rowXML[sl].childNodes[1].firstChild.nodeValue;
+		rawmaterialValList[sl]	=	rowXML[sl].childNodes[0].firstChild.nodeValue;
+	}
+}	
+
+function getRejectionAutoList(){
+	var getCPDList			=	postback(actionFile, "selecttype=CMPDREJATLIST&outtype=xml", "POST", "XML");
+	supXML					=	parseXMLdoc(getCPDList);
+	rowXML					=	supXML.getElementsByTagName("row");
+	for(sl=0; sl<rowXML.length; sl++){
+		rejectionNo[sl]		=	rowXML[sl].childNodes[0].firstChild.nodeValue;
+		rejectionList[sl]	=	rowXML[sl].childNodes[1].firstChild.nodeValue;
+		rejectionTypes[sl]	=	{
+			type	:	rowXML[sl].childNodes[1].firstChild.nodeValue,
+			sname	:	rowXML[sl].childNodes[2].firstChild.nodeValue
+		}
+	}
+}
+
+function removeComponent(cpd){
+	if(cpd != null && cpd != ""){
+		for(ad=0; ad<appDim.length; ad++){
+			if(appDim[ad] == cpd){
+				appDim.splice(ad, 1);
+				break;
+			}			
+		}
+		
+		for(ad=0; ad<appDim.length; ad++){
+			tabClass	=	(ad%2)?'content_rows_light':'content_rows_dark';
+			$("#nAppComp_" + appDim[ad]).removeClass().addClass(tabClass);
+		}
+	}
+}
+
+function removeRejection(cpd){
+	if(cpd != null && cpd != ""){
+		for(ar=0; ar<appRej.length; ar++){
+			if(appRej[ar] == cpd){
+				appRej.splice(ar, 1);
+				break;
+			}			
+		}
+		
+		for(ar=0; ar<appRej.length; ar++){
+			tabClass	=	(ar%2)?'content_rows_light':'content_rows_dark';
+			$("#nAppComp_" + appRej[ar]).removeClass().addClass(tabClass);
+		}
+	}
+}
+
+function removeInserts(cpd){
+	if(cpd != null && cpd != ""){
+		for(ar=0; ar<appIns.length; ar++){
+			if(appIns[ar] == cpd){
+				appIns.splice(ar, 1);
+				break;
+			}			
+		}
+		
+		for(ar=0; ar<appIns.length; ar++){
+			tabClass	=	(ar%2)?'content_rows_light':'content_rows_dark';
+			$("#nAppComp_" + appIns[ar]).removeClass().addClass(tabClass);
+		}
+	}
+}
+
+function changeRejection(cpd){
+	if(cpd != null && cpd != ""){
+		rejType		=	$("#CmpdRej_" + cpd);
+		rejSName	=	$("#CmpdRejSName_" + cpd);
+		for(rt=0; rt<rejectionTypes.length; rt++){
+			if(rejectionTypes[rt].type == rejType.find(":selected").text()){
+				rejSName.html(rejectionTypes[rt].sname);
+				break;
+			}
+		}
+	}
+}
+
+function clearAllDimensions(type){
+	cmpdDim		=	$("#new_CmpdDim");
+	for(ac=0; ac<appDim.length; ac++){
+		if(type == 'edit')
+			$("#eCmpdDim_" + appDim[ac]).remove();
+		else
+			$("#nCmpdDim_" + appDim[ac]).remove();
+	}
+	appDim		=	new Array();
+}
+
+function clearAllRejects(type){
+	type		=	(type)?type:"new";
+	$("#"+type+"_RejTypes tr:gt(0)").remove();
+	appRej		=	new Array();
+}
+
+function clearAllInserts(type){
+	type		=	(type)?type:"new";
+	$("#"+type+"_InsTypes tr:gt(0)").remove();
+	appIns		=	new Array();
+}
+
+function openAccordion(obj, ev, type, no, goto){
+	ev = ev || window.event;			// gets the event in ie or ns
+	kCode = ev.keyCode || ev.which;		// gets the keycode in ie or ns
+	if(ev != null && no != null && no > 0){
+		if(!ev.shiftKey && kCode == 9){
+			switch(type){
+				case 'new':
+					$("#new_item_accord").accordion("option", "active", no);
+				break;
+				case 'edit':
+					$("#edit_item_accord").accordion("option", "active", no);
+				break;
+			}
+		}
+	}
+}
+
+function getSubmitButton(fid){
+	if(fid != null){
+		fid			=	(typeof fid == "object")?fid:document.getElementById(fid);
+		if(fid){
+			nsib		=	fid.nextSibling;
+			if(nsib){
+				buttons		=	nsib.getElementsByTagName("button");
+				if(buttons.length > 0){
+					buttons[0].click();
+				}
+			}
+		}
+	}
+}
+
+function editForm(no){
+	$("#edit_item_form").css('visibility', 'visible');
+	$("#edit_item_form").dialog("open");
+	EditNo		=	(no)?no:null;
+	
+	if(typeof setEditFunc == "function")
+	setEditFunc();
+}
+
+function deleteForm(no){
+	$("#del_item_form").css('visibility', 'visible');
+	$("#del_item_form").dialog("open");
+	DeleteNo	=	(no)?no:null;
+}
+
+function addItemFunc(){
+	newError		=	$('#new_item_error');
+	newAccordion	=	$("#new_item_accord");
+	displayError(newError, "highlight", "<div class='loading' /> <strong>Adding Data to Server . . .</strong>");
+	param				=	"selecttype=" + "CMPDADD";	
+	try{
+		param		+=	getParamDataAndValidate("new");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}	
+	//alert(param); return false;
+	XMLContent			=	postback(actionFile, param, "POST", "XML");
+	xmlData				=	parseXMLdoc(XMLContent);
+	error				=	$(XMLContent).find("root cmpdAddData status").html();
+	cmpdid				=	$(XMLContent).find("root cmpdAddData cmpdid").text(); 
+	if(error == "success"){
+		alert("Component " + cmpdid + " has been created....");
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		updatePageBehaviour();
+		$("#new_item_form").dialog("close");
+	}
+	else{
+		displayError(newError, "error", error);
+	}
+}
+
+function setEditFunc(){
+	editError		=	$('#edit_item_error');
+	
+	if(EditNo != null && EditNo != ""){
+		xmlData		=	parseXMLdoc(XMLContent); 
+		Rows		=	xmlData.getElementsByTagName("row"); 
+		EditData	=	new Array(); 
+		if(Rows.length > 0){
+			for(R=0; R<Rows.length; R++){
+				Obj		=	Rows[R];
+				Sno		=	Obj.childNodes[0].firstChild.nodeValue; 
+				if(Sno == EditNo){
+					for(ER=0; ER<Obj.childNodes.length; ER++){
+						EditData[Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+					}
+					break;
+				}
+			}
+			getRawMaterialAutoList();
+			getRejectionAutoList();
+			setEditDimensions();
+			setEditRejections();
+			setEditInserts();
+			
+			currtime	=	EditData['cmpdcurtime'];
+			
+			$('#edit_RefNo').val(EditData['cmpdrefno']);
+			$('#edit_CompName').val(EditData['cmpdname']);
+			$('#edit_App').val(EditData['cmpdapp']);
+			$('#edit_SubAss').val(EditData['cmpdsubass']);		
+			$('#edit_Off').val(EditData['cmpdoff'].toNumber());	
+			$('#edit_RejPer').val(EditData['cmpdrejper'].toNumber());
+			$('#edit_HSNCode').val(EditData['cmpdhsn']);
+			$('#edit_ShelfLife').val(EditData['cmpdshelflife'].toNumber());
+			$('#edit_ProdWgt').val(EditData['cmpdprodwgt']);
+			$('#edit_DrawRef').val(EditData['cmpddrawref']);
+			$('#edit_DrawRev').val(EditData['cmpddrawrev']);
+			$('#edit_DrawDate').val((EditData['cmpddrawdate'] != null && EditData['cmpddrawdate'] != "" && EditData['cmpddrawdate'] != "01-Jan-1970" && EditData['cmpddrawdate'] != "00-00-0000" && EditData['cmpddrawdate'] != "0000-00-00")?EditData['cmpddrawdate']:"DD/MM/YYYY");
+			$('#edit_CpdRef').val(EditData['cmpdcpdid']);
+			$('#edit_CurTime').val(currtime);
+			$('#edit_Temperature').val(EditData['cmpdtemperature']);
+			$('#edit_Pressure').val(EditData['cmpdpressure']);
+			$('#edit_BlankWeight').val(EditData['cmpdblankwgt']);
+			$('#edit_InspRate').val(EditData['cmpdinsprate']);
+			$('#edit_moldControl').val(EditData['cmpdmoldjwcont']);
+			$('#edit_deflashControl').val(EditData['cmpddeflashjwcont']);
+			$('#edit_AMReq').val(EditData['cmpdamr']);
+			$('#edit_Remarks').val(EditData['cmpdremarks']);
+			$('#edit_RackNo').val(EditData['cmpdrackno']);
+			$('#edit_StdPckQty').val(EditData['cmpdstdpckqty']);
+			$('#edit_ProdGroup').val(EditData['cmpdprodgroup']);
+			$('#edit_CurTimeMin').val(EditData['cmpdcurtimemin']);
+			$('#edit_CurTimeMax').val(EditData['cmpdcurtimemax']);
+			$('#edit_CurTempMin').val(EditData['cmpdtempmin']);
+			$('#edit_CurTempMax').val(EditData['cmpdtempmax']);
+			$('#edit_CurPresMin').val(EditData['cmpdpresmin']);
+			$('#edit_CurPresMax').val(EditData['cmpdpresmax']);
+			$('#edit_PostCurTime').val(EditData['cmpdposttime']);
+			$('#edit_PostCurTimeMin').val(EditData['cmpdposttimemin']);
+			$('#edit_PostCurTimeMax').val(EditData['cmpdposttimemax']);
+			$('#edit_PostCurTemp').val(EditData['cmpdposttemp']);
+			$('#edit_PostCurTempMin').val(EditData['cmpdposttempmin']);
+			$('#edit_PostCurTempMax').val(EditData['cmpdposttempmax']);
+			$('#edit_AppUser').val(EditData['entry_by']);
+			$('#edit_AppDate').val(EditData['entry_on']);
+			
+			if(EditData['cmpdshelflife'])
+				$('#edit_ShelfLife').removeClass().addClass('normal_text');
+			if(EditData['cmpdcurtimemin'])
+				$('#edit_CurTimeMin').removeClass().addClass('normal_text');
+			if(EditData['cmpdcurtimemax'])
+				$('#edit_CurTimeMax').removeClass().addClass('normal_text');
+			if(EditData['cmpdtempmin'])
+				$('#edit_CurTempMin').removeClass().addClass('normal_text');
+			if(EditData['cmpdtempmax'])
+				$('#edit_CurTempMax').removeClass().addClass('normal_text');
+			if(EditData['cmpdtemperature'])
+				$('#edit_Temperature').removeClass().addClass('normal_text');
+			if(EditData['cmpdpressure'])
+				$('#edit_Pressure').removeClass().addClass('normal_text');
+			if(EditData['cmpdpresmin'])
+				$('#edit_CurPresMin').removeClass().addClass('normal_text');
+			if(EditData['cmpdpresmax'])
+				$('#edit_CurPresMax').removeClass().addClass('normal_text');
+			if(EditData['cmpdposttime'])
+				$('#edit_PostCurTime').removeClass().addClass('normal_text');
+			if(EditData['cmpdposttimemin'])
+				$('#edit_PostCurTimeMin').removeClass().addClass('normal_text');
+			if(EditData['cmpdposttimemax'])
+				$('#edit_PostCurTimeMax').removeClass().addClass('normal_text');
+			if(EditData['cmpdposttemp'])
+				$('#edit_PostCurTemp').removeClass().addClass('normal_text');
+			if(EditData['cmpdposttempmin'])
+				$('#edit_PostCurTempMin').removeClass().addClass('normal_text');
+			if(EditData['cmpdposttempmax'])
+				$('#edit_PostCurTempMax').removeClass().addClass('normal_text');
+			
+			if(EditData['cmpdstdpckqty'])
+				$('#edit_StdPckQty').removeClass().addClass('normal_text');
+			if(EditData['cmpdprodwgt'])
+				$('#edit_ProdWgt').removeClass().addClass('normal_text');
+			if(EditData['cmpdblankwgt'])
+				$('#edit_BlankWeight').removeClass().addClass('normal_text');
+			if(EditData['cmpdinsprate'])
+				$('#edit_InspRate').removeClass().addClass('normal_text');				
+			if(EditData['cmpdamr'])
+				$('#edit_AMReq').removeClass().addClass('normal_text');				
+				
+			$('#edit_DrawDate').removeClass().addClass((EditData['cmpddrawdate'] != null && EditData['cmpddrawdate'] != "" && EditData['cmpddrawdate'] != "01-Jan-1970" && EditData['cmpddrawdate'] != "00-00-0000" && EditData['cmpddrawdate'] != "0000-00-00")?'normal_text':'invisible_text');
+			$('#edit_item_accord').accordion("option", "active", 0);
+			$('#edit_RefNo').focus();
+		}
+	}
+}
+
+function setEditDimensions(){
+	var getCPDList		=	postback(actionFile, "selecttype=CMPDDIMLIST&cmpdid="+EditNo+"&outtype=xml", "POST", "XML");
+	supXML				=	parseXMLdoc(getCPDList);
+	Rows				=	supXML.getElementsByTagName("row");
+	appDim				=	new Array();
+	EditCompDim			=	new Array();
+	timenow				=	(new Date()).getTime();
+	if(Rows.length > 0){
+		for(R=0; R<Rows.length; R++){
+			Obj					=	Rows[R];
+			EditCompDim[R]		=	new Array();
+			for(ER=0; ER<Obj.childNodes.length; ER++){
+				EditCompDim[R][Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+			}
+		}
+		
+		for(ECD=0; ECD<EditCompDim.length; ECD++){
+			tabClass	=	(ECD%2)?'content_rows_light':'content_rows_dark';
+			$("#edit_CmpdDim tr:last").after(
+				'<tr id="eCmpdDim_' + timenow + '" class="' + tabClass + '">' +
+					'<td>' + qanParamList.toSelectWithValue(qanParamIds, "CmpdDim_"+timenow, "CmpdDim_"+timenow, EditCompDim[ECD]['cmpddim'], "width:100%", "", "onchange='getParamDetail(this);'", true) + '</td>' +							
+					'<td id="CmpdUom_'+timenow+'">'+EditCompDim[ECD]['uom_short_name']+'</td>' +
+					'<td id="CmpdTestMeth_'+timenow+'">'+EditCompDim[ECD]['paramtestmethod']+'</td>' +
+					'<td>' +
+						'<input type="text" id="CmpdSpec_' + timenow + '" style="width:95%;text-align:right;"  value="' + EditCompDim[ECD]['cmpddimspec'] + '" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" />' +
+					'</td>' +
+					'<td>' +
+						'<input type="text" id="CmpdLowerLimit_' + timenow + '" style="width:95%;text-align:right;"  value="' + EditCompDim[ECD]['cmpddimllimit'] + '" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" />' +
+					'</td>' +
+					'<td>' +
+						'<input type="text" id="CmpdUpperLimit_' + timenow + '" style="width:95%;text-align:right;"  value="' + EditCompDim[ECD]['cmpddimulimit'] + '" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" />' +
+					'</td>' +
+					'<td>' +
+						'<input type="text" id="CmpdSamplePlan_' + timenow + '" style="width:95%;text-align:right;"  value="' + EditCompDim[ECD]['cmpddimsamplan'] + '" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" />' +
+					'</td>' +
+					'<td align="center">' +
+						'<div class="removebtn" id="dCmpdDim_' + timenow + '" />' +
+					'</td>' +
+				'<tr>'
+			);
+			$("#CmpdDim_" + timenow).focus();
+			eval("$(\"#dCmpdDim_"+timenow+"\").click(function(){ $(\"#eCmpdDim_"+timenow+"\").remove(); removeComponent(" + timenow + ") });");
+			appDim.push(timenow);
+			timenow++;
+		}
+	}
+}
+
+function setEditRejections(){
+	var getCPDList		=	postback(actionFile, "selecttype=CMPDREJLIST&cmpdid="+EditNo+"&outtype=xml", "POST", "XML");
+	supXML				=	parseXMLdoc(getCPDList);
+	Rows				=	supXML.getElementsByTagName("row");
+	appRej				=	new Array();
+	EditCompRej			=	new Array();
+	timenow				=	(new Date()).getTime();
+	if(Rows.length > 0){
+		for(R=0; R<Rows.length; R++){
+			Obj					=	Rows[R];
+			EditCompRej[R]		=	new Array();
+			for(ER=0; ER<Obj.childNodes.length; ER++){
+				EditCompRej[R][Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+			}
+		}
+		
+		for(ECR=0; ECR<EditCompRej.length; ECR++){
+			tabClass	=	(ECR%2)?'content_rows_light':'content_rows_dark';
+			$("#edit_RejTypes tr:last").after(
+				'<tr id="eRejType_' + timenow + '" class="' + tabClass + '">' +
+					'<td>' +
+						rejectionList.toSelectWithValue(rejectionNo, 'CmpdRej_' + timenow, 'CmpdRej_' + timenow, EditCompRej[ECR].cmpdrejno, "width:95%", '', 'onchange="changeRejection(\'' + timenow + '\')"') +
+					'</td>' +
+					'<td>' +
+						'<div id="CmpdRejSName_' + timenow + '" style="width:95%">' + EditCompRej[ECR].cmpdrejsname + '</div>' +
+					'</td>' +
+					'<td align="center">' +
+						'<div class="removebtn" id="dRejType_' + timenow + '" />' +
+					'</td>' +
+				'<tr>'
+			);
+			
+			$("#CmpdRej_" + timenow).focus();
+			eval("$(\"#dRejType_"+timenow+"\").click(function(){ $(\"#eRejType_"+timenow+"\").remove(); removeRejection(" + timenow + ") });");
+			appRej.push(timenow);
+			timenow++;
+		}
+	}
+}
+
+function setEditInserts(){
+	var getCPDList		=	postback(actionFile, "selecttype=CMPDRMLIST&cmpdid="+EditNo+"&outtype=xml", "POST", "XML");
+	supXML				=	parseXMLdoc(getCPDList);
+	Rows				=	supXML.getElementsByTagName("row");
+	appIns				=	new Array();
+	EditCompIns			=	new Array();
+	timenow				=	(new Date()).getTime();
+	if(Rows.length > 0){
+		for(R=0; R<Rows.length; R++){
+			Obj					=	Rows[R];
+			EditCompIns[R]		=	new Array();
+			for(ER=0; ER<Obj.childNodes.length; ER++){
+				EditCompIns[R][Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+			}
+		}
+		
+		for(ECR=0; ECR<EditCompIns.length; ECR++){
+			tabClass	=	(ECR%2)?'content_rows_light':'content_rows_dark';
+			$("#edit_InsTypes tr:last").after(
+				'<tr id="eInserts_' + timenow + '" class="' + tabClass + '">' +
+					'<td>' +
+						rawmaterialList.toSelectWithValue(rawmaterialValList, 'CmpdIns_' + timenow, 'CmpdIns_' + timenow, EditCompIns[ECR].ramid, "width:45%", '', '') +
+					'</td>' +
+					'<td align="center">' +
+						'<div class="removebtn" id="dInserts_' + timenow + '" />' +
+					'</td>' +
+				'<tr>'
+			);
+			
+			$("#CmpdIns_" + timenow).focus();
+			eval("$(\"#dInserts_"+timenow+"\").click(function(){ $(\"#eInserts_"+timenow+"\").remove(); removeInserts(" + timenow + ") });");
+			appIns.push(timenow);
+			timenow++;
+		}
+	}
+}
+
+function editItemFunc(){
+	editError		=	$('#edit_item_error');
+	editAccordion	=	$("#edit_item_accord");
+	param				=	"selecttype=CMPDEDIT&cmpdid="+EditNo;	
+	try{
+		param		+=	getParamDataAndValidate("edit");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}	
+	XMLContent			=	postback(actionFile, param, "POST", "XML");
+	xmlData				=	$(XMLContent);
+	error				=	$(XMLContent).find("root cmpdEditData status").html();
+	cmpdid				=	$(XMLContent).find("root cmpdEditData cmpdid").text();
+	if(error == "success"){
+		alert("Component "+ cmpdid + " updated successfull...");
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		updatePageBehaviour();
+		$("#edit_item_form").dialog("close");
+	}
+	else{
+		displayError(editError, "error", error);
+	}
+}
+
+function delItemFunc(){
+	delError		=	$('#del_item_error');
+	if(DeleteNo != null && DeleteNo != ""){
+		displayError(delError, "highlight", "<div class='loading' /> <strong>Removing Data From Server . . .</strong>");
+		param			=	"selecttype=CMPDDEL" + "&cmpdid=" + DeleteNo;
+		XMLContent		=	postback(actionFile, param, "POST", "XML");
+		xmlData			=	parseXMLdoc(XMLContent);
+		error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			listPageData($("#content_body"), XMLContent, XSLFile);
+			updatePageBehaviour();
+			$("#del_item_form").dialog("close");
+		}
+		else{
+			displayError(delError, "error", error);
+			setTimeout(function(){
+				$("#del_item_form").dialog("close");
+			}, 2000);
+		}
+	}
+}
+
+function setObjFocus(ui)
+{
+	if ($(document.activeElement).attr("type") != "text" && $(document.activeElement).attr("type") != "select-one" && $(document.activeElement).attr("type") != "textarea"){
+		if($('input', ui.newContent.html()).length > 0)
+			$('#' + $('input', ui.newContent.html())[0].id).focus();
+		else if ($('textarea', ui.newContent.html()).length > 0)
+			$('#' + $('textarea', ui.newContent.html())[0].id).focus();
+		else if ($('select', ui.newContent.html()).length > 0)
+			$('#' + $('select', ui.newContent.html())[0].id).focus();
+	}  
+}
+
+function uploadDrawingFile(cmpdid){
+	$("#draw_upload_form").dialog({
+									title:'Upload File',
+									width:450,
+									height:'auto',
+									resizable:false,
+									modal:true,
+									buttons:[{
+										id:"upload",
+										text:"Upload",
+										click: function(){
+											uploadError		=	$('#draw_upload_error');
+											var filedata 	= 	document.getElementById("draw_file");
+											formdata 		= 	false;											
+											formdata 		= 	new FormData();
+											file 			= 	filedata.files[0];
+											if(file)
+											{	
+												if (formdata) {
+													formdata.append("file", file,file.name);
+													formdata.append("cmpdid",cmpdid);
+												}												
+												$("#upload").attr("value","Loading, Please Wait...");
+												$("#upload").attr("disabled","true");
+												// Set up the request.
+												var xhr = new XMLHttpRequest();
+
+												// Open the connection.
+												xhr.open('POST', actionFile, true);
+
+												// Set up a handler for when the request finishes.
+												xhr.onload = function () {
+													if (xhr.status === 200) {
+														// File(s) uploaded.
+														var printObj	=	xhr.response;
+														printData		=	$(printObj);
+														error			=	printData.find("drawfileadd status").html();
+														if(error == "success"){
+															$("#draw_upload_form").dialog('close');
+															alert( file.name + " has been uploaded sucessfully");					
+															listPageData($("#content_body"), printObj, XSLFile);
+															updatePageBehaviour();
+														}
+														else{
+															displayError(uploadError, "error", printObj);
+															$("#upload").attr("value","Upload");
+															$("#upload").removeAttr("disabled");					
+														}			
+													} 
+													else {
+														displayError(uploadError, "error", "Unable to upload the file, Please retry again");
+														$("#upload").attr("value","Upload");
+														$("#upload").removeAttr("disabled");				
+													}
+												};
+												
+												// Send the Data.
+												xhr.send(formdata);						
+
+											}
+											else{
+												displayError(uploadError, "error", "<strong>Error !</strong> - Please Select a File.");
+												$("#draw_file").focus();												
+											}
+										}
+									},
+									{
+										text:"Cancel",
+										click: function(){
+											$(this).dialog('close');
+										}
+									}],
+									close:function(){
+										$(this).dialog('destroy');
+									}
+								});	
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+	// Add Item Dialog
+	$("#new_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 850,
+		height:'auto',
+		buttons: [
+			{
+				text: "Add",
+				click: function(){
+					if(typeof addItemFunc == "function"){
+						addItemFunc();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Close",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		open: function(event, ui){
+			getRejectionAutoList();
+			getRawMaterialAutoList();
+			$("#new_item_form").css('visibility','visible');
+			$("#new_item_form form")[0].reset();
+			$("#new_item_accord").accordion("option", "active", 0);
+			$('#new_RefNo').focus();
+		},
+		close: function(event, ui) {
+			$("#new_item_form form")[0].reset();	
+			$("#new_item_error").html("");
+			$("#new_item_error").css("display", "none");
+			clearAllDimensions('new');
+			clearAllRejects('new');
+			clearAllInserts('new');
+		} 
+	});
+	// Add Item Accordion
+	$("#new_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui)
+			$("#new_item_form").dialog({position:['center','center']});
+		}
+	});
+	$("#new_DrawDate").datepicker({
+		dateFormat: 'dd/mm/yy',
+		onClose: function(dateText, inst){
+			$("#new_DrawDate").focus();
+		}
+	});
+	$("#button_add").button().click(function(){
+		$("#new_item_form").dialog("open");
+	});
+	
+	$("#new_DimBtn").button().click(function(){
+		timenow		=	new Date();
+		timenow		=	timenow.getTime();
+		
+		tabClass	=	(appDim.length%2)?'content_rows_light':'content_rows_dark';
+		$("#new_CmpdDim tr:last").after(
+			'<tr id="nCmpdDim_' + timenow + '" class="' + tabClass + '">' +
+				'<td>' + qanParamList.toSelectWithValue(qanParamIds, "CmpdDim_"+timenow, "CmpdDim_"+timenow, "", "width:100%", "", "onchange='getParamDetail(this);'", true) + '</td>' +
+				'<td id="CmpdUom_'+timenow+'"></td>' +
+				'<td id="CmpdTestMeth_'+timenow+'"></td>' +	
+				'<td>' +
+					'<input type="text" id="CmpdSpec_' + timenow + '" style="width:95%;text-align:right;" class="invisible_text" value="0.000" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="CmpdLowerLimit_' + timenow + '" style="width:95%;text-align:right;" class="invisible_text" value="0.000" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="CmpdUpperLimit_' + timenow + '" style="width:95%;text-align:right;" class="invisible_text" value="0.000" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="CmpdSamplePlan_' + timenow + '" style="width:95%;text-align:right;" class="invisible_text" value="0" onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" />' +
+				'</td>' +
+				'<td align="right">' +
+					'<div class="removebtn" id="dCmpdDim_' + timenow + '" />' +
+				'</td>' +
+			'<tr>'
+		);
+		
+		$("#CmpdDim_" + timenow).focus();
+		eval("$(\"#dCmpdDim_"+timenow+"\").click(function(){ $(\"#nCmpdDim_"+timenow+"\").remove(); removeComponent(" + timenow + ") });");
+		appDim.push(timenow);
+	});
+	$("#new_RejBtn").button().click(function(){
+		timenow		=	new Date();
+		timenow		=	timenow.getTime();
+		
+		tabClass	=	(appRej.length%2)?'content_rows_light':'content_rows_dark';
+		$("#new_RejTypes tr:last").after(
+			'<tr id="nRejType_' + timenow + '" class="' + tabClass + '">' +
+				'<td>' +
+					rejectionList.toSelectWithValue(rejectionNo, 'CmpdRej_' + timenow, 'CmpdRej_' + timenow, '', "width:95%", '', 'onchange="changeRejection(\'' + timenow + '\')"') +
+				'</td>' +
+				'<td>' +
+					'<div id="CmpdRejSName_' + timenow + '" style="width:95%"></div>' +
+				'</td>' +
+				'<td align="center">' +
+					'<div class="removebtn" id="dRejType_' + timenow + '" />' +
+				'</td>' +
+			'<tr>'
+		);
+		
+		$("#CmpdRej_" + timenow).focus();
+		eval("$(\"#dRejType_"+timenow+"\").click(function(){ $(\"#nRejType_"+timenow+"\").remove(); removeRejection(" + timenow + ") });");
+		appRej.push(timenow);
+	});
+	
+	$("#new_InsBtn").button().click(function(){
+		timenow		=	new Date();
+		timenow		=	timenow.getTime();
+		
+		tabClass	=	(appIns.length%2)?'content_rows_light':'content_rows_dark';
+		$("#new_InsTypes tr:last").after(
+			'<tr id="nInserts_' + timenow + '" class="' + tabClass + '">' +
+				'<td>' +
+					rawmaterialList.toSelectWithValue(rawmaterialValList, 'CmpdIns_' + timenow, 'CmpdIns_' + timenow, '', "width:45%", '', '') +
+				'</td>' +
+				'<td align="center">' +
+					'<div class="removebtn" id="dInserts_' + timenow + '" />' +
+				'</td>' +
+			'<tr>'
+		);
+		
+		$("#CmpdIns_" + timenow).focus();
+		eval("$(\"#dInserts_"+timenow+"\").click(function(){ $(\"#nInserts_"+timenow+"\").remove(); removeInserts(" + timenow + ") });");
+		appIns.push(timenow);
+	});	
+	
+	// Edit Item Dialog
+	$("#edit_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 850,
+		height:'auto',
+		buttons: {
+			Update:function(){
+				$(this).css("default");
+				if(typeof editItemFunc == "function"){
+					editItemFunc();
+				}else{
+					$(this).dialog("close");
+				}
+			},
+			Close:function(){
+				$(this).dialog("close");
+			}
+		},
+		close: function(event, ui) {
+			clearAllRejects('edit');
+			clearAllDimensions('edit');
+			clearAllInserts('edit');
+			$("#edit_item_error").html("");
+			$("#edit_item_error").css("display", "none");
+			$("#edit_item_form form")[0].reset();
+		} 
+	});
+	// Edit Item Accordion
+	$("#edit_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui)
+			$("#edit_item_form").dialog({position:['center','center']});
+		}
+	});
+	$("#edit_DrawDate").datepicker({
+		dateFormat: 'dd/mm/yy',
+		onClose: function(dateText, inst){
+			$("#edit_DrawDate").focus();
+		}
+	});
+	$("#edit_DimBtn").button().click(function(){
+		timenow		=	new Date();
+		timenow		=	timenow.getTime();
+		
+		tabClass	=	(appDim.length%2)?'content_rows_light':'content_rows_dark';
+		$("#edit_CmpdDim tr:last").after(
+			'<tr id="eCmpdDim_' + timenow + '" class="' + tabClass + '">' +
+				'<td>' + qanParamList.toSelectWithValue(qanParamIds, "CmpdDim_"+timenow, "CmpdDim_"+timenow, "", "width:100%", "", "onchange='getParamDetail(this);'", true) + '</td>' +
+				'<td id="CmpdUom_'+timenow+'"></td>' +
+				'<td id="CmpdTestMeth_'+timenow+'"></td>' +			
+				'<td>' +
+					'<input type="text" id="CmpdSpec_' + timenow + '" style="width:95%;text-align:right;" class="invisible_text" value="0.000" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="CmpdLowerLimit_' + timenow + '" style="width:95%;text-align:right;" class="invisible_text" value="0.000" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="CmpdUpperLimit_' + timenow + '" style="width:95%;text-align:right;" class="invisible_text" value="0.000" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="CmpdSamplePlan_' + timenow + '" style="width:95%;text-align:right;" class="invisible_text" value="0" onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" />' +
+				'</td>' +
+				'<td align="center">' +
+					'<div class="removebtn" id="dCmpdDim_' + timenow + '" />' +
+				'</td>' +
+			'<tr>'
+		);
+		
+		$("#CmpdDim_" + timenow).focus();
+		eval("$(\"#dCmpdDim_"+timenow+"\").click(function(){ $(\"#eCmpdDim_"+timenow+"\").remove(); removeComponent(" + timenow + ") });");
+		appDim.push(timenow);
+	});
+	$("#edit_RejBtn").button().click(function(){
+		timenow		=	new Date();
+		timenow		=	timenow.getTime();
+		
+		tabClass	=	(appRej.length%2)?'content_rows_light':'content_rows_dark';
+		$("#edit_RejTypes tr:last").after(
+			'<tr id="nRejType_' + timenow + '" class="' + tabClass + '">' +
+				'<td>' +
+					rejectionList.toSelectWithValue(rejectionNo, 'CmpdRej_' + timenow, 'CmpdRej_' + timenow, '', "width:95%", '', 'onchange="changeRejection(\'' + timenow + '\')"') +
+				'</td>' +
+				'<td>' +
+					'<div id="CmpdRejSName_' + timenow + '" style="width:95%"></div>' +
+				'</td>' +
+				'<td align="center">' +
+					'<div class="removebtn" id="dRejType_' + timenow + '" />' +
+				'</td>' +
+			'<tr>'
+		);
+		
+		$("#CmpdRej_" + timenow).focus();
+		eval("$(\"#dRejType_"+timenow+"\").click(function(){ $(\"#nRejType_"+timenow+"\").remove(); removeRejection(" + timenow + ") });");
+		appRej.push(timenow);
+	});
+	
+	$("#edit_InsBtn").button().click(function(){
+		timenow		=	new Date();
+		timenow		=	timenow.getTime();
+		
+		tabClass	=	(appIns.length%2)?'content_rows_light':'content_rows_dark';
+		$("#edit_InsTypes tr:last").after(
+			'<tr id="nInserts_' + timenow + '" class="' + tabClass + '">' +
+				'<td>' +
+					rawmaterialList.toSelectWithValue(rawmaterialValList, 'CmpdIns_' + timenow, 'CmpdIns_' + timenow, '', "width:45%", '', '') +
+				'</td>' +
+				'<td align="center">' +
+					'<div class="removebtn" id="dInserts_' + timenow + '" />' +
+				'</td>' +
+			'<tr>'
+		);
+		
+		$("#CmpdIns_" + timenow).focus();
+		eval("$(\"#dInserts_"+timenow+"\").click(function(){ $(\"#nInserts_"+timenow+"\").remove(); removeInserts(" + timenow + ") });");
+		appIns.push(timenow);
+	});		
+	
+	// Delete Item Dialog
+	$("#del_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 400,
+		buttons: [
+			{
+				text: "Yes",
+				click: function(){
+					if(typeof delItemFunc == "function"){
+						delItemFunc();
+					}else{
+						$(this).dialog("close");
+					}
+				}
+			},
+			{
+				text: "No",
+				click: function() { $(this).dialog("close"); }
+			}
+		],
+		close: function(event, ui) {
+			$("#del_item_error").html("");
+			$("#del_item_error").css("display", "none");
+		} 
+	});
+	
+	getParamList();
+	getPageData();
+});

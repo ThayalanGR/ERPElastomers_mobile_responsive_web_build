@@ -1,0 +1,165 @@
+custList						=	new Array();
+cusIds							=	new Array();
+vendList						=	new Array();
+vendDetails						=	new Array();
+
+$(document).ready(function(){
+	// Set AutoComplete Text Box
+	var objCusList	=	postback(actionFile,"type=CSTATLIST&outtype=xml","POST","XML");
+	cusXML			=	parseXMLdoc(objCusList);
+	$(cusXML).find('row').each(function(index, element) {
+		cusName				=	$(this).find('cusname').text();
+		custList.push(cusName);
+        cusIds[cusName] = 	$(this).find('cusid').text();		
+    });	
+	fieldChange();
+});
+
+function fieldChange(){
+	if($("#docType").val() == 'inv' || $("#docType").val() == 'dc')
+	{
+		$("#cusName").autocomplete({
+			source:custList,
+			close:function(event, ui){
+				updatePageBehaviour();
+			}
+		});
+	}
+	else
+	{
+		$("#cusName").autocomplete({
+			source:vendList,
+			close:function(event, ui){
+				updatePageBehaviour();
+			}
+		});	
+	}
+	$("#cusName").val("");
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	cusName			=	$("#cusName").val();
+	var objCompList = 	postback(actionFile, "type=GETVAL&doctype="+$("#docType").val()+"&cusid="+cusIds[cusName], "POST","XML");
+	//alert(objCompList);
+	xmlData			=	$(objCompList);
+	rowCount		=	xmlData.find("root:eq(0) count:eq(0)").text();	
+	listPageData($("#content_body"), objCompList, XSLFile);
+	var objTransList	=	postback(actionFile,"type=TRANSDETS&doctype="+$("#docType").val()+"&cusid="+cusIds[cusName],"POST","XML");
+	transXML			=	parseXMLdoc(objTransList);
+	noRows				=	true;
+	$(transXML).find('row').each(function(index, element) {
+		noRows		=	false;
+		$("#transDistance").val($(this).find('cusdistance').text());
+		$("#transName").val($(this).find('custransportname').text());
+		$("#transId").val($(this).find('custransportid').text());
+		$("#transVehNum").val($(this).find('vehnum').text());		
+    });	
+
+	if(noRows)
+	{
+		$("#supType").val("");
+		$("#transMode").val("");	
+		$("#transDistance").val("");
+		$("#transName").val("");
+		$("#transId").val("");
+		$("#transVehNum").val("");			
+	}
+
+	$('#input_select_all').click(function(event) {  
+		if(this.checked) { 
+			$('.checkbox1').each(function() { 
+				this.checked = true;                
+			});
+		}else{
+			$('.checkbox1').each(function() { 
+				this.checked = false;                        
+			});         
+		}
+	});
+	
+}
+
+function generateEwayBill(){
+	var filedata 	= 	document.getElementById("file");
+	formdata 		= 	false;
+	newError		=	$("#error_msg");
+	docType			=	$("#docType");
+	supType			=	$("#supType");
+	transMode		=	$("#transMode");
+	transDistance	=	$("#transDistance");
+	transId			=	$("#transId");
+	transName		=	$("#transName");
+	transVehNum		=	$("#transVehNum");
+	invIds 			= 	"";
+	$('.checkbox1').each(function() { 
+		if(this.checked == true)
+		{
+			if(invIds != "")
+				invIds	= invIds + ",";
+			invIds	= invIds + this.id;
+		}
+	});	
+	if(invIds == "" || invIds.length <= 0 )
+	{
+		displayError(newError, "error", "<strong>Error !</strong> -Please select atleast one item for Generating Eway Bill.");
+		return false;
+	}
+	else
+	{
+		if(supType.val() == null || supType.val() == "" ){
+			displayError(newError, "error", "<strong>Error !</strong> - Supply Type Missing.");
+			supType.focus();
+			return false;
+		} 
+		else if(transMode.val() == null || transMode.val() == "" ){
+			displayError(newError, "error", "<strong>Error !</strong> - Transport Mode Missing.");
+			transMode.focus();
+			return false;
+		} 
+		else if(!(transDistance.val() > 0 )){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid Distance.");
+			transMode.focus();
+			return false;
+		} 	
+		
+		vehNumAvail		=	false;
+		vehNumber		=	transVehNum.val().replace(/\s/g,'');
+		if(vehNumber != null && vehNumber != ""){
+			vehNumAvail	=	true;
+		} 
+		transIdAvail 	= 	false;
+		if((transId.val() != null && transId.val() != ""))
+		{
+			if(transId.val().length != 15)
+			{				
+				displayError(newError, "error", "<strong>Error !</strong> - Invalid Transporter ID.");
+				transId.focus();
+				return false;
+			}
+			else
+			{
+				transIdAvail 	= 	true;			
+			}
+		}
+		transNameAvail		=	true;
+		if(transName.val() == null || transName.val() == "")
+		{
+			transNameAvail		=	false;
+		}
+
+		if(vehNumAvail == false && (transIdAvail == false || transNameAvail == false))
+		{
+			displayError(newError, "error", "<strong>Error !</strong> - Either Vehicle Number or Transporter (Name and Id) needs to be provided.");
+			transVehNum.focus();
+			return false;		
+		}	
+		
+		$('#type').val("EWAYBILLJSON");
+		$('#invids').val(invIds);
+		$('#doctype').val(docType.val());
+		document.exportform.action = actionFile;
+		document.exportform.submit();
+	}
+}
+

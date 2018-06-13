@@ -1,0 +1,252 @@
+<?php
+
+	// Includes
+	session_start();
+	
+	// Do Actions
+	//header('Content-Type: text/xml');
+	switch($_POST['selecttype']){
+		case "CUSCPDATLIST":
+			$output		=	@getMySQLData("select cpdId, cpdName from tbl_compound where status>0", 'xml', 'xmldata', 'lower');
+			echo $output;
+			exit();
+		break;
+		case "CUSCMPDATLIST":
+			$output		=	@getMySQLData("select cmpdId, cmpdName, cmpdRefNo from tbl_component where status>0 order by cmpdName", 'xml', 'xmldata', 'lower');
+			echo $output;
+			exit();
+		break;
+		case "CUSCPDEDITLIST":
+			$cusid		=	$_POST['cusid'];
+			$sql		=	"select t2.cusId, t1.cpdId, t2.cpdName, t2.poRef, DATE_FORMAT(t2.poDate, '%d/%m/%Y') as poDate, t2.poRate, t2.update_on
+								from tbl_compound t1 
+								Inner Join ( select * from (select * from tbl_customer_cpd_po_rate where cusId='$cusid' and status=1 order by update_on desc) tbl group by cpdid) t2 on t1.cpdId=t2.cpdId
+							order by t2.update_on desc";
+			$output		=	@getMySQLData($sql, 'xml', 'xmldata', 'lower');
+			echo $output;
+			exit();
+		break;
+		case "CUSCMPDEDITLIST":
+			$cusid		=	$_POST['cusid'];
+			$output		=	@getMySQLData("select cusId, t1.cmpdId, t2.cmpdName, poRef, DATE_FORMAT(poDate, '%d/%m/%Y') as poDate, poRate, poQty,insertValue, t2.update_on
+												from tbl_component t1
+												inner join ( select * from (select * from tbl_customer_cmpd_po_rate where cusId='$cusid' and status=1 order by update_on desc) tbl group by cmpdid) t2 on t1.cmpdId=t2.cmpdId
+											order by t2.update_on desc", 'xml', 'xmldata', 'lower');
+			echo $output;
+			exit();
+		break;
+		case "CUSAPPCPDADDUPD":
+			if($_POST['cusid'] != "" && $_POST['acname'] != "" && $_POST['acrate'] > 0){
+				$cusId		=	$_POST['cusid'];
+				$cpdName	=	$_POST['acname'];
+				$cpdId		=	@getMySQLData("select cpdId from tbl_compound where cpdName='$cpdName' and status>0;");
+				$cpdId		=	$cpdId['data'][0]['cpdId'];
+				if($cpdId != null && $cpdId != "")
+				{
+					$poRef		=	$_POST['acporef'];
+					$poDate		=	preg_replace("/[\/]/", "-", $_POST['acpodate']);
+					$poDate		=	($poDate)?date("Y-m-d", strtotime($poDate)):$poDate;
+					$poRate		=	preg_replace("/[,]/", "",$_POST['acrate']);
+					
+					// Check if Exist
+					$exist	=	@getMySQLData("select * from tbl_customer_cpd_po_rate where cusId='$cusId' and cpdName='$cpdName' and status>0");
+					if($exist['count'] > 0){
+						// Update it
+						$output		=	@getMySQLData("update tbl_customer_cpd_po_rate set
+														cpdId='$cpdId',
+														poRef='$poRef',
+														poDate='$poDate',
+														poRate='$poRate'
+														where cusId='$cusId' and cpdName='$cpdName'
+														", 'xml');
+					}
+					else{
+						// Add It
+						$output		=	@getMySQLData("insert into tbl_customer_cpd_po_rate(cusId, cpdId, cpdName, poRef, poDate, poRate)
+														values('$cusId', '$cpdId', '$cpdName', '$poRef', '$poDate', '$poRate')", 'xml');
+					}
+					echo $output;
+				}
+				else
+				{
+					echo "<mysql><status>Compound No Longer Exists, Hence Unable to Update</status></mysql>";				
+				}
+			}
+			exit();
+		break;
+		case "CUSAPPCMPDADDUPD":
+			if($_POST['cusid'] != "" && $_POST['acname'] != "" && $_POST['acrate']){
+				$cusId		=	$_POST['cusid'];
+				$cmpdName	=	$_POST['acname'];
+				$cntName	=	substr($cmpdName,0,strpos($cmpdName, "(")-1);
+				$cmpdId		=	@getMySQLData("select cmpdId from tbl_component where cmpdName='$cntName' and status>0;");
+				$cmpdId		=	$cmpdId['data'][0]['cmpdId'];
+				if($cmpdId != null && $cmpdId != "")
+				{				
+					$poRef		=	$_POST['acporef'];
+					$poDate		=	preg_replace("/[\/]/", "-", $_POST['acpodate']);
+					$poDate		=	($poDate)?date("Y-m-d", strtotime($poDate)):$poDate;
+					$poRate		=	preg_replace("/[,]/", "",$_POST['acrate']);
+					$poQty		=	preg_replace("/[,]/", "",$_POST['acqty']);
+					$insVal		=	preg_replace("/[,]/", "",$_POST['insval']);
+					
+					// Check if Exist
+					$exist	=	@getMySQLData("select * from tbl_customer_cmpd_po_rate where cusId='$cusId' and cmpdName='$cmpdName' and status>0");
+					if($exist['count'] > 0){
+						// Update it
+						$output		=	@getMySQLData("update tbl_customer_cmpd_po_rate set
+														cmpdId='$cmpdId',
+														poRef='$poRef',
+														poDate='$poDate',
+														poRate='$poRate',
+														poQty='$poQty',
+														insertValue='$insVal'
+														where cusId='$cusId' and cmpdName='$cmpdName'
+														", 'xml');
+					}
+					else{
+						// Add It
+						$output		=	@getMySQLData("insert into tbl_customer_cmpd_po_rate(cusId, cmpdId, cmpdName, poRef, poDate, poRate,poQty,insertValue )
+														values('$cusId', '$cmpdId', '$cmpdName', '$poRef', '$poDate', '$poRate','$poQty','$insVal')", 'xml');
+					}
+					echo $output;
+				}
+				else
+				{
+					echo "<mysql><status>Component No Longer Exists, Hence Unable to Update</status></mysql>";				
+				}
+			}
+			exit();
+		break;
+		case "CUSAPPCPDDEL":
+			if($_POST['cusid'] != "" && $_POST['acname'] != "" && $_POST['acporef'] != "" && $_POST['acpodate'] != "" && $_POST['acrate']){
+				$cusId		=	$_POST['cusid'];
+				$cpdName	=	$_POST['acname'];
+				$poRef		=	$_POST['acporef'];
+				$poDate		=	preg_replace("/[\/]/", "-", $_POST['acpodate']);
+				$poDate		=	($poDate)?date("Y-m-d", strtotime($poDate)):$poDate;
+				$poRate		=	preg_replace("/[,]/", "",$_POST['acrate']);
+				// Check if Exist
+				$output		=	@getMySQLData("update tbl_customer_cpd_po_rate set status=0 where cusId='$cusId' and cpdName='$cpdName' and poRef='$poRef' and poDate='$poDate' and poRate='$poRate' and status>0", 'xml');
+				echo $output;
+				exit();
+			}
+		break;
+		case "CUSAPPCMPDDEL":
+			if($_POST['cusid'] != "" && $_POST['acname'] != "" && $_POST['acporef'] != "" && $_POST['acpodate'] != "" && $_POST['acrate']){
+				$cusId		=	$_POST['cusid'];
+				$cpdName	=	$_POST['acname'];
+				$poRef		=	$_POST['acporef'];
+				$poDate		=	preg_replace("/[\/]/", "-", $_POST['acpodate']);
+				$poDate		=	($poDate)?date("Y-m-d", strtotime($poDate)):$poDate;
+				$poRate		=	preg_replace("/[,]/", "",$_POST['acrate']);
+				// Check if Exist
+				$output		=	@getMySQLData("update tbl_customer_cmpd_po_rate set status=0 where cusId='$cusId' and cmpdName='$cpdName' and poRef='$poRef' and poDate='$poDate' and poRate='$poRate' and status>0", 'xml');
+				echo $output;
+				exit();
+			}
+		break;
+		case "CUSADD":
+			if($_POST['cusname'] != "" && $_POST['cusadd1'] != ""){
+				// Generate Code No
+				$codeArray		=	@getSettingsData("custcode");
+				$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+				if($codeNo != ""){
+					$appComp	=	$_POST['appcomp'];
+					$appCmpd	=	$_POST['appcmpd'];
+					$output		=	@getMySQLData("insert into tbl_customer(
+														cusId, cusRefNo, cusName, cusContName, cusAdd1, cusAdd2, cusPlace, cusPincode,
+														cusDistance, cusEmail, cusPhone, cusFax, cusMobile, cusBankName, cusBankNo,
+														cusIFSCCode, cusFreight, cusTransportName, cusTransportId, cusMultiInvoice, cusState, cusGSTN, cusPan,
+														cusCreditDays, cusApprovedBy, cusApprovedDate, cusGroup, cusRemarks,
+														entry_on, entry_by
+													)
+													values(
+														'$codeNo', '".$_POST['cusrefno']."', '".$_POST['cusname']."', '".$_POST['cuscontperson']."', '".$_POST['cusadd1']."', '".$_POST['cusadd2']."', '".$_POST['cusplace']."', '".$_POST['cuspincode']."',
+														'".$_POST['cusdistance']."', '".$_POST['cusemail']."', '".$_POST['cusphone']."', '".$_POST['cusfax']."', '".$_POST['cusmobile']."', '".$_POST['cusbankname']."', '".$_POST['cusbankno']."',
+														'".$_POST['cusifsccode']."', '".$_POST['cusfreight']."', '".$_POST['custransportname']."', '".$_POST['custransportid']."', '".$_POST['cusmultiinvoice']."', '".$_POST['cusstate']."', '".$_POST['cusgstn']."', '".$_POST['cuspan']."',
+														'".$_POST['cuscredit']."', '".$_SESSION['userdetails']['userId']."', now(), '".$_POST['cusgroup']."', '".$_POST['cusremarks']."',
+														now(), '".$_SESSION['userdetails']['userId']."'
+													);", "xml");
+					
+					if(is_array($appComp) && count($appComp['name']) > 0){
+						$appSql		=	"insert into tbl_customer_cpd_po_rate(
+											cusId, cpdId, cpdName, poRef, poDate, poRate
+										 ) values";
+						for($ac=0; $ac<count($appComp['name']); $ac++){
+							$cpdId		=	$appComp['id'][$ac];
+							$cpdName	=	$appComp['name'][$ac];
+							$poRef		=	$appComp['poref'][$ac];
+							$poDate		=	preg_replace("/[\/]/", "-", $appComp['podate'][$ac]);
+							$poDate		=	($poDate)?date("Y-m-d", strtotime($poDate)):$poDate;
+							$poRate		=	preg_replace("/[,]/", "",$appComp['rate'][$ac]);
+							$appSql		.=	"(
+												'$codeNo', '$cpdId', '$cpdName', '$poRef', '$poDate', '$poRate'
+											 )".(($ac == (count($appComp['name'])-1))?'':', ');
+						}
+						$output		.=	@getMySQLData($appSql, "xml");
+					}
+					
+					if(is_array($appCmpd) && count($appCmpd['name']) > 0){
+						$appSql		=	"insert into tbl_customer_cmpd_po_rate(
+											cusId, cmpdId, cmpdName, poRef, poDate, poRate, poQty,insertValue
+										 ) values";
+						for($acd=0; $acd<count($appCmpd['name']); $acd++){
+							$cmpdId		=	$appCmpd['id'][$acd];
+							$cmpdName	=	$appCmpd['name'][$acd];
+							$poRef		=	$appCmpd['poref'][$acd];
+							$poDate		=	preg_replace("/[\/]/", "-", $appCmpd['podate'][$acd]);
+							$poDate		=	($poDate)?date("Y-m-d", strtotime($poDate)):$poDate;
+							$poRate		=	preg_replace("/[,]/", "",$appCmpd['rate'][$acd]);
+							$poQty		=	preg_replace("/[,]/", "",$appCmpd['qty'][$acd]);
+							$insVal		=	preg_replace("/[,]/", "",$appCmpd['insval'][$acd]);
+							$appSql		.=	"(
+												'$codeNo', '$cmpdId', '$cmpdName', '$poRef', '$poDate', '$poRate','$poQty','$insVal'
+											 )".(($acd == (count($appCmpd['name'])-1))?'':', ');
+						}
+						$output		.=	@getMySQLData($appSql, "xml");
+					}
+				}
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					
+					if($status == "success"){
+						@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='custcode'");
+					}
+				}
+			}
+		break;
+		case "CUSEDIT":
+			if($_POST['cusid'] != ""){
+				$output		=	@getMySQLData("update tbl_customer set
+												cusRefNo='".$_POST['cusrefno']."', cusName='".$_POST['cusname']."', cusContName='".$_POST['cuscontperson']."', cusAdd1='".$_POST['cusadd1']."', 
+												cusAdd2='".$_POST['cusadd2']."', cusPlace='".$_POST['cusplace']."', cusPincode='".$_POST['cuspincode']."', cusDistance = '".$_POST['cusdistance']."',
+												cusEmail='".$_POST['cusemail']."', cusPhone='".$_POST['cusphone']."', cusFax='".$_POST['cusfax']."', cusMobile='".$_POST['cusmobile']."',
+												cusBankName='".$_POST['cusbankname']."', cusBankNo='".$_POST['cusbankno']."', cusIFSCCode='".$_POST['cusifsccode']."', cusFreight='".$_POST['cusfreight']."',
+												cusTransportName='".$_POST['custransportname']."', cusTransportId='".$_POST['custransportid']."', cusMultiInvoice='".$_POST['cusmultiinvoice']."', 
+												cusState='".$_POST['cusstate']."', cusGSTN='".$_POST['cusgstn']."', cusPan='".$_POST['cuspan']."', cusCreditDays='".$_POST['cuscredit']."', 
+												cusGroup='".$_POST['cusgroup']."', cusRemarks='".$_POST['cusremarks']."', update_on=now(), update_by='".$_SESSION['userdetails']['userId']."'
+											where cusId='".$_POST['cusid']."' and status>0;", "xml");
+			}
+		break;
+		case "CUSDEL":
+			if($_POST['cusid'] != ""){
+				$sql		=	"update tbl_customer set status='0' where cusId='".$_POST['cusid']."' and status>0;";
+				$output		=	@getMySQLData($sql, "xml");
+			}
+		break;
+	}
+	
+	// List Data
+	$list	=	@getMySQLData("SELECT  cusId, cusRefNo, cusName, cusContName, cusAdd1, cusAdd2, cusPincode, cusDistance, cusEmail, cusPhone, cusFax, cusMobile, cusBankName, 
+									cusBankNo, cusIFSCCode, cusFreight,	cusTransportName, cusTransportId, cusMultiInvoice, cusPlace, cusState, cusGSTN, cusPan, cusCreditDays, cusApprovedBy, 
+									DATE_FORMAT(cusApprovedDate, '%d/%m/%Y') as cusApprovedDate, cusGroup, cusRemarks
+								FROM tbl_customer where status>0;", 'xml','root', 'lower');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+?>

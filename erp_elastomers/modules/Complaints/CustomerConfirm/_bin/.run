@@ -1,0 +1,118 @@
+tableFilters.sort_config		=	{ sort_types:['string','date', 'string','string','string','string','string','string','none'] };
+var TF_01						=	null;
+var needRefresh					=	false;
+<?php global $stdforms_upload_dir; ?>
+var	stdFormsDir					=	"/<?php echo $stdforms_upload_dir; ?>";
+
+
+$(document).ready(function(){
+
+	$("#cust_conf_popup").dialog({
+		autoOpen:false, 
+		width:700,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Update",
+				tabindex:2,
+				click: function(){
+					updateComplaint();
+				}
+			},
+			{ 
+				text: "Close",
+				tabindex:3,
+				click: function(){
+					$(this).dialog('close');
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});
+
+	getPageData();
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=NEWCOMPLIST","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+
+	$(".cust_conf_button").click(function(e) {
+		$("#cust_conf_popup").dialog('open');
+		$("#cust_conf_popup").attr("compid",$(this).attr('compid'));
+		$("#description").html($(this).attr('description'));
+		$("#corraction").html($(this).attr('corraction'));
+		$("#prevaction").html($(this).attr('prevaction'));
+		$("#closureremarks").html($(this).attr('closureremarks'));
+    });	
+	
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+}
+
+function updateComplaint(){
+	
+	feasError	=	$("#raise_error");
+	compId		=	$("#cust_conf_popup").attr('compid');
+	param		=	"type=CUSTCONFINS&compid=" + compId  ;
+	custConfirm	=	$("#cust_conf");
+	if(custConfirm.val() == null || custConfirm.val().trim() == ''){
+		displayError(feasError, "error", "<strong>Error !</strong> - Please enter the Customer Confirmation for this complaint!!!");
+		custConfirm.focus();
+		return false;
+	}					
+	param	+=	"&custconfirm=" + custConfirm.val();
+	
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Update the Complaint?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Update Complaint',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															//alert(param); return false;
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															xmlData				=	parseXMLdoc(XMLContent);
+															error				=	$(xmlData).find("mysql:first status:first").text();
+															if(error == "success"){																
+																alert("Complaint Updated Successfully");
+																$("#cust_conf_popup").dialog("close");
+																getPageData();
+															}
+															else{
+																displayError(feasError, "error", "<strong>Error !</strong> - Updation of Complaint failed due to : "+ error);
+																return false;															
+															}
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+}
+
+
+
+

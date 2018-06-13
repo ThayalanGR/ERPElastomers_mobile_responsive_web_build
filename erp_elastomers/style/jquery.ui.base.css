@@ -1,0 +1,13 @@
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.core.css");
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.resizable.css");
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.selectable.css");
+/*@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.accordion.css");*/
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.autocomplete.css");
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.button.css");
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.dialog.css");
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.slider.css");
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.tabs.css");
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.datepicker.css");
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.progressbar.css");
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.tooltip.css");
+@import url("<?php echo (ISO_IS_REWRITE)?"/style/":""; ?>jquery.ui.filters.css");

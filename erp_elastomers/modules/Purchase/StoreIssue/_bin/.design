@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+<table border="0" cellpadding="6" cellspacing="0" width="100%">
+	<xsl:for-each select="xmldata/root/data/row">
+        <tr class="content_rows_light" >
+            <xsl:if test="position() mod 2 != 0">
+                <xsl:attribute name="class">content_rows_light</xsl:attribute>
+            </xsl:if>
+            <xsl:if test="position() mod 2 != 1">
+                <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="id"><xsl:value-of select="ramid" /></xsl:attribute>
+			<xsl:attribute name="ramid"><xsl:value-of select="ramid" /></xsl:attribute>			
+            <td style="width:10%"><xsl:value-of select="ramid" /></td>
+            <td style="width:30%"><xsl:value-of select="ramname" /></td>
+			<td style="width:20%" align="right"><xsl:value-of select="format-number(avlqty, '##,##,##0.000')" /></td>
+            <td style="width:20%" align="right"><xsl:value-of select="format-number(planqty, '##,##,##0.000')" /></td>
+            <td align ="right">
+				<input>
+					<xsl:attribute name="id">input_<xsl:value-of select="ramid" /></xsl:attribute>
+					<xsl:attribute name="ramid"><xsl:value-of select="ramid" /></xsl:attribute>
+					<xsl:attribute name="avlqty"><xsl:value-of select="avlqty" /></xsl:attribute>
+					<xsl:attribute name="type">text</xsl:attribute>
+					<xsl:attribute name="style">text-align:right;width:30%</xsl:attribute>
+					<xsl:attribute name="class">invisible_text</xsl:attribute>
+					<xsl:attribute name="value"><xsl:value-of select="planqty" /></xsl:attribute>
+					<xsl:attribute name="onfocus">FieldHiddenValue(this, 'in', '0.00')</xsl:attribute>
+					<xsl:attribute name="onblur">FieldHiddenValue(this, 'out', '0.00')</xsl:attribute>					
+				</input>			
+			</td>
+        </tr>
+	</xsl:for-each>
+</table>
+</xsl:template>
+</xsl:stylesheet>

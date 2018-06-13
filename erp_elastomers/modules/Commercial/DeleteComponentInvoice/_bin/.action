@@ -1,0 +1,45 @@
+<?php
+	session_start();
+	
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "GETINV":
+			$output		=	getXML("select distinct tic.invId  from tbl_invoice_sales  tic
+								inner join tbl_invoice_sales_items ici on tic.invId=ici.invId
+								where tic.status = 1 and ici.invtype = 'cmpd' and invDate >= CURRENT_DATE - 7",false);
+			echo $output;
+			exit();
+		break;
+		case 'GETDEF':
+			$dcRef	=	$_POST['dcref'];
+			$sql	=	"select tic.invid, tc.cusName, tic.entry_by as user, sum(ici.invqty) as invqty, ici.invName, ici.invDesc, ici.invRate, ici.invtype, DATE_FORMAT(invDate, '%d-%b-%Y') as invDate, (if(sum(ici.invqty *ici.invrate)>0,sum(ici.invqty *ici.invrate),0)) as value
+							from tbl_invoice_sales tic 
+								inner join tbl_customer tc on trim(tic.invCusId)=trim(tc.cusId) 
+								inner join tbl_invoice_sales_items ici on tic.invId=ici.invId 
+							where tic.invId = '$dcRef' and tic.status = 1 and ici.invtype = 'cmpd' group by tic.invId";		   
+		   $list	=	@getMySQLData($sql,"xml","root","lower");
+		   echo "<xmldata>".$list."</xmldata>";
+		   exit();
+		break;
+		case 'DELINVOICE':
+			$invid	=	$_REQUEST['invid'];			
+			$sql_comp	=	@getMySQLData("select invplanref,invqty,invcode from tbl_invoice_sales_items where invId='$invid' and invtype = 'cmpd'","arr");			
+			if( ($sql_comp['errno'] == 0)&&($sql_comp['count'] > 0) ){
+				foreach($sql_comp['data'] as $component){
+					$keyid 		= $component['invplanref'];									
+					$invQty  	= $component['invqty'] ;
+					$cmpdId		= $component['invcode'];
+					@getMySQLData("update tbl_mould_store SET avlQty = avlQty + ".$invQty." WHERE planref ='$keyid' and cmpdId  = '$cmpdId'");
+					
+				}				
+				$res    =   @getMySQLData("update tbl_invoice_sales SET status = 0 WHERE invid='$invid'");
+				echo $res['status'];
+			}
+			else
+			{
+				echo $sql_comp['status'];
+			}
+		break;		   
+	}
+
+?>

@@ -1,0 +1,51 @@
+<?php
+	session_start();
+	global $label_printer,$specimen_label_file;
+	// List Data
+	header("Content-Type: text/xml");
+	switch($_POST["selecttype"]){
+		case "PRINTLABEL":			
+			$mixdate		=	$_POST["mixdate"];
+			$sql_batches	=	"SELECT SUBSTRING_INDEX( batid,'_' ,-1) as batid, cpdName FROM tbl_mixing tm inner join tbl_compound tc on tc.cpdId = tm.cpdId where tm.status > 0 and batdate = '$mixdate' order by batid  DESC";
+			$out_batches	=	@getMySQLData($sql_batches);
+			$particulars	=	$out_batches[data];
+			
+			$handler 		= 	printer_open($label_printer);	
+			printer_set_option($handler, PRINTER_MODE, "RAW");
+			
+			$print_data		= 	file_get_contents($_SERVER['DOCUMENT_ROOT']."/".$specimen_label_file);
+			
+			for($p=0;$p<count($particulars);$p++){
+				$print_datatemp		=	$print_data;
+				$print_datatemp 	= 	str_replace("CPDNAME",$particulars[$p]['cpdName'],$print_datatemp);
+				$print_datatemp 	= 	str_replace("BATNO",$particulars[$p]['batid'],$print_datatemp);	
+				$output				=	printer_write($handler, $print_datatemp); 
+			}
+			
+			printer_close($handler); 	
+			echo $output;
+			exit();
+		break;		
+	}	
+	
+	$sql_batch	=	"select batdate, sum(noofmbatches) as noofmbatches, sum(nooffbatches) as nooffbatches from 
+						(
+							SELECT batfinaldate  as batdate, 0 as noofmbatches, count(batid) as nooffbatches
+								FROM `tbl_mixing` 
+								where status > 0 and is_open_stock = 0 and (batfinaldate between '".$_POST["startDate"]."' and  '".$_POST["endDate"]."') 
+								group by batfinaldate 
+							UNION
+							SELECT batdate, count(batid) as noofmbatches, 0 as nooffbatches
+								FROM `tbl_mixing` where status > 0 and batfinaldate = '0000-00-00' and is_mill_batch = 0 and is_open_stock = 0 and (batdate between '".$_POST["startDate"]."' and  '".$_POST["endDate"]."') 
+								group by batdate 
+						)tbl1
+					group by batdate
+					order by batdate  DESC	";
+	$list		=	@getMySQLData($sql_batch,"xml","root","lower");
+	$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

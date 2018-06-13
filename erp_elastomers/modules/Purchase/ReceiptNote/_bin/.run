@@ -1,0 +1,682 @@
+recvQty			=	0;
+supDetList		=	null;
+
+$(document).ready(function(){
+
+	$("#add_grn").button().click(function(){
+		GRN("");
+	});
+	
+	// Set AutoComplete Text Box
+	var objSupList	=	postback(actionFile,"type=SUPLIST&outtype=xml","POST","XML");
+	supXML			=	parseXMLdoc(objSupList);
+	supList			=	new Array();
+	supDetList		=	new Array();
+	$(supXML).find('row').each(function(index, element) {
+        supList.push($(this).find('supname').text());
+		supid			= 	new Array();
+		supid['id']		=	$(this).find('supid').text();
+		supid['gstn']	=	$(this).find('supgstn').text();		
+		supid['state']	=	$(this).find('supstate').text();
+		supDetList[$(this).find('supname').text()] = supid;
+    });	
+	
+	$("#grn_supname").autocomplete({		
+		source:supList,
+		close:function(event, ui){
+			getRMforSupplier();
+		},
+		change:function( event, ui ) {
+			getRMforSupplier();
+		}
+	});	
+	
+	$(".option").change(function(){
+		if($(this).val()=='1'){
+			$(".tst_yes").show();
+			$(".tst_no").hide();
+		}else{
+			$(".tst_yes").hide();
+			$(".tst_no").show();
+		}								 
+	});
+	//create buttons 					   
+	$("#cancel_receiptnote").button();
+	$("#create_receiptnote").button();
+	$("#create_print_receiptnote").button();
+	
+	$("#grn_popup").dialog({
+		autoOpen:false, 
+		width:900,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Generate",
+				tabindex:1,
+				click: function(){
+					if(typeof createReceiptNote == 'function')
+					createReceiptNote();
+				}
+			},
+			{ 
+				text: "Generate & Print",
+				tabindex:1,
+				click:function(){
+					if(typeof createReceiptNote == 'function')
+					createReceiptNote(true);
+				}
+			},
+			{ 
+				text: "Cancel",
+				tabindex:1,
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$("#grn_purid").html("");
+			$("#grn_purdate").html("");
+			$("#grn_rmqty").html("");
+			$("#grn_penqty").html("");
+			$(".uom").html("");
+			$("#grn_supgstn").html("");
+			$("#grn_purrate").html("");	
+			$("#grn_purtotal").html("");
+			$("#grn_purins").html("");
+			$("#grn_purfreight").html("");
+			$("#grn_purgrandtotal").html("");	
+			$("#grn_rate").html("");
+			$("#grn_rmgrade").attr("readonly","true");
+			$("#grn_rmgrade").removeAttr("ramid");	
+			$("#grn_supname").attr("readonly","true");
+			$(".tst_yes").show();
+			$(".tst_no").hide();			
+			$(this).find("form")[0].reset();
+		}
+	});
+
+	$("#grn_submit").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Upload the GRN(s)?</b></td></tr>' +
+					'</table>'
+		$('#confirm_dialog').html(confirmCont).dialog({
+			title:'Vendor GRN Upload',
+			width:450,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					handleGRNSubmit();					
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	 		
+	});			
+
+	getPageData();
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=PURDET","POST","XML");
+	//alert(XMLContent);
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function getRMforSupplier(){
+	supName		=	$("#grn_supname").val();
+	supId		=	""; 
+	$("#grn_rmgrade").val("");
+	$("#grn_rmgrade").removeAttr("ramid");	
+	$("#grn_rmgrade").attr("readonly","true");
+	$("#grn_rmgrade").autocomplete({source: []});
+	$("#grn_supname").removeAttr("supid");	
+	if(supDetList[supName])
+	{
+		supGSTN		=	supDetList[supName]['gstn'];
+		homeState	=	$("#grn_homestate").val();
+		supState	=	supDetList[supName]['state'];
+		if(supGSTN == "" || supGSTN == null || supState== "" ||supState == null)	{				
+			$("#grn_popup").dialog('close');
+			displayError($("#base_error"), "error", "<strong>Error !</strong> - Supplier GST Number / Supply State not set in Supplier Register.");
+			return false;	
+		}
+		if(homeState == supState)
+		{
+			$("#cgst_row").show();
+			$("#sgst_row").show();
+			$("#igst_row").hide();
+		}
+		else
+		{
+			$("#cgst_row").hide();
+			$("#sgst_row").hide();
+			$("#igst_row").show();	
+		}			
+		$("#grn_supgstn").html(supGSTN);
+		supId	=	supDetList[$("#grn_supname").val()]['id'];
+		$("#grn_supname").attr("supid",supId);
+		
+		$("#grn_rmgrade").removeAttr("readonly");		
+		var objRMList	=	postback(actionFile,"type=GETRMLIST&supid="+supId+"&outtype=xml","POST","XML");
+		rmXML			=	parseXMLdoc(objRMList);
+		rmList			=	new Array();
+		rmDetList		=	new Array();
+		rmUomList		=	new Array();
+		rmHSNList		=	new Array();
+		$(rmXML).find('row').each(function(index, element) {
+			ramName		=	$(this).find('ramname').text();
+			rmList.push(ramName);
+			rmDetList[ramName] 	= 	$(this).find('ramid').text();
+			rmUomList[ramName] 	= 	$(this).find('ramunit').text();
+			rmHSNList[ramName]	=	$(this).find('ramhsncode').text();
+		});
+		
+		$("#grn_rmgrade").autocomplete({		
+			source:rmList,
+			close:function(event, ui){
+				$(".uom").html("");
+				$("#grn_rmgrade").removeAttr("ramid");
+				$("#grn_rmgrade").attr("ramid",rmDetList[$("#grn_rmgrade").val()]);
+				$(".uom").html(rmUomList[$("#grn_rmgrade").val()]);
+				$("#grn_hsncode").val(rmHSNList[$("#grn_rmgrade").val()]);
+			},
+			change:function(event, ui){
+				$(".uom").html("");
+				$("#grn_rmgrade").removeAttr("ramid");
+				$("#grn_rmgrade").attr("ramid",rmDetList[$("#grn_rmgrade").val()]);
+				$(".uom").html(rmUomList[$("#grn_rmgrade").val()]);
+				$("#grn_hsncode").val(rmHSNList[$("#grn_rmgrade").val()]);
+			}
+		});		
+	}
+	else
+	{
+		$("#grn_supname").val("");
+		$("#grn_supgstn").html("");
+	}
+
+}
+
+function updatePageBehaviour(){
+	
+	$(".grn_button").click(function(e) {
+        GRN($(this).attr('purid'));
+    });
+	
+
+	$(".delete_button").click(function(e) {
+	purId		=	$(this).attr('purid');
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Delete this Purchase Order?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Delete PO',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															delstat 	= postback(actionFile, "type=DELETE&pur="+purId, "POST", "XML");
+															xmlData		=	parseXMLdoc(delstat);
+															error		=	$(xmlData).find("status").text();
+															if(error == 'success')
+															{
+																displayError($("#base_error"), "highlight", "Purchase Order: " + purId + " deleted Successfully");
+															}
+															else
+															{
+																displayError($("#base_error"), "error", "Deletion of Purchase Order: " + purId + " failed due to : " + $(xmlData).find("errtxt").text());
+															}
+															getPageData();
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+    });
+}
+
+function cancelReceiptNote(){
+	$("#grn_popup").dialog('close');
+}
+
+function handleGRNSubmit(){
+	var filedata 	= 	document.getElementById("file");
+	formdata 		= 	false;
+	newError		=	$("#error_msg");
+	vendName		=	$("#new_VendID");
+	if(vendName.val() == null || vendName.val() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Vendor Name Missing.");
+		vendName.focus();
+		return false;
+	}	
+
+	formdata = new FormData();
+    file = filedata.files[0];
+	if(file)
+	{
+		if (formdata) {
+			formdata.append("file", file,file.name);
+			formdata.append("vendname",vendName.val());
+		}
+		
+		$("#grn_submit").attr("value","Loading, Please Wait...");
+		$("#grn_submit").attr("disabled","true");
+		// Set up the request.
+		var xhr = new XMLHttpRequest();
+
+		// Open the connection.
+		xhr.open('POST', actionFile, true);
+
+		// Set up a handler for when the request finishes.
+		xhr.onload = function () {
+			if (xhr.status === 200) {
+				// File(s) uploaded.
+				var printObj	=	xhr.response;
+				//$("#content_body").html(printObj); return false;
+				printData		=	$(printObj);
+				error			=	printData.find("status").html();
+				noOfGRNs		=	printData.find("noofgrns").html();
+				if(error == "success"){
+					displayError(newError, "highlight", noOfGRNs + " GRN(s) created sucessfully");
+					window.location.reload();
+				}
+				else{
+					displayError(newError, "error", printObj);
+					$("#grn_submit").attr("value","Upload GRN");
+					$("#grn_submit").removeAttr("disabled");					
+				}			
+			} 
+			else {
+				displayError(newError, "error", "Unable to upload the file, Please retry again");
+				$("#grn_submit").attr("value","Upload GRN");
+				$("#grn_submit").removeAttr("disabled");				
+			}
+		};
+		
+		// Send the Data.
+		xhr.send(formdata);
+	}
+	else
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please Select a File.");
+		$("#file").focus();	
+	}
+}
+
+
+
+function GRN(purid){
+	$("#grn_popup").dialog('open');
+	if(purid != "")
+	{
+		$("#po_row").show();		
+		getString		=	"type=PURRMLIST&purId="+purid;
+		objPurRmList	=	postback(actionFile, getString, "POST", "XML");
+		
+		ordQty			=	$(objPurRmList).find("ramqty").text();
+		ordQty			=	(!isNaN(ordQty) && Number(ordQty) > 0)?Number(ordQty):0;
+		recvQty			=	$(objPurRmList).find("recvqty").text();
+		recvQty			=	(!isNaN(recvQty) && Number(recvQty) > 0)?Number(recvQty):0;
+		penQty			=	ordQty - recvQty;
+
+		$("#grn_purid").html($(objPurRmList).find("purid").text());
+		$("#grn_purid").attr("purid", $(objPurRmList).find("purid").text());
+		$("#grn_purdate").html($(objPurRmList).find("purdate").text());
+		$("#grn_rmgrade").attr("ramid", $(objPurRmList).find("ramid").text());
+		$("#grn_rmgrade").val($(objPurRmList).find("ramname").text() + "("+$(objPurRmList).find("ramgrade").text() +")");
+		$("#grn_hsncode").val($(objPurRmList).find("ramhsncode").text());
+		$("#grn_supname").val($(objPurRmList).find("supname").text());
+		$("#grn_rmqty").html(getCurrency(ordQty, 2));
+		$("#grn_penqty").html("0.00");
+		$(".uom").html($(objPurRmList).find("ramunit").text());
+		$("#recFrom").val($(objPurRmList).find("purdeliverat").text());
+
+		supGSTN			=	$(objPurRmList).find("supgstn").text();
+		homeState		=	$("#grn_homestate").val();
+		supState		=	$(objPurRmList).find("supstate").text();
+		if(supGSTN == "" || supGSTN == null || supState== "" ||supState == null)	{		
+			
+			$("#grn_popup").dialog('close');
+			displayError($("#base_error"), "error", "<strong>Error !</strong> - Supplier GST Number / Supply State not set in Supplier Register.");
+			return false;	
+		}
+		if(homeState == supState)
+		{
+			$("#cgst_row").show();
+			$("#sgst_row").show();
+			$("#igst_row").hide();
+		}
+		else
+		{
+			$("#cgst_row").hide();
+			$("#sgst_row").hide();
+			$("#igst_row").show();	
+		}
+		$("#grn_supgstn").html(supGSTN);
+		purRamRate			=	getCurrency($(objPurRmList).find("ramrate").text(),2);
+		purInsurance		=	getCurrency($(objPurRmList).find("purinsurance").text(),2);
+		purFreight			=	getCurrency($(objPurRmList).find("purfreightval").text(),2);	
+		purTotal			=	getCurrency($(objPurRmList).find("purtotal").text(),2);
+		purGrandTotal		=	getCurrency($(objPurRmList).find("purgrandtotal").text(),2);
+		$("#grn_purrate").html(purRamRate);	
+		$("#grn_purtotal").html(purTotal);
+		$("#grn_purtotal1").html(purTotal);
+		$("#grn_purins").html(purInsurance);
+		$("#grn_purfreight").html(purFreight);
+		$("#grn_purgrandtotal").html(purGrandTotal);	
+		//prefill grn items
+		$("#grn_recqty").val(getCurrency(penQty, 2));
+		$("#grn_rate").html(getCurrency(purRamRate, 2));
+		$('#grn_invAmount').val(purGrandTotal);
+		$("#grn_ins").val(purInsurance);	
+		$("#grn_freight").val(purFreight);
+		calculateTotal();
+	}
+	else
+	{
+		$("#po_row").hide();
+		$("#grn_supname").removeAttr("readonly");
+		$("#grn_purid").attr("purid","NA")
+		calculateTotal();
+	}
+	
+	$('#grn_recqty').keydown(numbersOnly).keyup(calculateTotal);
+	$('#grn_invAmount').keydown(numbersOnly).keyup(calculateTotal);
+	$('#grn_cgstval').keydown(numbersOnly).keyup(calculateTotal);
+	$('#grn_igstval').keydown(numbersOnly).keyup(calculateTotal);
+	$('#grn_sgstval').keydown(numbersOnly).keyup(calculateTotal);
+	$('#grn_ins').keydown(numbersOnly).keyup(calculateTotal);
+	$('#grn_freight').keydown(numbersOnly).keyup(calculateTotal);	
+	
+}
+
+function roundDecimalAlt(number){
+	if(number > 0){
+		numberStr	=	number+'';
+		deci		=	(numberStr+"").split(".");
+		decimalPart	=	parseInt(deci[1]);
+		intPart		=	parseInt(deci[0]);
+		
+		if(intPart == 0.00){
+			return 1;	
+		}else{
+			intPart = Math.round(number);
+		}	
+		newNumStr	=	intPart+".00";
+		newNum		=	parseFloat(newNumStr);
+		return newNum;
+	}
+	else{
+		return 0;
+	}
+}
+
+function calculateTotal(){
+	ordQty		=	$("#grn_rmqty").html();
+	rseQuan		=	$("#grn_recqty").val();
+	rseItemVal	=	$("#grn_invAmount").val();
+	rseIns		=	$("#grn_ins").val();
+	rseFrgt		=	$("#grn_freight").val();	
+	rseCGSTVal	= 	$('#grn_cgstval').val();
+	rseIGSTVal	= 	$('#grn_igstval').val();	
+	rseSGSTVal	= 	$('#grn_sgstval').val();	
+	rseTotal	=	rseItemVal.toNumber() + rseFrgt.toNumber() + rseIns.toNumber();
+	rseOthers	=	rseCGSTVal.toNumber()+rseIGSTVal.toNumber()+rseSGSTVal.toNumber();
+	rseRate		= 	rseTotal / rseQuan.toNumber();
+	$("#grn_rate").html(((rseRate)?getCurrency(rseRate,2):""));
+	$("#grn_total").html(((rseRate)?getCurrency(rseTotal,2):""));	
+	$("#grn_grandtotal").html(getCurrency((rseTotal + rseOthers), 2));
+	cgstRate	=	(rseCGSTVal.toNumber()/rseTotal)*100;
+	sgstRate	=	(rseSGSTVal.toNumber()/rseTotal)*100;
+	igstRate	=	(rseIGSTVal.toNumber()/rseTotal)*100;
+	$('#grn_cgstrate').html(((cgstRate)?getCurrency(cgstRate,2):""));
+	$('#grn_sgstrate').html(((sgstRate)?getCurrency(sgstRate,2):""));
+	$('#grn_igstrate').html(((igstRate)?getCurrency(igstRate,2):""));
+	penQty		=	ordQty.toNumber() - (Number(recvQty) + rseQuan.toNumber());
+	$("#grn_penqty").html(((penQty >= 0)?getCurrency(penQty, 2):""));
+	$("#grn_penqty").css("color", ((penQty >= 0)?"#000":"#f00"));	
+}
+
+function createReceiptNote(toPrint){
+	grnError	=	$("#raise_error");
+	grnSupId	=	$("#grn_supname");
+	grnPurId	=	$("#grn_purid").attr("purid");
+	grnRamId	=	$("#grn_rmgrade");
+	grnHSNCode	=	$("#grn_hsncode");
+	grnTaxRate	=	$("#grn_taxrate");
+	grnInvRef	=	$("#grn_invref");
+	grnDate		=	$("#grn_date");
+	grnInvDate	=	$("#grn_invdate");
+	grnInvQty	=	$("#grn_recqty");
+	grnRamRate	=	$("#grn_rate");
+	grnRamTot	=	$("#grn_total");
+	grnCGSTVal	=	$("#grn_cgstval");
+	grnIGSTVal	=	$("#grn_igstval");	
+	grnSGSTVal	=	$("#grn_sgstval");
+	grnInsVal	=	$("#grn_ins");	
+	grnFreight	=	$("#grn_freight");	
+	grnGrandTot	=	$("#grn_grandtotal");
+	grnTotVal	=	grnRamTot.html().toNumber();
+	grnTCAvail	=	$("#tst_yes");
+	grnTCdet	=	$("#grn_tstcertdetails");
+	grnDOE		=	$("#grn_doedate");
+	recvFrom	=	$("#recFrom");
+	recvRole	=	$('option:selected', recvFrom).attr('role');
+	
+	if(recvFrom.val() == null || recvFrom.val() == ""){
+		displayError(grnError, "error", "<strong>Error !</strong> - Please select 'Received For' !!!");
+		recvFrom.focus();
+		return false;
+	}
+	else if(grnPurId == "NA" && recvRole != "client" ){
+		displayError(grnError, "error", "<strong>Error !</strong> - Only customer raw materials can be added directly via GRN, for others please raise Purchase Order!!!");
+		recvFrom.focus();
+		return false;
+	}	
+	else if(grnPurId == "NA" && (grnSupId.attr("supid") == null || grnSupId.attr("supid") == "")){
+		displayError(grnError, "error", "<strong>Error !</strong> - Supplier ID Missing.");
+		grnSupId.focus();
+		return false;
+	}
+	else if(grnRamId.attr("ramid") == null || grnRamId.attr("ramid") == ""){
+		displayError(grnError, "error", "<strong>Error !</strong> - Raw Material ID Missing.");
+		grnRamId.focus();
+		return false;
+	}
+	else if(grnHSNCode.val() == null || grnHSNCode.val().trim() == ""){
+		displayError(grnError, "error", "<strong>Error !</strong> - HSN Code Missing.");
+		grnHSNCode.focus();
+		return false;
+	}
+	else if(grnTaxRate.val() == null || grnTaxRate.val().trim() == ""){
+		displayError(grnError, "error", "<strong>Error !</strong> - Tax Rate Missing.");
+		grnTaxRate.focus();
+		return false;
+	}	
+	else if(grnInvRef.val() == null || grnInvRef.val().trim() == ""){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invoice Ref. Missing.");
+		grnInvRef.focus();
+		return false;
+	}
+	else if(grnDate.val() == null || grnDate.val() == "" || grnDate.val().toLowerCase() == "dd/mm/yyyy"){
+		displayError(grnError, "error", "<strong>Error !</strong> - GRN Date Missing.");
+		grnDate.focus();
+		return false;
+	}	
+	else if(grnInvDate.val() == null || grnInvDate.val() == "" || grnInvDate.val().toLowerCase() == "dd/mm/yyyy"){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invoice Date Missing.");
+		grnInvDate.focus();
+		return false;
+	}
+	else if(grnInvQty.val().toNumber() <= 0 ){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid Quantity.");
+		grnInvQty.focus();
+		return false;
+	}
+	else if((!(grnIGSTVal.val().toNumber() > 0)) && (isNaN(grnCGSTVal.val().toNumber()) || grnCGSTVal.val().toNumber() <= 0)){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid CGST Value.");
+		grnCGSTVal.focus();
+		return false;
+	}
+	else if((!(grnIGSTVal.val().toNumber() > 0)) && (isNaN(grnSGSTVal.val().toNumber()) || grnSGSTVal.val().toNumber() <= 0)){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid SGST Value.");
+		grnSGSTVal.focus();
+		return false;
+	}
+	else if(grnCGSTVal.val() != grnSGSTVal.val()) {
+		displayError(grnError, "error", "<strong>Error !</strong> - CGST & SGST need to be same Amount!!!.");
+		grnIGSTVal.focus();
+		return false;
+	}	
+	else if((!(grnSGSTVal.val().toNumber() > 0)) && (isNaN(grnIGSTVal.val().toNumber()) || grnIGSTVal.val().toNumber() < 0)) {
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid IGST value.");
+		grnIGSTVal.focus();
+		return false;
+	}		
+	else if(isNaN(grnInsVal.val().toNumber()) || grnInsVal.val().toNumber() < 0){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid Insurance Value.");
+		grnInsVal.focus();
+		return false;
+	}	
+	else if(isNaN(grnFreight.val().toNumber()) || grnFreight.val().toNumber() < 0){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid Freight Rate.");
+		grnFreight.focus();
+		return false;
+	}
+	else if((grnTCAvail.attr("checked") == true) && (grnTCdet.val() == null || grnTCdet.val().trim() == '')){
+		displayError(grnError, "error", "<strong>Error !</strong> - Please enter the Test certificate Details.");
+		grnTCdet.focus();
+		return false;
+	}	
+	else if(grnDOE.val() == null || grnDOE.val() == "" || grnDOE.val().toLowerCase() == "dd/mm/yyyy"){
+		displayError(grnError, "error", "<strong>Error !</strong> - Date of Expiry Date Missing.");
+		grnDOE.focus();
+		return false;
+	}
+	else if(isNaN(grnTotVal) || grnTotVal <= 0){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid Rate.");
+		return false;
+	}
+	else if(isNaN(grnRamTot.html().toNumber()) || grnRamTot.html().toNumber() <= 0){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid Total.");
+		return false;
+	}
+	else if(isNaN(grnGrandTot.html().toNumber()) || grnGrandTot.html().toNumber() <= 0){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid Grand Total.");
+		return false;
+	}	
+	
+	mstrHSN		=	postback(actionFile,"type=GETHSNCODE&ramid="+grnRamId.attr("ramid"),"POST","text");
+	
+	if(mstrHSN != grnHSNCode.val())
+	{
+		displayError(grnError, "error", "<strong>Error !</strong> - HSN code in ERP Master not matching, Please check with supplier or update master with correct HSN code.!!!");
+		grnHSNCode.focus();
+		return false;	
+	}
+	
+	calcTot		=	(grnTotVal * (grnTaxRate.val().toNumber()/100)) + grnTotVal
+	
+	if(calcTot != grnGrandTot.html().toNumber())
+	{
+		if(!(confirm("Calculated Total as per Tax Rate and Grand Total Entered does not Match. Do you want to continue?" )))
+		{
+			return false;
+		}	
+	}	
+	
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Create the Goods Receipt Note?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Raise GRN',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															param		=	"type=" + "GRNINS" +
+																			"&rmcode=" + grnRamId.attr("ramid") +																			
+																			"&purid=" + grnPurId +
+																			"&supid=" + grnSupId.attr("supid") +
+																			"&recvdfrom=" + $("#recFrom").val() +
+																			"&hsncode=" + grnHSNCode.val() +
+																			"&taxrate=" + grnTaxRate.val() +
+																			"&grndate=" + grnDate.val() +
+																			"&invoiceno=" + grnInvRef.val() +
+																			"&invoicedate=" + grnInvDate.val() +
+																			"&invqty=" + grnInvQty.val() +
+																			"&ramrate=" + grnRamRate.html() +
+																			"&ramtot=" + grnRamTot.html() +
+																			"&cgstval=" + grnCGSTVal.val() +
+																			"&igstval=" + grnIGSTVal.val() +
+																			"&sgstval=" + grnSGSTVal.val() +
+																			"&insurance=" + grnInsVal.val() +
+																			"&freight=" + grnFreight.val() +
+																			"&grandtot=" + grnGrandTot.html() +
+																			"&tcavail=" + grnTCAvail.attr("checked")+
+																			"&testcert=" + grnTCdet.val() +
+																			"&expirydate=" + grnDOE.val();
+															//alert(param); return false;
+															$("#grn_popup").dialog("close");	
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															alert(XMLContent);
+															xmlData				=	parseXMLdoc(XMLContent);
+															error				=	$(xmlData).find("mysql:first status:first").text();
+															if(error == "success"){
+																$(xmlData).find('result_set').each(function(index, element) {
+																	grnCode		=	$(this).find('grn').text();
+																	invCode		=	$(this).find('invoice').text();
+																	stkUpdStat	=	$(this).find('stkupdate').text();
+																});
+																
+																if(toPrint == true)
+																	openInvoice({invID:invCode});
+																else
+																	displayError($("#base_error"), "highlight", "The GRN (" + grnCode + ") has been created!");																	
+																
+																if(stkUpdStat == "failed")
+																	displayError($("#base_error"), "error", "<strong>Error !</strong> - Error! The GRN (" + grnCode + ") could not be updated to raw material store!, Please do it manually!");
+															}
+															else{
+																displayError($("#base_error"), "error", "<strong>Error !</strong> - The GRN Creation failed due to:" + error);
+															}
+															getPageData();
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+}
+
+
+
+
+

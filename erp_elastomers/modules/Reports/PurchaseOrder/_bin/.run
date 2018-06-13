@@ -1,0 +1,43 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+tableFilters.col_9				= 	"none";
+tableFilters.sort_config		=	{ sort_types:['string','date', 'string','string','string','us','us','us','string','None'] };
+var TF_01						=	null;
+var needRefresh					=	false;
+tableFilters.col_operation		=	{ 
+									   id: ["ord_qty_total","val_total"], 
+									   col: [5,7],
+									   operation: ["sum","sum"],
+									   decimal_precision: [3,2]
+									};
+tableFilters.on_after_operation	=	formatTotals;
+
+function formatTotals()
+{
+	tf_Id('ord_qty_total').innerHTML 	= 	tf_Id('ord_qty_total').innerHTML.toCurrency(3);
+	tf_Id('val_total').innerHTML 		= 	tf_Id('val_total').innerHTML.toCurrency(2);
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+	updatePageBehaviour();	
+});
+
+function updatePageBehaviour(){
+	var XMLContent	=	postback(actionFile, "selecttype=MIXLIST&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST", "XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;
+	
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('purid');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});
+}
+

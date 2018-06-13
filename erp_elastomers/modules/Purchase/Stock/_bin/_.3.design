@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+	<table width="100%" border="0" class="print_table" cellspacing="0" cellpadding="0" >
+		<tr>
+			<th style="width:5%">No</th>
+			<th style="width:20%">RAM Name</th>
+			<th style="width:30%">RAM Grade</th>                
+			<th style="width:15%">Closing</th>
+			<th style="width:15%">GRN</th>
+			<th style="width:15%">Physical</th>
+		</tr> 	
+		<xsl:for-each select="rootxml/root/data/row" >
+			<xsl:for-each select="row/ramData" >
+			<tr>
+				<td align="center">
+					<xsl:value-of select="position()" />
+				</td>
+				<td align="left">
+					<xsl:value-of select="ramname" />
+				</td>
+				<td align="left">
+					<xsl:value-of select="ramgrade" />
+				</td>
+				<td align="right" >
+					<xsl:value-of select="closing_stock" />
+				</td>
+				<td>
+					<xsl:value-of select="grndetails" />
+				</td>
+				<td>
+					&#160;
+				</td>			
+			</tr>
+        </xsl:for-each>
+	<tr style="font-weight:bold">
+		<xsl:attribute name="class">content_rows_dark cust_subtot</xsl:attribute>
+ 		<td align="center" ><xsl:value-of select="ramClass" /></td>
+		<td align="center">Total</td>
+		<td align="center"><xsl:value-of select="className" /></td>		
+		<td align="right"><xsl:value-of select="format-number(totClsStock,'###,###,##0.000')" /></td>
+		<td align="right">&#160;</td>
+		<td align="right">&#160;</td>
+	</tr>		
+	</xsl:for-each>
+	
+    </table>
+</xsl:template>
+</xsl:stylesheet>

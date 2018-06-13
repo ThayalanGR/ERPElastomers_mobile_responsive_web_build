@@ -1,0 +1,38 @@
+<?php
+
+	// Includes
+	session_start();
+	
+	// Do Actions
+	header('Content-Type: text/xml');
+	switch($_POST['selecttype']){
+		case "UOMADD":
+			if($_POST['uomtype'] != "" && $_POST['uomsname'] != ""){
+				$output		=	@getMySQLData("insert into tbl_uom(uom_type, uom_short_name)
+												values('".$_POST['uomtype']."', '".$_POST['uomsname']."');", "xml");
+			}
+		break;
+		case "UOMEDIT":
+			if($_POST['sno'] != "" && $_POST['uomtype'] != "" && $_POST['uomsname'] != ""){
+				$output		=	@getMySQLData("update tbl_uom set
+												uom_type='".$_POST['uomtype']."',
+												uom_short_name='".$_POST['uomsname']."'
+												where sno='".$_POST['sno']."' and status>0;", "xml");
+			}
+		break;
+		case "UOMDEL":
+			if($_POST['sno'] != ""){
+				$output		=	@getMySQLData("update tbl_uom set status='0' where sno='".$_POST['sno']."' and status>0;", "xml");
+			}
+		break;
+	}
+	
+	// List Data
+	$list	=	@getMySQLData("SELECT * FROM tbl_uom where status>0 order by sno asc;", 'xml', 'root');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

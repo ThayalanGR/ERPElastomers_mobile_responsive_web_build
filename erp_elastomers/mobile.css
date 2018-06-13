@@ -1,0 +1,39 @@
+.input-container {
+    display: flex;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.input-field {
+    width: 100%;
+    padding: 5px;
+    outline: none;
+}
+
+.input-field:focus {
+    border: 2px solid dodgerblue;
+}
+
+div.hover1:hover{
+    /* background-color:   rgb(53, 60, 66); */
+    /* text-shadow: 10px; */
+    box-shadow: 5px 5px 5px 5px grey;
+}
+
+ul.hover1:hover{
+    /* background-color:   rgb(53, 60, 66); */
+    /* text-shadow: 10px; */
+    box-shadow: 5px 5px 5px 5px grey;
+}
+li.hover1:hover{
+    /* background-color:   rgb(53, 60, 66); */
+    /* text-shadow: 10px; */
+    box-shadow: 1px 1px 1px 1px grey;
+    text-decoration: none;
+    border: none;
+}
+a.hover1:hover{
+    box-shadow: 1px 1px 1px 1px grey;
+    text-decoration: none;
+    border: none;
+}

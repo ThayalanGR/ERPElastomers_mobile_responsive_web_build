@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+	<div id="content_head">
+		<table border="0" cellpadding="6" cellspacing="0" width="100%">
+			 <tr>
+				  <th align="left" width="8%" filter="ignore" title="Key Reference">Key Ref.</th>
+				  <th align="left" width="10%" filter="date">Inspection Date</th>
+				  <th align="left" width="10%" title="Component Code">CNT Code</th>
+				  <th align="left" width="12%" title="Component Name">CNT Name</th>
+				  <th align="right" width="7%" filter="currency" title="Inspected Qty">Insp. Qty</th>
+				  <th align="right" width="7%" filter="currency" title="Approved Qty">App. Qty</th>
+				  <th align="right" width="7%" filter="currency" title="Rejected Qty">Rej. Qty</th>
+				  <th align="right" width="7%" filter="currency" title="Rework Qty">Rew. Qty</th>
+				  <th align="right" width="7%" filter="currency" title="Rejection %">Rej. %</th>
+				  <th align="right" width="7%" filter="currency" title="Rework %">Rew. %</th>
+				  <th align="left" width="12%">Inspector</th>
+				  <th filter="ignore" align="right">#</th>
+			</tr>
+		</table>
+	</div>	
+    <div id="window_list">
+        <div id="content_body">
+        <table border="0" cellpadding="6" cellspacing="0" width="100%">
+            <xsl:for-each select="xmldata/root/data/row">
+            	<tr>
+                	<xsl:if test="position() mod 2 != 0">
+                    	<xsl:attribute name="class">content_rows_light</xsl:attribute>
+                    </xsl:if>
+                    <xsl:if test="position() mod 2 != 1">
+                    	<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+                    </xsl:if>
+                      <td align="left" width="8%">
+                        <xsl:value-of select="planref"/>
+                      </td>  	
+                      <td align="left" width="10%">
+                     	<xsl:value-of select="issudate" /> 
+                      </td>
+                      <td align="left" width="10%">
+                        <xsl:value-of select="cmpdname" />
+                      </td>
+                      <td align="left" width="12%">
+                        <xsl:value-of select="cmpdrefno" />
+                      </td>
+                      <td align="right" width="7%">
+                      	<xsl:choose>
+                        	<xsl:when test="inspqty &gt; 0">
+                      			<xsl:value-of select="format-number(inspqty,'###,###,##0')" />
+                            </xsl:when>
+                            <xsl:otherwise>
+                            0
+                            </xsl:otherwise>
+                         </xsl:choose>
+                      </td>
+                      <td align="right" width="7%">
+                      	<xsl:choose>
+                        	<xsl:when test="appqty &gt; 0">
+                            	<xsl:value-of select="format-number(appqty,'###,###,##0')" />
+                            </xsl:when>
+                            <xsl:otherwise>
+                            0
+                            </xsl:otherwise>
+                        </xsl:choose>
+                      </td>
+                      <td align="right" width="7%">
+                        <xsl:value-of select="format-number(rejval,'###,###,##0')" />
+                      </td>
+                      <td align="right" width="7%">
+                        <xsl:value-of select="format-number(rewrkval,'###,###,##0')" />
+                      </td>					  
+                      <td align="right" width="7%">
+                      	<xsl:value-of select="format-number(rejper,'###,###,##0.00')" />
+                      </td> 
+					  <td align="right" width="7%">
+                      	<xsl:value-of select="format-number(rewrkper,'###,###,##0.00')" />
+                      </td>					  
+                      <td align="left" width="12%">
+                       <xsl:choose>
+                        	<xsl:when test="user != ''">
+                            	<xsl:value-of select="user" /> 
+                            </xsl:when>
+                            <xsl:otherwise>
+                            	-
+                            </xsl:otherwise>
+                        </xsl:choose>								
+                      </td>
+                      <td align="right">
+                        <a>
+                            <xsl:attribute name="invid"><xsl:value-of select="invref" /></xsl:attribute>
+                            <xsl:attribute name="class">view_button link</xsl:attribute>
+                            View
+                        </a>
+                      </td>
+                    </tr>
+             </xsl:for-each>
+        </table>
+		</div>
+    </div>		
+    </xsl:template>
+</xsl:stylesheet>

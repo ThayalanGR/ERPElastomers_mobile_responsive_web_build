@@ -1,0 +1,90 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "PODET":
+			$cutoff	=	date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - 7, date("Y")));
+			$sql	=	"select purId,DATE_FORMAT(purDate, '%d-%m-%Y') as purDate,ts.supId,ts.supName,part_number,part_description,toolSize,moldProcess,toolCavities,if(purDate > '$cutoff',0,1) as cutoff
+						from tbl_tool_purchase ttp
+							inner join tbl_supplier ts on ttp.supId=ts.supId
+							inner join tbl_develop_request tdr on ttp.rfqid=tdr.sno
+						where ttp.status=1 order by purId asc;";
+			echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+		break;
+		case "PODETAILS":
+			$purId	=	$_POST['purId'];
+			$sql	=	"select purId,DATE_FORMAT(purDate, '%d-%m-%Y') as purDate,ts.supId,ts.supName,part_number,part_description,toolSize,moldProcess,toolCavities,poValue,DATE_FORMAT(expRecvDate, '%d-%m-%Y') as exprecvdate,moldType,moldMaterial,cavEngravement,isproto,ttp.remarks,rfqid
+						from tbl_tool_purchase ttp
+							inner join tbl_supplier ts on ttp.supId=ts.supId
+							inner join tbl_develop_request tdr on ttp.rfqid=tdr.sno
+						where ttp.purId='$purId' and ttp.status=1";
+			echo @getXML($sql, false);
+		break;
+		case "TRNINS":
+			$purid			=	$_POST['purid'];
+			$supplier		=	$_POST['supplier'];
+			$rfqid			=	$_POST['rfqid'];
+			$invoiceno		=	$_POST['invoiceno'];
+			$invoicedate	=	$_POST['invoicedate'];
+			$trndate		=	$_POST['grndate'];
+			$toolsize		=	$_POST['toolsize'];
+			$toolcavs		=	$_POST['toolcavs'];
+			$moldproc		=	$_POST['moldproc'];
+			$moldtype		=	$_POST['moldtype'];
+			$moldmatl		=	$_POST['moldmatl'];
+			$cavengrave		=	$_POST['cavengrave'];
+			$isproto		=	$_POST['isproto'];
+			$remarks		=	$_POST['remarks'];
+			$toolamount		=	@preg_replace("/[,]/", "", $_POST['toolamount']);
+			$invamount		=	@preg_replace("/[,]/", "", $_POST['invamount']);
+			$sup_data		=	@getMySQLData("select * from tbl_supplier where supId='$supplier'", "arr");
+			$sup_data		=	$sup_data['data'][0];
+			/*echo '<pre>';
+				print_r($_POST);
+			echo '</pre><br>';*/
+			if($purid != ""){
+				$sql_grn		=	"insert into tbl_trn(trnId, trnDate, purId, supId,rfqid, invoiceId, invoiceDate, invoiceAmount, toolCost, toolSize, toolCavities,  
+									moldProcess, moldType, moldMaterial, cavEngravement, isproto, remarks, entry_on, entry_by) values";
+				
+				$codeArray		=	@getSettingsData("trncode");
+				$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+				$userId			=	$_SESSION['userdetails']['userId'];
+				$sql_grn		.=	"('$codeNo', '$trndate','$purid','$supplier','$rfqid','$invoiceno','$invoicedate','$invamount','$toolamount','$toolsize', '$toolcavs', 
+										'$moldproc', '$moldtype', '$moldmatl', $cavengrave, $isproto, '$remarks', now(), '$userId')";
+				//echo $sql_grn ."<BR>" ; exit();
+				$output			=	@getMySQLData($sql_grn, "xml");
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					if($status == "success"){
+						// Close Purchase Order
+						@getMySQLData("update tbl_tool_purchase set status=2 where purId='$purid'", "xml");
+						
+						// Update Settings
+						@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='trncode'");				
+						
+						$output	.= "<result_set><trn>$codeNo</trn></result_set>";
+						// close & send the result to user & then send emails									
+						closeConnForAsyncProcess("<root>$output</root>");
+						// send email
+						$aEmail = new AsyncCreatePDFAndEmail("NPD/TRNRegister",$codeNo, explode(',',$sup_data['supEmail']),"","Tool Receipt Note:".$codeNo,"Dear Sir/Madam,\n Please find the attached Receipt Note for the Tool provided against Purchase Order: ".$purid);									
+						$aEmail->start();
+						exit();		
+					}
+				}
+				else
+				{
+					$output	.= "<result_set>failed</result_set>";	
+				}
+				echo "<root>$output</root>";
+			}
+		break;			
+		case "DELETE":
+			$purid			=	$_POST['pur'];
+			$sql			=	"update tbl_tool_purchase set status='0' where purId='$purid' ";
+			echo @getMySQLData($sql,"xml");
+		break;
+	}
+
+?>

@@ -1,0 +1,301 @@
+<?php
+	global $stateList, $HSN, $taxRate, $homeState,$grnRole,$grn_mixrate,$grn_wastage;
+	session_start();
+
+	switch($_REQUEST["selecttype"]){
+		case "GETCOMPONENT":
+			$cusid	=	$_POST['cusid'];
+			$sql	=	"select t1.cmpdId, concat(t2.cmpdName,'(',t2.cmpdRefNo,')') as cmpdName
+							from tbl_component t2
+							inner join ( select * from (select * from tbl_customer_cmpd_po_rate where cusId='$cusid' and status=1 order by update_on desc) tbl group by cmpdid) t1 on t1.cmpdId=t2.cmpdId
+						order by t2.cmpdName";
+			header("Content-Type: text/xml");
+			echo getXML($sql, false);
+			exit();
+		break;
+		case "GETAVLCPD4CUS":
+			$cusid	=	$_POST['cusid'];
+			$sql	=	"select t1.cpdId, t1.cpdName, sum(if((t3.status = 2 and (masterBatchWgt - mstrIssuedQty) > 0),1,0)) as mCount,sum(if((t3.status > 2 and avlQty > 0),1,0)) as fCount,
+							round((SELECT SUM((ramParts / sumrem) * ramApprovedRate) AS rate
+										FROM (select * 
+												from (select cpdId, item_no,ramParts, ramApprovedRate 
+														from tbl_compound_rm tcr
+															inner join tbl_invoice_grn tig on tig.invRamId = tcr.ramId
+															inner join tbl_rawmaterial trm on trm.ramId = tcr.ramId
+														order by grnDate Desc)table1 group by cpdId,item_no)tbl1 
+											INNER JOIN (SELECT cpdId, SUM( ramParts ) AS sumrem FROM (SELECT cpdId, item_no, ramparts FROM tbl_compound_rm  group by cpdId,item_no )table1 group by cpdId )tbl2 on tbl1.cpdId = tbl2.cpdId												
+										WHERE tbl1.cpdid =  t1.cpdid),2) as cpdCost
+							from tbl_compound t1
+							inner join ( select * from (select * from tbl_customer_cpd_po_rate where cusId='$cusid' and status=1 order by update_on desc) tbl group by cpdid) t2 on t1.cpdId=t2.cpdId
+							inner join tbl_mixing t3 on t3.cpdId = t1.cpdId
+						where (t3.status = 2 and (masterBatchWgt - mstrIssuedQty) > 0 and batFinalDate = '0000-00-00') or (t3.status > 2 and avlQty > 0)
+						group by t1.cpdId order by t1.cpdName";
+			header("Content-Type: text/xml");
+			echo getXML($sql, false);
+			exit();
+		break;
+		case "GETAVLRAM4CUS":
+			$cusid	=	$_POST['cusid'];
+			$sql	=	"select t3.ramId, concat(t3.ramName, ' - ', t3.ramGrade) as ramName, t1.invGSTRate as taxRate, t3.ramApprovedRate as ramCost
+							from tbl_invoice_grn t1
+							inner join tbl_customer t2 on t1.invIssuer=t2.cusGroup and t2.cusId = '$cusid'
+							inner join tbl_rawmaterial t3 on t3.ramId = t1.invRamId
+						where t1.avlQty > 0 and t1.status > 0 and t3.ramClass <= 6
+						group by t3.ramId order by t3.ramName";
+			header("Content-Type: text/xml");
+			echo getXML($sql, false);
+			exit();
+		break;		
+		case "GETRAMGRNS":
+			$ramIds		=	$_REQUEST['ramids'];
+			$sql		=	"select tr.ramid, concat(ramName,' - ',ramGrade) as ramName, tm.grnid, tm.avlQty,'NA' as poref,'00/00/0000' as podate,ramApprovedRate as porate 
+								from tbl_invoice_grn tm
+									inner join tbl_rawmaterial tr on tr.ramId = tm.invRamId
+								where tm.status > 0 and tm.avlQty>0  and tm.invRamId in ('".implode("','", $ramIds)."')								
+								order by invRamName, grnDate" ;
+
+
+			echo getXML($sql,false);
+			exit();
+		break;
+		case "GETCPDBATCHES":
+			$cusid		=	$_REQUEST['cusid'];
+			$customer	=	$_REQUEST['customer'];
+			$incmaster	=	$_REQUEST['incmaster'];
+			$cpdIds		=	$_REQUEST['cpdids'];
+			$sql		=	"select tm.cpdid, tm.batid, tm.avlQty,poref,podate,porate 
+								from tbl_mixing tm
+									inner join tbl_mixing_recv tmr on tm.batid = tmr.batid
+									inner join (select cpdid,poref,podate,porate from (select cpdid,poref,podate,porate  from tbl_customer_cpd_po_rate where cusId='$cusid' and status=1 order by update_on desc) tbl group by cpdid) t2 on tm.cpdId=t2.cpdid								 
+								where tmr.status = 2 and tm.avlQty>0 " ;// and tm.customer = '$customer'";
+			if($incmaster == 1)
+				$sql	.=	"	Union
+							select t1.cpdId,batId,(masterBatchWgt - mstrIssuedQty) as avlQty,poref,podate,porate
+								from tbl_mixing t1
+									inner join (select cpdid,poref,podate,porate from (select cpdid,poref,podate,porate from tbl_customer_cpd_po_rate where cusId='$cusid' and status=1 order by update_on desc) tbl group by cpdid) t2 on t1.cpdId=t2.cpdid
+								where status = 2 and (masterBatchWgt - mstrIssuedQty) > 0 and batFinalDate = '0000-00-00' " ;// and customer = '$customer' ";				
+							
+			$sql		=	"select tab1.cpdid, tab1.batid, tab1.avlQty, tc.cpdName,poref,podate,porate, '".$grn_wastage[$customer]."' as wastage
+								from (" .$sql.") tab1
+									inner join tbl_compound tc on tc.cpdId = tab1.cpdId
+									inner join tbl_polymer_order tpo on tc.cpdPolymer=tpo.polyName
+								where tc.cpdId in ('".implode("','", $cpdIds)."')
+							order by tpo.disporder,tc.cpdName asc";
+
+			echo getXML($sql,false);
+			exit();
+		break;		
+		case "GETSAMPBATCHES":
+			echo getXML("SELECT rfqId, tsp.planId, (approved_qty - invoiced_qty) as avlQty, concat(part_number,'(',part_description,')') as part_number  FROM tbl_sample_plan tsp
+							inner join tbl_develop_request tdr on tdr.sno = tsp.rfqId 
+							inner join tbl_sample_receipt tsr on tsr.planId = tsp.planId 
+						where rfqId = '".$_POST['rfqid']."' and (approved_qty - invoiced_qty) > 0",false);
+			exit();		
+		break;
+		case "GETTAXDETAILS":
+			$resultXML	=	"";
+			$invType	=	$_POST['invtype'];
+			$taxPercent	=	$taxRate[$invType];
+			if($taxPercent == null || $taxPercent == "")
+				$taxPercent	=	$invType;
+			if($_POST['cusstate'] == $homeState)
+				$resultXML	=	"<row><cgst>".($taxPercent/2)."</cgst><sgst>".($taxPercent/2)."</sgst><igst>0</igst></row>";
+			else
+				$resultXML	=	"<row><cgst>0</cgst><sgst>0</sgst><igst>".$taxPercent."</igst></row>";
+			echo $resultXML;
+			exit();
+		break;
+		case "GETDCDETAILS":
+			$cusGroup		=	$_POST["cusgrp"];
+			if($grn_role[$cusGroup]		==	'client')
+			{
+				$sql		=	"select tid.dcid, sum(idi.dcqty) as dcqty, '".$grn_mixrate[$cusGroup]."' as dcrate
+									from tbl_invoice_dc tid 
+										inner join tbl_customer tc on tid.dcCusId=tc.cusId 
+										inner join tbl_invoice_dc_items idi on tid.dcId=idi.dcId 
+									where tc.cusGroup = '$cusGroup' and tid.dctype = 'cpd' and tid.status = 1
+									group by tid.dcId 
+								order by tid.dcId desc";
+				echo getXML($sql,false);
+			}
+			else
+				echo "<root><row><row></root>";
+			exit();
+		break;
+		case "GETTOOL4CUS":
+			echo getXML(" select tool_ref from tbl_tool where status1  = 1 and compId = '".$_POST['cmpdid']."' and invoiced = 0 order by tool_ref ",false);
+			exit();
+		break;
+		case "GETAVLSAMP4CUS":
+			echo getXML("SELECT concat(part_number, '(', drId,')') as part_number, rfqid FROM tbl_develop_request tdr		
+								inner join tbl_sample_plan tsp on tsp.rfqId = tdr.sno and tsp.status = 2
+							WHERE  cusId = '".$_POST['cusid']."' and tdr.status > 1  group by rfqId order by part_number",false);
+			exit();
+		break;
+		case "CSTATLIST":
+			echo getXML("select cusId, cusName from tbl_customer where status>0",false);
+			exit();
+		break;
+		case "CSTDTLLIST":
+			$output		=	getXML("select * from tbl_customer where cusName='".$_POST['cusid']."' and status>0",false);
+			echo $output;
+			exit();
+		break;
+		case "CREATEINVOICE":
+			$data						=	$_POST['templatepost'];
+			$invType					=	$_POST['invtype'];
+			$codeArray					=	@getSettingsData("cmpdInv");
+			$codeNo						=	@getRegisterNo($codeArray[0], $codeArray[1]);			
+			$settings					=	@getMySQLData("select name,value from tbl_settings where name in ('gstn','pan') order by name");
+			$settings					=	$settings['data'];
+			$custData					=	@getMySQLData("select * from tbl_customer where cusId='".$data['custid']."'");
+			$custData					=	$custData['data'][0];
+			$cusAddress					=	$custData['cusAdd1']. "<br />".	((trim($custData['cusAdd2']) != '')?$custData['cusAdd2']. "<br />":"").$custData['cusPlace']. " - " .	$custData['cusPincode']	;
+			$cusGroup					=	$custData['cusGroup'];
+			$data['total']				=	@preg_replace("/[,]/", "", $data['total']);
+			$data['cgst']				=	@preg_replace("/[,]/", "", $data['cgst']);
+			$data['cgst_out']			=	@preg_replace("/[,]/", "", $data['cgst_out']);
+			$data['taxableval_out']		=	@preg_replace("/[,]/", "", $data['taxableval_out']);
+			$data['sgst']				=	@preg_replace("/[,]/", "", $data['sgst']);
+			$data['sgst_out']			=	@preg_replace("/[,]/", "", $data['sgst_out']);
+			$data['igst']				=	@preg_replace("/[,]/", "", $data['igst']);
+			$data['igst_out']			=	@preg_replace("/[,]/", "", $data['igst_out']);
+			$data['grandtotal_out']		=	@preg_replace("/[,]/", "", $data['grandtotal_out']);
+			$data['invoicedate']		=	@date("Y-m-d", @strtotime(@preg_replace("/[\/]/", "-", @trim($data['invoicedate']))));
+			$data['shipmentdate']		=	@date("Y-m-d", @strtotime(@preg_replace("/[\/]/", "-", @trim($data['shipmentdate']))));
+			//echo "success"; exit();
+
+			$sql_ins		=	"insert into tbl_invoice_sales (
+									invId, invDate, invCusId, invConsignee, invConsigneePerson,
+									invMultiItems, invPayTerms, invShipDate, invTotalAmt,
+									invCGST, invCGSTAmt, invSGST, invSGSTAmt, invGrandTotal, invIGSTAmt, invIGST, invTaxableValAmt,
+									invCustRefNo, invPAN, invGSTN, invBGSTN, invBPAN, invSupplyPlace, invRemarks,
+									entry_on, entry_by)
+								values(
+									'$codeNo', '".$data['invoicedate']."', '".$custData['cusId']."', '".$custData['cusName']."|".$cusAddress."', '".$custData['cusContName']."|".$custData['cusMobile']."|".$custData['cusPhone'].", ".$custData['cusFax']."|".$custData['cusEmail']."',
+									'".$data['multiitems']."', '".(($data['payment_terms'])?$data['payment_terms']:$custData['cusCreditDays'])."', '".$data['shipmentdate']."', '".$data['total']."',
+									'".$data['cgst']."', '".$data['cgst_out']."', '".$data['sgst']."', '".$data['sgst_out']."',  '".$data['grandtotal_out']."', '".$data['igst_out']."', '".$data['igst']."', '".$data['taxableval_out']."',
+									'".$custData['cusRefNo']."', '".$settings[1]['value']."', '".$settings[0]['value']."', '".$custData['cusGSTN']."', '".$custData['cusPan']."', '".$stateList[$custData['cusState']]."', '".$data['invremarks']."',
+									now(), '".$_SESSION['userdetails']['userId']."')";
+			//echo "$sql_ins\n\n";
+			$out0	=	@getMySQLData($sql_ins,"arr");
+			
+			if ($out0['status'] == 'success')			
+			{
+				$itemDetails				=	 array();
+				switch($invType){
+					case "cmpd":
+						$component					=	@getMySQLData("select drId, part_number, part_description from tbl_develop_request where rfqId='".$data['particulars']['cpdcode'][0]."'");
+						$component					=	$component['data'][0];
+						$itemDetails['itemId']		=	$component['drId'];
+						$itemDetails['itemName']	=	($data['custpartnum'])?$data['custpartnum']:$component['part_number'];
+						$itemDetails['itemDesc']	=	($data['custdesc'])?$data['custdesc']:$component['part_description'];				
+					break;									
+					case "tool":
+						$component					=	@getMySQLData("select cmpdId, cmpdName, cmpdRefNo from tbl_component where cmpdId='".$data['particulars']['cpdcode'][0]."'");
+						$component					=	$component['data'][0];
+						$itemDetails['itemId']		=	$component['cmpdId'];
+						$itemDetails['itemName']	=	($data['custpartnum'])?$data['custpartnum']:$component['cmpdName'];
+						$itemDetails['itemDesc']	=	($data['custdesc'])?$data['custdesc']:$component['cmpdRefNo']." Tool";				
+					break;					
+					case "scrap":
+						$itemDetails['itemId']		=	'scrap';
+						$itemDetails['itemName']	=	'SCRAP';
+						$itemDetails['itemDesc']	=	'RUBBER SCRAPS AND FLASHES';
+					break;
+					case "mix":
+						$itemDetails['itemId']		=	'mix';
+						$itemDetails['itemName']	=	'Mixing';
+						$itemDetails['itemDesc']	=	'Jobwork Charges';
+					break;	
+				}			
+				$sql_ins_items	=	"insert into tbl_invoice_sales_items (invId, invPORef, invPODate, invPlanRef,
+										invRate, invQty, invAmt, invTariff, 
+										invCode, invName, invDesc, invtype) values
+										";
+				$subsql		=	array();
+				foreach($data['particulars'] as $key => $value){
+					for($sq=0;$sq<count($value);$sq++){
+						if($key == 'cpdcode'){ $subsql[$sq]['cpdcode'] = $value[$sq]; }
+						else if($key == 'poref'){ $subsql[$sq]['poref'] = $value[$sq]; }
+						else if($key == 'podate'){ $subsql[$sq]['podate'] = date("Y-m-d", @strtotime(@preg_replace("/[\/]/", "-", $value[$sq]))); }
+						else if($key == 'batref'){ $subsql[$sq]['batref'] = $value[$sq]; }
+						else if($key == 'aplqty'){ $subsql[$sq]['aplqty'] =  $value[$sq]; }
+						else if($key == 'rate'){ $subsql[$sq]['rate'] = @preg_replace("/[,]/", "", $value[$sq]); }
+						else if($key == 'value'){ $subsql[$sq]['value'] = @preg_replace("/[,]/", "", $value[$sq]); }
+					}
+				}
+				$sql_sub	=	"";
+				for($lp=0;$lp<count($subsql);$lp++){
+					if($invType == "cpd"){
+						$compound					=	@getMySQLData("select cpdId, cpdName, cpdPolymer from tbl_compound where cpdId='".$subsql[$lp]['cpdcode']."' and status>0");
+						$compound					=	$compound['data'][0];				
+						$itemDetails['itemId']		=	$compound['cpdId'];
+						$itemDetails['itemName']	=	$compound['cpdName'];
+						$itemDetails['itemDesc']	=	$compound['cpdPolymer'];
+					}
+					else if($invType == "ram"){
+						$rawmaterial				=	@getMySQLData("select ramId, ramName, ramGrade, ramHSNCode from tbl_rawmaterial where ramId='".$subsql[$lp]['cpdcode']."' and status>0");
+						$rawmaterial				=	$rawmaterial['data'][0];				
+						$itemDetails['itemId']		=	$rawmaterial['ramId'];
+						$itemDetails['itemName']	=	$rawmaterial['ramName'];
+						$itemDetails['itemDesc']	=	$rawmaterial['ramGrade'];
+					}					
+					$sql_ins_items	.=	" ('$codeNo', '".$subsql[$lp]['poref']."', '".$subsql[$lp]['podate']."',  '".$subsql[$lp]['batref']."',
+											'".$subsql[$lp]['rate']."', '".$subsql[$lp]['aplqty']."', '".$subsql[$lp]['value']."', '".(($invType == 'ram')?$rawmaterial['ramHSNCode']:$HSN[$invType])."', 
+											'".$itemDetails['itemId']."', '".$itemDetails['itemName']."', '".$itemDetails['itemDesc']."', '$invType')";
+											if($lp < count($subsql)-1){
+												$sql_ins_items	.=	" ,	";
+					}
+				}
+				//echo $sql_ins_items."\n\n";
+				//exit();
+				$out1		=	@getMySQLData($sql_ins_items, "arr");
+			}				
+
+			$output		=	'';
+			if($out1['status'] == 'success' && $out0['status'] == 'success'){
+				for($mp=0;$mp<count($subsql);$mp++){
+					$planid		=	$subsql[$mp]['batref'];	
+					$appqty		=	$subsql[$mp]['aplqty'];
+					//update Issue
+					if($invType == "mix")
+						@getMySQLData("update tbl_invoice_dc set status=2 where dcId='$planid' ");
+					else if($invType == "tool")
+						@getMySQLData("update tbl_tool set invoiced=1 where tool_ref='$planid'");
+					else if($invType == "cmpd")
+						@getMySQLData("update tbl_sample_receipt set invoiced_qty = invoiced_qty + $appqty where planId='$planid'");
+					else if($invType == "ram")
+						@getMySQLData("update tbl_invoice_grn set avlQty = avlQty - $appqty where grnId='$planid'");
+					else if($invType == "cpd")
+					{
+						$sql_bat	=	@getMySQLData("select mstrIssuedQty,avlQty,status,customer from tbl_mixing where batId='$planid'","arr");
+						$mixStatus	=	$sql_bat['data'][0]['status'];
+						$customer	=	$sql_bat['data'][0]['customer'];
+						if($mixStatus != 2)
+						{
+							$exAvlQty	=	$sql_bat['data'][0]['avlQty'];							
+							$avlqty		=	$exAvlQty - $appqty;
+							@getMySQLData("update tbl_mixing set avlQty='$avlqty' ".(($customer != $cusGroup)?", customer = '".$cusGroup."'":"")." where batId='$planid'");
+						}
+						else 
+						{
+							$exAvlQty		=	$sql_bat['data'][0]['mstrIssuedQty'];
+							$avlqty			=	$exAvlQty + $appqty;
+							@getMySQLData("update tbl_mixing set mstrIssuedQty='$avlqty' ".(($customer != $cusGroup)?", customer = '".$cusGroup."'":"")." where batId='$planid'");							
+						}					
+					}
+					
+				}			
+				$output = 'success~'.$codeNo;	
+				@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='cmpdInv'");
+			}
+			else
+			{
+				$output = 'failure~'.$out0['errtxt'].$out1['errtxt'];
+			}
+			echo $output;
+		break;
+	}		
+
+?>

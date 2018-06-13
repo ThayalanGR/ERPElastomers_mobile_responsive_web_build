@@ -1,0 +1,356 @@
+var ramidInUse				=	"";
+var supId					=	new Array();
+var	supAppRate				=	new Array();
+var	supStdpack				=	new Array();
+tableFilters.col_10			= 	"none";
+tableFilters.sort_config	=	{ sort_types:['string','string','string', 'string','us','us','us','us','us','us','None'] };
+var TF_01					=	null;
+var XSLFile					=	[XSLPath + "_1.design", XSLPath + "_2.design"];
+
+$(document).ready(function(){
+	startup();
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	$("#dialog_box").dialog({
+		modal:true,
+		width:550,
+		autoOpen:false,
+		resizable:false,
+		title:'Raise PO',
+		position:['center','center'],
+		buttons:[
+			{
+				text:'Generate',
+				click:function(){
+					doEntry();
+				}
+			},
+			{
+				text:'Generate & Print',
+				click:function(){
+					doEntry(true);
+				}
+			},
+			{
+				text:'Generate & Email',
+				click:function(){
+					doEntry(false);
+				}
+			},			
+			{
+				text:'Close',
+				click:function(){
+					$("#dialog_box").dialog('close');
+				}
+			}
+		],
+		open:function(){
+			
+		},
+		close:function(){
+			ramidInUse	=	"";
+			$('#raise_error').css({display:'none'});
+			$("#dialog_box form")[0].reset();
+			$("#raise_quantity").addClass("invisible_text");
+			$("#raise_rate").addClass("invisible_text");
+			$("#raise_value").html("0.00");
+			$("#raise_insurance").addClass("invisible_text");
+			$("#raise_freight").addClass("invisible_text");
+			$("#raise_gross").html("0.00");
+			$('#raise_rate').html('0.00');
+			$('#stdpack_quantity').html('0.00');
+			$('#deliverat').val('');
+		}
+	});	
+	
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function sethead(){
+	$("#content_body").hasScrollBar();
+}
+
+function startup(){
+	if (getUrlParameter('type') == 'stocklist')
+	{
+		objHTMLList	=	postback(actionFile, "type=RAWMATERIAL&conToHTML=1&xslfile="+XSLFile[1], "POST", "XML");
+		submitPrint(objHTMLList);
+		return false;		
+	}	
+	XMLContent		=	postback(actionFile, "type=RAWMATERIAL", "POST", "XML");
+	//alert(XMLContent);
+	listPageData($("#content_body"), XMLContent, XSLFile[0]);	
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	$("#content_body a").click(function(){
+		obj	=	$(this);
+		handleadd(obj);
+	});
+	
+	$('#raise_quantity').keydown(numbersOnly).keyup(calculatePO);
+	$('#raise_rate').keydown(numbersOnly).keyup(calculatePO);
+	$('#raise_insurance').keydown(numbersOnly).keyup(calculatePO);
+	$('#raise_freight').keydown(numbersOnly).keyup(calculatePO);
+}
+
+function fillValue(){
+	
+	supplierId	=	$("#raise_supplierlist").val();	
+	supIndex = supId.indexOf(supplierId);
+	if(supIndex >= 0)
+	{
+		$('#raise_rate').val(getCurrency(supAppRate[supIndex],2));
+		$('#stdpack_quantity').html(getCurrency(supStdpack[supIndex],2));
+	}
+	else
+	{
+		$('#raise_rate').html('0.00');
+		$('#stdpack_quantity').html('0.00');
+	}
+}
+
+
+function calculatePO(){
+	rseQuan		=	Number($("#raise_quantity").val());
+	rseRate		=	Number($("#raise_rate").val());
+	rseVal		= 	getCurrency((rseQuan * rseRate), 2);
+	$("#raise_value").html(rseVal);
+	
+	rseIns		=	Number($("#raise_insurance").val());
+	rseFrgt		=	Number($("#raise_freight").val());		
+	
+	$("#raise_gross").html(getCurrency(((rseQuan * rseRate) + rseIns + rseFrgt), 2));
+}
+
+function handleadd(rmobj){
+	if(typeof rmobj == 'object'){
+		rmid				=	rmobj.attr('id');
+		rmname				=	rmobj.attr('ramname');
+		rmgrade				=	rmobj.attr('ramgrade');
+		rmunit				=	rmobj.attr('ramunit');
+		rmroq				=	rmobj.attr('ramroq');
+		ramidInUse			=	rmid;
+		poNo				=	postback(actionFile,"type=NEXTID","POST","XML");
+		objSuppData			=	postback(actionFile,"type=SUPPLIST&rmId="+rmid+"","POST","XML");		
+		objSuppDataXml		=	parseXMLdoc(objSuppData);
+		objGRNData			=	postback(actionFile,"type=LASTGRN&rmId="+rmid+"","POST","XML");
+		objGRNDataXml		=	parseXMLdoc(objGRNData);
+		poNo				=	$(poNo).html();
+		supId				=	new Array();
+		supName				=	new Array();
+		supAppRate			=	new Array();
+		supStdpack			=	new Array();
+
+		$(objSuppDataXml).find('row').each(function(index, element) {
+			supId.push($(this).find('supid').text());
+			supName.push($(this).find('supname').text());
+			supAppRate.push($(this).find('ramapprovedrate').text());
+			supStdpack.push($(this).find('ramstdpacking').text());
+		});
+		
+		lastGRNId = '';
+		lastGRNDate = '';
+		lastGRNQty = '';
+		lastGRNRate = '';
+		lastGRNSuppId = '';
+		
+		$(objGRNDataXml).find('row').each(function(index, element) {
+			lastGRNId = $(this).find('grnid').text();
+			lastGRNDate = $(this).find('grndate').text();
+			lastGRNQty = $(this).find('invrecvqty').text();
+			lastGRNRate = $(this).find('invramrate').text();
+			lastGRNSuppId = $(this).find('invsupid').text();
+		});		
+		
+		//insert table
+		rowcount = $("#dialog_body table tr:first").siblings().length;
+		if((rowcount % 2) != 1){
+			classname = "content_rows_light";
+		}
+		else if((rowcount % 2) != 0){ 
+			classname = "content_rows_dark";
+		}
+		rc = Number(rowcount)+1;
+		
+		$("#raise_rmid").html(rmname);
+		$("#raise_rmgrade").html(rmgrade);
+		$("#raise_lastgrn").html(lastGRNId);
+		if(lastGRNDate != null && lastGRNDate != '')
+		{		
+			$("#raise_lastgrn").html(lastGRNId + " dated: "+ lastGRNDate);
+		}
+		$("#uom").html(rmunit);
+		$("#uom1").html(rmunit);
+		$("#raise_quantity").val(rmroq);
+		if(lastGRNQty != null && lastGRNQty != '')
+		{
+			$("#raise_quantity").val(lastGRNQty);
+		}
+		$("#raise_quantity").add("invisible_text");
+		defSuppID = null;
+		if(lastGRNSuppId != null && lastGRNSuppId != '')
+		{
+			defSuppID = lastGRNSuppId;			
+		}
+		$("#raise_supplier").html(
+			supName.toSelectWithValue(
+				supId,
+				"raise_supplierlist",
+				"raise_supplierlist",
+				defSuppID,
+				'width:80%',
+				'tabindex="1"',
+				"onchange='fillValue();calculatePO();'",
+				((supName.length == 1)?false:true)
+			)
+		);		
+		if(supId.length == 1)
+		{
+			fillValue();
+			calculatePO();
+		}
+		if(lastGRNRate != null && lastGRNRate != '')
+		{
+			fillValue();
+			$("#raise_rate").val(lastGRNRate);
+			calculatePO();
+		}
+		$("#dialog_box").dialog({title:'New Purchase Order ('+ poNo + ')'});
+		$("#dialog_box").dialog('open');
+	}
+}
+
+function doEntry(doPrint){
+	supplierList	=	$("#raise_supplierlist");
+	supplierId		=	supplierList.val();
+	supplierName	=	supplierList.text();	
+	quoteRef		=	$("#raise_quoteref");
+	quoteDate		=	$("#raise_quotedate");
+	deliverAt		=	$("#deliverat");
+	qualVal			=	$("#raise_quantity");
+	rateVal			=	$('#raise_rate');
+	
+	insVal			=	$('#raise_insurance');
+	frgtVal			=	$('#raise_freight');
+	remarksVal		=	$("#raise_remarks");
+	raiseError		=	$('#raise_error');
+	var_split		=	(isRewrite)?"/":"&";
+	
+	if(supplierName == null || supplierName == "" ||
+		supplierId == null || supplierId == ''){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Invalid Supplier.");
+		supplierList.focus();
+		return false;
+	}
+	else if(deliverAt.val() == null || deliverAt.val() == ""){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Invalid Delivery Location.");
+		deliverAt.focus();
+		return false;
+	}	
+	else if(isNaN(Number(qualVal.val())) || Number(qualVal.val()) <= 0){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Invalid Quantity.");
+		qualVal.focus();
+		return false;
+	}
+	else if(isNaN(Number(rateVal.val())) || Number(rateVal.val()) <= 0){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Invalid Rate.");
+		rateVal.focus();
+		return false;
+	}
+	else if(isNaN(Number(insVal.val())) || Number(insVal.val()) < 0){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Invalid Insurance Value.");
+		insVal.focus();
+		return false;
+	}
+	else if(isNaN(Number(frgtVal.val())) || Number(frgtVal.val()) < 0){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Invalid Freight Value.");
+		frgtVal.focus();
+		return false;
+	}
+	else if(quoteDate.val() == null || quoteDate.val() == "" || quoteDate.val().toLowerCase() == "dd/mm/yyyy"){
+		displayError(grnError, "error", "<strong>Error !</strong> - P.O Date Missing.");
+		quoteDate.focus();
+		return false;
+	}
+	
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Create the Purchase Order?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Raise PO',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															param		=	"type=" + "PURADD" +
+																			"&ram=" + ramidInUse +
+																			"&supplier=" + supplierId +
+																			"&quoteref="+ quoteRef.val() +
+																			"&quotedate="+ quoteDate.val() +
+																			"&deliverat=" + deliverAt.val() +
+																			"&quantity=" + qualVal.val() +
+																			"&rate=" + rateVal.val() +
+																			"&insurance=" + insVal.val() +
+																			"&freight=" + frgtVal.val() +
+																			"&remark=" + remarksVal.val();
+															if(doPrint == false)
+																param		+= "&sendemail=yes";
+															$("#dialog_box").dialog("close");
+															//alert(param);															
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															//alert(XMLContent);$("#content_body").html(XMLContent);return false;
+															xmlData				=	XMLContent.split(" | ");
+															if(xmlData[0] == "success" ){
+																alert( "Purchase Order No:"+xmlData[1]+" created sucessfully");
+																if(doPrint == true)
+																	openInvoice({invID:xmlData[1]});		
+															}
+															else{
+																alert("Unable to raise Purchase Order Due to :" +((xmlData[0] != "success")?xmlData[0]:xmlData[1]));
+															}
+															startup();
+															TF_01		=	setFilterGrid("resultTable",tableFilters);
+															TF_01.RefreshGrid();																
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});		
+
+}
+
+function submitPrint(XMLCont){
+	var WindowObject	=	null;
+	$("#print_item_form").css('visibility', 'visible');	
+	$("#print_item_form").dialog({
+									modal:true,
+									minWidth:'1200',
+									resizable:false,									
+									open: function(event, ui) {
+										var today 		= 	new Date();
+										$("#print_body").html(XMLCont);
+										$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+										$("#hdr_title").html("Stock Position");
+										$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");
+									}									
+								});	
+	var DocumentContainer = document.getElementById('print_item_form');
+	$("#print_item_form").dialog('close');
+	WindowObject = window.open("","_self");
+	WindowObject.document.writeln(DocumentContainer.innerHTML);	
+	loader = document.createElement('link');
+	loader.href = "/style/printTable.css";
+	loader.rel = "stylesheet";
+	WindowObject.document.head.appendChild(loader);
+	WindowObject.document.close();
+	WindowObject.focus();	
+}

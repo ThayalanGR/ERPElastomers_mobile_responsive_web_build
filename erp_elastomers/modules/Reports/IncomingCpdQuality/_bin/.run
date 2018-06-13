@@ -1,0 +1,259 @@
+tableFilters.col_0			=	"none";
+tableFilters.sort_config	=	{ sort_types:['none','string', 'string','us','us','us','us','us'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+var XSLFile					=	[XSLPath + "_1.design", XSLPath + "_2.design"];
+var objSchList				=	null;
+var compoundName			=	null;
+var limitsArray				=	null;
+var totValues				=	['spec','mean','deviation','cp','cpk'];
+
+$(document).ready(function(){
+	$("#show_plan_form").dialog( { autoOpen: false ,
+						modal: true ,
+						position: ['center','center'],
+						draggable: true,
+						resizable: true,
+						width: 750,
+						height:600,
+						buttons: [
+							{
+								text: "Print",
+								click: function(){
+									submitPrint(objSchList,XSLFile[1],"",true);
+								}
+							},
+							{
+								text: "Close",
+								click: function(){
+									$(this).dialog("close");
+								}
+							}
+						],
+						close: function(event, ui) {
+							$(this).css("display", "none");
+						}, 									
+						open: function(event, ui) {
+							$(this).css('visibility','visible');
+						}
+					});
+	updatePageBehaviour();
+});
+
+function average(valArray,spec,ulimit,llimit) {
+	var r =	 {spec: 0, mean: 0, variance: 0, deviation: 0, cp: 0, cpk: 0};
+	t 	= valArray.length;
+	if( !(t > 0) ){ return r; }    
+	for(var m, s = 0, l = t; l--; s += valArray[l]);
+	for(m = r.mean = s / t, l = t, s = 0; l--; s += Math.pow(valArray[l] - m, 2));
+	r.deviation 	= 	Math.sqrt(r.variance = s / t); 
+	if(!(spec >= 0) ){ return r; } 
+	r.spec			=	spec;
+	if(!(r.deviation > 0) || !(ulimit >= 0) || !(llimit >= 0) ){ return r; }
+	r.cp			= 	(ulimit - llimit)/(6*r.deviation);
+	cpu 			= 	(ulimit	- r.mean)/(3*r.deviation);
+	cpl 			= 	(r.mean - llimit)/(3*r.deviation);
+	r.cpk			=	(cpu < cpl)?cpu:cpl;
+	return  r;
+}
+
+function calTotal(contName){
+	totQty		=	0;
+	hardTot		=	0;
+	spgrTot		=	0;
+	ts2Tot		=	0;
+	t90Tot		=	0;	
+	$("#"+contName+" table tr").each(function(index, element) {
+		oqTot		=	($(this).find("td:eq(2)").html())?Number($(this).find("td:eq(2)").html().toNumber()):0;
+		hTot		=	($(this).find("td:eq(3)").html())?Number($(this).find("td:eq(3)").html().toNumber()):0;
+		sTot		=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().toNumber()):0;
+		s2Tot		=	($(this).find("td:eq(11)").html())?Number($(this).find("td:eq(11)").html().toNumber()):0;
+		t9Tot		=	($(this).find("td:eq(15)").html())?Number($(this).find("td:eq(15)").html().toNumber()):0;
+		totQty		=	totQty + (isNaN(oqTot) ?0 :oqTot);
+		hardTot		=	hardTot + (isNaN(hTot) ?0 :hTot);
+		spgrTot		=	spgrTot + (isNaN(sTot) ?0 :sTot);
+		ts2Tot		=	ts2Tot + (isNaN(s2Tot) ?0 :s2Tot);
+		t90Tot		=	t90Tot + (isNaN(t9Tot) ?0 :t9Tot);		
+	});
+	$("#tot_qty").html(totQty.toCurrency(0));
+	$("#hard_qty").html(hardTot.toCurrency(0));
+	$("#spgr_qty").html(spgrTot.toCurrency(0));
+	$("#ts2_qty").html(ts2Tot.toCurrency(0));
+	$("#t90_qty").html(t90Tot.toCurrency(0));	
+
+	tabData			=	"<tr style='font-size:10px;'>";
+	tabData			+=		"<th colspan='2'>Grand Total</th>";
+	tabData			+=		"<th align='right' >"+totQty.toCurrency(0)+"</th>";
+	tabData			+=		"<th align='right' >"+hardTot.toCurrency(0)+"</th>";
+	tabData			+=		"<th align='right' colspan='4'>"+spgrTot.toCurrency(0)+"</th>";
+	tabData			+=		"<th align='right' colspan='4'>"+ts2Tot.toCurrency(0)+"</th>";
+	tabData			+=		"<th align='right' colspan='4'>"+t90Tot.toCurrency(0)+"</th>";
+	tabData			+=		"<th align='right' colspan='3'>&nbsp;</th>";
+	tabData			+=	"</tr>";
+	return tabData;
+}
+
+function submitPrint(objList,desFile,tabData,needTransform){
+	var WindowObject	=	null;
+	$("#print_item_form").css('visibility', 'visible');	
+	$("#print_item_form").dialog({
+									modal:true,
+									minWidth:'1200',
+									resizable:false,									
+									open: function(event, ui) {
+										var today 		= 	new Date();
+										var startDate	=	"";
+										var endDate		=	"";
+										if(needTransform)
+										{
+											listPageData($("#print_body"), objList, desFile);
+											startDate	=	new Date($("#from_date").val());
+											endDate		=	new Date($("#to_date").val());												
+										}
+										else
+										{
+											$("#print_body").html(objList);
+											tabData		=	calTotal("print_body");
+											endDate  	= 	new Date(today.getFullYear(), today.getMonth(), 0);
+											startDate 	= 	new Date(endDate.getFullYear(), endDate.getMonth(), 1);											
+										}									
+										$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+										$("#hdr_title").html( " From: " + startDate.getDate()+"-"+(startDate.getMonth()+1)+"-"+startDate.getFullYear() + " To: " + endDate.getDate()+"-"+(endDate.getMonth()+1)+"-"+endDate.getFullYear() + ((tabData	== "")?" for : " + compoundName:""));
+										$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");
+									}									
+								});	
+	if(	tabData	== "")					
+		addSummary("print_body");
+	else 
+		$("#print_body table tr:last").after(tabData);	
+	var DocumentContainer = document.getElementById('print_item_form');
+	$("#print_item_form").dialog('close');
+	if(needTransform)
+		WindowObject = window.open("","printWindow");
+	else
+		WindowObject = window.open("","_self");
+	WindowObject.document.writeln(DocumentContainer.innerHTML);	
+	loader = document.createElement('link');
+	loader.href = "/style/printTable.css";
+	loader.rel = "stylesheet";
+	WindowObject.document.head.appendChild(loader);
+	WindowObject.document.close();
+	WindowObject.focus();
+}
+
+
+function updatePageBehaviour(){
+	tabData				=	"";
+	param				=	"startDate="+$("#from_date").val()+"&endDate="+$("#to_date").val();	
+	var objCompList		=	"";
+	if (getUrlParameter('type') == 'summaryreport')
+	{
+		today 		= 	new Date();
+		endDate  	= 	new Date(today.getFullYear(), today.getMonth(), 0);
+		startDate 	= 	new Date(endDate.getFullYear(), endDate.getMonth(), 1);		
+		objHTMLList	=	postback(actionFile, "startDate="+startDate.getFullYear()+"-"+(startDate.getMonth()+1)+"-"+startDate.getDate()+"&endDate="+endDate.getFullYear()+"-"+(endDate.getMonth()+1)+"-"+endDate.getDate()+"&conToHTML=1&xslfile="+XSLFile[0], "POST", "XML");
+		submitPrint(objHTMLList,"","",false)
+	}
+	else
+	{
+		objCompList		=	postback(actionFile, param, "POST", "XML");
+		//alert(objCompList);
+		//$("#content_body").html(objCompList); //return false;		
+		listPageData($("#content_body"), objCompList, XSLFile[0]);
+		TF_01	=	setFilterGrid("resultTable",tableFilters);	
+		if(needRefresh)
+			TF_01.RefreshGrid();
+		else
+			needRefresh	=	true;
+		tabData	=	calTotal("content_body");
+	}
+
+	$(".view_button").click(function(e){
+		cpdid	=	$(this).attr('cpdid');
+		cpdname	=	$(this).attr('cpdname');
+		if(cpdid != null && cpdid != ""){
+			getDetailList(cpdid,cpdname);
+			e.stopImmediatePropagation();
+		}
+	});	
+	$("#button_submit_pss").button().click(function(){
+		submitPrint(objCompList,XSLFile[0],tabData,true);		
+	});
+	var objBatList	=	postback(actionFile,"type=GETBATDETAILS&"+param+"&outtype=xml","POST","XML");
+	$("#batidlist").html(objBatList);
+}
+
+function getDetailList(cpdid,cpdname){
+	$("#show_plan_form").css('visibility', 'visible');
+	$("#show_plan_form").dialog("open");
+	compoundName	=	cpdname;
+	objSchList		=	postback(actionFile, "type=GETVAL&startDate="+$("#from_date").val()+"&endDate="+$("#to_date").val()+"&cpdid="+cpdid, "POST","XML");
+	//alert(objSchList); //return false;
+	listPageData($("#detail_body"), objSchList, XSLFile[1]);
+	var limitsObj	=	postback(actionFile,"type=GETLIMITS&cpdid="+cpdid+"&outtype=xml","POST","XML") ;
+	limitsArray		=	JSON.parse("{" + limitsObj + "}"); 
+	addSummary("detail_body");	
+}
+
+function addSummary(divId)
+{
+	hardValArray	=	new Array();
+	spgrValArray	=	new Array();
+	ts2ValArray		=	new Array();
+	t90ValArray		=	new Array();
+	$("#"+divId+" table tr").each(function(index, element) {
+        hTot	=	($(this).find("td:eq(2)").html())?Number($(this).find("td:eq(2)").html().split(",").join("")):0;
+		sgTot	=	($(this).find("td:eq(3)").html())?Number($(this).find("td:eq(3)").html().split(",").join("")):0;
+		tsTot	=	($(this).find("td:eq(4)").html())?Number($(this).find("td:eq(4)").html().split(",").join("")):0;
+		t9Tot	=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+		if(hTot > 0)
+		{
+			hardValArray.push(hTot);
+			if((hTot > ((0.03 * limitsArray["hardspec"]) + limitsArray["hardspec"])) || (hTot < (limitsArray["hardspec"] - (0.03 * limitsArray["hardspec"]))))
+				$(this).find("td:eq(2)").attr("style","color: red;");
+		}		
+		if(sgTot > 0)
+		{
+			spgrValArray.push(sgTot);
+			if((sgTot > ((0.03 * limitsArray["spgrspec"]) + limitsArray["spgrspec"])) || (sgTot < (limitsArray["spgrspec"] - (0.03 * limitsArray["spgrspec"]))))
+				$(this).find("td:eq(3)").attr("style","color: red;");			
+		}
+		if(tsTot > 0)
+		{
+			ts2ValArray.push(tsTot);
+			if((tsTot > ((0.03 * limitsArray["ts2spec"]) + limitsArray["ts2spec"])) || (tsTot < (limitsArray["ts2spec"] - (0.03 * limitsArray["ts2spec"]))))
+				$(this).find("td:eq(4)").attr("style","color: red;");			
+		}
+		if(t9Tot > 0)
+		{
+			t90ValArray.push(t9Tot);
+			if((t9Tot > ((0.03 * limitsArray["t90spec"]) + limitsArray["t90spec"])) || (t9Tot < (limitsArray["t90spec"] - (0.03 * limitsArray["t90spec"]))))
+				$(this).find("td:eq(5)").attr("style","color: red;");			
+		}		
+	}); 
+	hardness		=	average(hardValArray,limitsArray["hardspec"],limitsArray["hardul"],limitsArray["hardll"]);
+	spgravity		=	average(spgrValArray,limitsArray["spgrspec"],limitsArray["spgrul"],limitsArray["spgrll"]);
+	ts2				=	average(ts2ValArray,limitsArray["ts2spec"],limitsArray["ts2ul"],limitsArray["ts2ll"]);
+	t90				=	average(t90ValArray,limitsArray["t90spec"],limitsArray["t90ul"],limitsArray["t90ll"]);
+	subTot			=	"";
+	for(valCount=0;valCount < totValues.length;valCount++)
+	{
+		subTot		+=	"<tr style='font-weight:bold;font-size:10px;'>" +
+							"<td colspan='2' align='center'>"+totValues[valCount].toUpperCase()+"</td>" +
+							"<td align='right'>"+((valCount <= 1)?hardness[totValues[valCount]].toCurrency():hardness[totValues[valCount]].toCurrency(2))+"</td>" +
+							"<td align='right'>"+spgravity[totValues[valCount]].toCurrency(2)+"</td>" +
+							"<td align='right'>"+((valCount <= 1)?ts2[totValues[valCount]].toCurrency():ts2[totValues[valCount]].toCurrency(2))+"</td>" +								
+							"<td align='right'>"+((valCount <= 1)?t90[totValues[valCount]].toCurrency():t90[totValues[valCount]].toCurrency(2))+"</td>" +								
+						"</tr>";
+	}
+	$("#"+divId+" table tr:last").after(subTot);	
+
+}
+
+
+function showReport() 
+{
+	mRecId	=	$("#batidlist").val();
+	if(mRecId != null && mRecId != "")
+		openInvoice({invID:mRecId});
+}

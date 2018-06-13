@@ -1,0 +1,143 @@
+<?php
+	global $grn_wastage;
+	session_start();
+	
+	header('Content-Type: text/xml');
+	switch($_REQUEST["selecttype"]){
+		case "RAMDETAILLIST":
+			$cpd 			= 	$_REQUEST["CPDID"];
+			$custGrp		=	$_POST['custgrp'];
+			$calcRate		=	$_POST['calccpdrate'];
+			$cpdname_sql 	= 	@getMySQLData("select cpdName from tbl_compound where cpdId='$cpd'");
+			$cpdName 		= 	$cpdname_sql['data'][0]['cpdName']; 
+			$sql_polyWgt	=	"select sum(ramParts) as polyRamParts 
+									from (select ramParts  
+												from tbl_compound_rm tcr
+												inner join tbl_rawmaterial tr on tr.ramId = tcr.ramId and ramClass = 1
+											where cpdId='$cpd' group by item_no) tbl1 ";
+			$out_polyWgt	=	@getMySQLData($sql_polyWgt);	
+			$ramPolyWgt		=	$out_polyWgt['data'][0]['polyRamParts'];			
+			$sql_comp 		= 	@getMySQLData("SELECT  t1.ramId, t3.ramName, t3.ramGrade, t1.ramApprovedRate, t1.ramParts, t1.ramParts / t2.sumrem  AS ratioperkg
+												FROM (select * from (select cpdId, trm.ramId, item_no,ramParts, ramApprovedRate 
+																		from tbl_compound_rm tcr
+																			inner join tbl_invoice_grn tig on tig.invRamId = tcr.ramId
+																			inner join tbl_rawmaterial trm on trm.ramId = tcr.ramId
+																		order by grnDate Desc)table1 group by cpdId,item_no)t1 																
+													INNER JOIN (SELECT cpdId, SUM( ramParts ) AS sumrem FROM (SELECT cpdId, item_no, ramparts FROM tbl_compound_rm  group by cpdId,item_no )table1 group by cpdId )t2 on t1.cpdId = t2.cpdId
+													INNER JOIN  tbl_rawmaterial t3 on t3.ramId = t1.ramId
+												WHERE t1.cpdid =  '$cpd' 
+											ORDER BY t1.item_no,t1.ramParts");
+			
+			$sno 			= 	1;
+			$data 			= 	"";
+			$totParts		=	0;
+			$totWeight		=	0;
+			if( ($sql_comp['errno'] == 0)&&($sql_comp['count'] > 0) ){
+				foreach($sql_comp['data'] as $compound){
+					$appRate 	= 	$compound['ramApprovedRate'];
+					$ramQty		=	$compound['ratioperkg'];
+					$ratePerKg  = 	$ramQty * $appRate ;
+					$ramParts	=	($compound['ramParts']/$ramPolyWgt) * 100;
+					$data		.=	"<row>";
+					$data		.=	"<cpdId>$cpd</cpdId>";
+					$data		.=	"<sno>$sno</sno>";
+					$data		.=	"<ramName>".$compound['ramName']."</ramName>";
+					$data		.=	"<ramGrade>".$compound['ramGrade']."</ramGrade>";
+					$data		.=	"<ramParts>$ramParts</ramParts>";
+					$data		.=	"<ramQty>$ramQty</ramQty>";
+					$data		.=	"<ramRate>$appRate</ramRate>";
+					$data		.=	"<ramCost>$ratePerKg</ramCost>";
+					$data		.=	"</row>";
+					$totRate	+=	$ratePerKg;
+					$sno++;									
+				}
+			}
+			if($data != "" && $data != null)
+			{
+				if($calcRate)
+				{
+					$data		.=	"<row>";
+					$data		.=	"<cpdId>$cpd</cpdId>";
+					$data		.=	"<sno></sno>";
+					$data		.=	"<ramName>RM. Total</ramName>";
+					$data		.=	"<ramGrade></ramGrade>";
+					$data		.=	"<ramCost>$totRate</ramCost>";
+					$data		.=	"</row>";				
+					$poRateData	=	@getMySQLData("select porate from (select cpdid,porate from tbl_customer_cpd_po_rate tccpr inner join tbl_customer tc on tc.cusId = tccpr.cusId where tc.cusGroup='$custGrp' and tccpr.status=1 order by tccpr.update_on desc) tbl group by cpdid");
+					$poRate		=	$poRateData['data'][0]['porate'];
+					$data		.=	"<row>";
+					$data		.=	"<cpdId>$cpd</cpdId>";
+					$data		.=	"<sno></sno>";
+					$data		.=	"<ramName>Mix Rate</ramName>";
+					$data		.=	"<ramGrade></ramGrade>";
+					$data		.=	"<ramCost>$poRate</ramCost>";
+					$data		.=	"</row>";
+					$wastage	.=	($grn_wastage[$custGrp]*$totRate)/100;
+					$totRate	+=	$poRate;
+					$data		.=	"<row>";
+					$data		.=	"<cpdId>$cpd</cpdId>";
+					$data		.=	"<sno></sno>";
+					$data		.=	"<ramName>Wastage @ ".$grn_wastage[$custGrp]."%</ramName>";
+					$data		.=	"<ramGrade></ramGrade>";
+					$data		.=	"<ramCost>$wastage</ramCost>";
+					$data		.=	"</row>";
+					$totRate	+=	$wastage;
+				}
+				$data		.=	"<row>";
+				$data		.=	"<cpdId>$cpd</cpdId>";
+				$data		.=	"<sno></sno>";
+				$data		.=	"<ramName>Total</ramName>";
+				$data		.=	"<ramGrade></ramGrade>";
+				$data		.=	"<ramCost>$totRate</ramCost>";
+				$data		.=	"</row>";			
+			}
+			$output	= "<xmldata><root><count>".$sql_comp['count']."</count><data>$data</data><status>".$sql_comp['status']."</status></root></xmldata>";
+			echo $output;
+			exit();
+		 break;
+		case "GETCPDDETAIL":
+			$custGrp	=	$_POST['custgrp'];
+			$calcRate	=	$_POST['calccpdrate'];				
+			$sql		=	"select t1.cpdId 
+								from tbl_compound t1 
+									inner join  tbl_polymer_order t2 on t1.cpdPolymer = t2.polyName 
+									".(($custGrp != 'All')?" inner join (select cpdid from (select cpdid from tbl_customer_cpd_po_rate tccpr inner join tbl_customer tc on tc.cusId = tccpr.cusId where tc.cusGroup='$custGrp' and tccpr.status=1 order by tccpr.update_on desc) tbl group by cpdid) t3 on t1.cpdId=t3.cpdid":"")."
+							where t1.status > 0 
+							order by t2.dispOrder,t1.cpdName";
+			//echo $sql; //exit();
+			$outputarr	=  	@getMySQLData($sql);
+			
+			if( ($outputarr['errno'] == 0)&&($outputarr['count'] > 0) ){
+				$cpdIds 	= 	array();
+				foreach($outputarr['data'] as $cpd){
+					if(!in_array($cpd['cpdId'],$cpdIds)){
+						array_push($cpdIds,$cpd['cpdId']);	
+					}
+				}					  
+				$data 		= 	"";		
+				foreach($cpdIds as $cpd){
+					$cpdCost		=	@getCompoundCost($cpd);
+					$cpddet_sql		=	"select t1.cpdName,t1.shrinkage,t1.cpdPolymer".(($calcRate == 1)?",t2.porate":""). "
+											from tbl_compound t1
+											".(($calcRate == 1)?" inner join (select cpdid,porate from (select cpdid,porate from tbl_customer_cpd_po_rate tccpr inner join tbl_customer tc on tc.cusId = tccpr.cusId where tc.cusGroup='$custGrp' and tccpr.status=1 order by tccpr.update_on desc) tbl group by cpdid) t2 on t1.cpdId=t2.cpdid":"")."
+										where t1.cpdId='$cpd'";					
+					$cpddet_data 	= 	@getMySQLData($cpddet_sql);					
+					$data			.=	"<row>";
+					$data			.=	"<cpdId>".$cpd."</cpdId>";
+					$data			.=	"<cpdName>".$cpddet_data['data'][0]['cpdName']."</cpdName>";
+					$data			.=	"<shrinkage>".$cpddet_data['data'][0]['shrinkage']."</shrinkage>";
+					$data			.=	"<cpdPolymer>".$cpddet_data['data'][0]['cpdPolymer']."</cpdPolymer>";
+					$data			.=	"<cpdCost>".round(($calcRate == 1)?($cpddet_data['data'][0]['porate'] + $cpdCost + ($cpdCost * ($grn_wastage[$custGrp]/100))):$cpdCost,2)."</cpdCost>";
+					$data			.=	"</row>";
+				}
+			}
+
+			$output	= "<xmldata><root><sql>$cpddet_sql</sql><count>".$outputarr['count']."</count><data>".$data."</data><status>".$outputarr['status']."</status></root></xmldata>";
+			echo $output;
+			exit();
+		break;
+
+	}
+
+	
+?>

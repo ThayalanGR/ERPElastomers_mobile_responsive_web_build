@@ -1,0 +1,514 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+tableFilters.sort_config	=	{ sort_types:['string','string', 'string','date','string','string','date','string','date','string','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+custId						=	"";
+errMsg						=	null;
+var XSLFile					=	[XSLPath + "_1.design", XSLPath + "_2.design"];
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+function updatePageBehaviour(){
+	$(".type_option").change(function(){
+		if($(this).val()=='0'){
+			$(".comp_exist").show();
+			$("#new_CustID").attr("readonly","true");
+		}else{
+			$(".comp_exist").hide();			
+			clearCompDetails();
+		}
+		
+	});	
+	
+	if (getUrlParameter('type') == 'rfqlist')
+	{
+		objHTMLList	=	postback(actionFile, "selecttype=GETRFQLIST&conToHTML=1&xslfile="+XSLFile[1], "POST", "XML");
+		submitPrint(objHTMLList);
+		return false;		
+	}		
+	
+	objRFQList	=	postback(actionFile, "selecttype=GETRFQLIST", "POST","XML");
+	//alert(objRFQList); //return false;
+	listPageData($("#content_body"), objRFQList, XSLFile[0]);
+	$(".update_button").click(function(e){
+		rfqId		=	$(this).attr('rfqid');
+		remarks		=	$(this).attr('remarks');
+		$("#update_remarks_form").css('visibility', 'visible');
+		$("#update_remarks_form").dialog("open");
+		$('#update_remarks').val(remarks);
+		$("#update_remarks_form").attr("rfqid",rfqId);
+	});
+	
+	$(".abandon_button").click(function(e){
+		rfqId		=	$(this).attr('rfqid');
+		$("#abandon_rfq_form").css('visibility', 'visible');
+		$("#abandon_rfq_form").dialog("open");
+		$("#abandon_rfq_form").attr("rfqid",rfqId);
+	});	
+	TF_01	=	setFilterGrid("resultTable",tableFilters);
+    if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;
+}
+
+
+function getCustomerDetails(){
+	if($("#new_CustID").val() != null && $("#new_CustID").val() != ""){
+		cusid		=	$("#new_CustID").val();
+		var objCusList	=	postback(actionFile,"selecttype=CSTDTLLIST&cusid="+cusid+"&outtype=xml","POST","XML");
+		cusXML			=	parseXMLdoc(objCusList);
+		rowXML			=	cusXML.getElementsByTagName("row");	
+		if(rowXML[0] === undefined)
+		{
+			clearCompDetails();		
+		} 
+		else
+		{
+			row				=	rowXML[0].childNodes;
+			data			=	new Array();
+			for(cx=0; cx<row.length; cx++){
+				data[row[cx].nodeName]	=	(row[cx].firstChild)?row[cx].firstChild.nodeValue:'';
+			}			
+			$("#new_CustAddress").val(data['cusadd1']+ "\n" + ((data['cusadd2'] != '')?data['cusadd2'] + "\n":"") + data['cusplace']+ " - " + data['cuspincode']);
+			custId			=	data['cusid'];
+		}
+	}
+	else{
+		clearCustomerDetails();
+	}
+}
+
+function clearCustomerDetails(){
+	$("#new_CustAddress").val('');
+	custId		=	"";
+}
+
+function getComponentDetails(){
+	if(($("#type_exist").attr("checked") == true) && $("#cmpdid_val").val() != null && $("#cmpdid_val").val() != ""){
+		cmpdid			=	$("#cmpdid_val").val();
+		cmpddata		=	cmpdid.split(" - ");
+		var objCmpdList	=	postback(actionFile,"selecttype=CMPDETAILS&cmpdid="+cmpddata[0]+"&outtype=xml","POST","XML");
+		objXML			=	parseXMLdoc(objCmpdList);
+		rowXML			=	objXML.getElementsByTagName("row");	
+		if(rowXML[0] === undefined)
+		{
+			clearCompDetails();		
+		} 
+		else
+		{
+			row				=	rowXML[0].childNodes;
+			data			=	new Array();
+			for(cx=0; cx<row.length; cx++){
+				data[row[cx].nodeName]	=	(row[cx].firstChild)?row[cx].firstChild.nodeValue:'';
+			}
+			$("#new_CustID").val(data['cusname']);	
+			$("#new_CustID").attr("readonly","true");
+			custId			=	data['cusid'];		
+			$("#new_CustAddress").val(data['cusadd1']+ "\n" + ((data['cusadd2'] != '')?data['cusadd2'] + "\n":"") + data['cusplace']+ " - " + data['cuspincode']);
+			$("#new_PartNum").val(data['cmpdname']);
+			$("#new_PartDesc").val(data['cmpdrefno']);
+			$("#new_AMR").val(data['cmpdamr']);
+			$("#new_App").val(data['cmpdapp']);
+			$("#new_ProdDrawingRev").val(data['cmpddrawrev']);
+			$("#new_ProdDrawingDate").val(data['cmpddrawdate']);	
+			$("#new_TargetPrice").val(data['porate']);	
+		}
+	}
+	else{
+		clearCompDetails();
+	}
+}
+
+function clearCompDetails(){
+	clearCustomerDetails();	
+	$("#cmpdid_val").val('');
+	$("#new_CustID").val('');
+	$("#new_CustID").removeAttr("readonly");
+	$("#new_CustAddress").val('');
+	$("#new_PartNum").val('');
+	$("#new_PartDesc").val('');
+	$("#new_AMR").val(0);
+	$("#new_EndCust").val('');
+	$("#new_App").val('');
+	$("#new_ProdDrawingRev").val('');
+	$("#new_ProdDrawingDate").val('');	
+	$("#new_CompoundSpec").val('');
+	$("#new_ProdDrawing").val('');
+	$("#new_TargetPrice").val('0.00');
+	$("#new_TargetDate").val('<?php echo date('Y-m-d',mktime(0, 0, 0, date('m')  , date('d')+7, date('Y'))); ?>');
+	$("#new_Remarks").val('');	
+}
+
+
+function handleFormSubmit(){
+	isNew			=	(($("#type_exist").attr("checked") == true)?0:1);
+	cmpdid			=	$("#cmpdid_val");
+	custName		=	$("#new_CustID");
+	partNum			=	$("#new_PartNum");
+	partDesc 		=	$("#new_PartDesc");
+	AMR				=	$("#new_AMR");
+	compoundSpec	=	$("#new_CompoundSpec");
+	application		=	$("#new_App");
+	newError		=	$("#error_msg");	
+	
+	if(errMsg != null)
+	clearTimeout(errMsg);
+	errMsg			=	setTimeout(function(){
+							newError.css("display", "none");
+						}, 2500);
+	if(isNew == 0 && (cmpdid.val() == null || cmpdid.val() == ""))
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Compoenet ID Missing.");
+		cmpdid.focus();
+		return false;	
+	}	
+	else if(custName.val() == "" || custName.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Customer Name Missing.");
+		custName.focus();
+		return false;
+	}
+	else if(partNum.val() == "" || partNum.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Part Number Missing.");
+		partNum.focus();
+		return false;
+	}	
+	else if(partDesc.val() == "" || partDesc.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Part Description Missing.");
+		partDesc.focus();
+		return false;
+	}
+	else if(!(AMR.val().toNumber() > 0)){
+		displayError(newError, "error", "<strong>Error !</strong> - Average Monthly Requirement Should be Greater than 0.");
+		AMR.focus();
+		return false;
+	}
+	else if(compoundSpec.val() == "" || compoundSpec.val() == null ){
+		displayError(newError, "error", "<strong>Error !</strong> - Compound Spec Missing.");
+		compoundSpec.focus();
+		return false;
+	}
+	else if(application.val() == "" || application.val() == null ){
+		displayError(newError, "error", "<strong>Error !</strong> - Application Missing.");
+		application.focus();
+		return false;
+	}
+	
+	cmpddata		=	((isNew == 0)?cmpdid.val().split(" - "):"");
+	formdata 		= 	new FormData();
+	prodDrawingFile = 	document.getElementById("new_ProdDrawing");	
+    file 			= 	prodDrawingFile.files[0];
+	if(file)
+	{
+		if (formdata) {
+			formdata.append("file", file,file.name);
+			formdata.append("isnew", isNew);
+			if(isNew == 0)
+				formdata.append("cmpdid", cmpddata[0]);
+			formdata.append("custname", custName.val());
+			formdata.append("custid", custId);
+			formdata.append("partnum",partNum.val());
+			formdata.append("partdesc",partDesc.val());
+			formdata.append("amr",AMR.val());
+			formdata.append("compoundspec",compoundSpec.val());
+			formdata.append("application",application.val());
+			formdata.append("endcust",$("#new_EndCust").val());	
+			formdata.append("targetprice",$("#new_TargetPrice").val());	
+			formdata.append("targetdate",$("#new_TargetDate").val());
+			formdata.append("drawingrev",$("#new_ProdDrawingRev").val());	
+			formdata.append("drawingdate",$("#new_ProdDrawingDate").val());		
+			formdata.append("remarks",$("#new_Remarks").val());			
+		}
+		createCont   =   '<table width="100%" >' +
+						'<tr><td><b>Are you Sure to Create this Request ?</b></td></tr>' +
+						'</table>';
+		$('#confirm_dialog').html(createCont).dialog({
+			title:'Create Development Request',
+			width:300,
+			height:125,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'YES':function(){
+					$(this).dialog('close');
+					$("#button_new").attr("disabled","true");
+					// Set up the request.
+					var xhr = new XMLHttpRequest();
+
+					// Open the connection.
+					xhr.open('POST', actionFile, true);
+
+					// Set up a handler for when the request finishes.
+					xhr.onload = function () {
+						if (xhr.status === 200) {
+							// File(s) uploaded.
+							var printObj	=	xhr.response;
+							printData		=	$(printObj);
+							error			=	printData.find("status").html();
+							codeno			=	printData.find("codeno").html();
+							
+							if(error == "success"){
+								alert("Development Request ID : " + codeno + " has been created sucessfully");
+								$("#new_item_form").dialog("close");
+								updatePageBehaviour();
+							}
+							else{
+								displayError(newError, "error", printObj);
+								$("#button_new").removeAttr("disabled");					
+							}			
+						} 
+						else {
+							displayError(newError, "error", "Unable to upload the file, Please retry again");
+							$("#button_new").removeAttr("disabled");				
+						}
+					};
+					
+					// Send the Data.
+					xhr.send(formdata);	
+				},
+				'NO':function(){
+				   $(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	
+	}
+	else
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please Select a File.");
+		prodDrawingFile.focus();	
+	}				
+
+}
+
+function handleFormCancel(){
+
+	$("#type_new").attr("checked",true);
+	$(".comp_exist").hide();
+	$("#cmpdid_val").val('');
+
+	clearCustomerDetails();
+	clearCompDetails();
+	
+}
+
+function updateRFQ(action,rfqid)
+{
+	if(action == "update")
+	{
+		updateAction	=	"UPDREMARKS";
+		updateDialog	=	"update_remarks_form";
+	}
+	else if (action == "abandon")
+	{
+		updateAction	=	"ABANDONRFQ";
+		updateDialog	=	"abandon_rfq_form";	
+	}
+	updError	=	$("#"+action+"_error");
+	param		=	"selecttype=" + updateAction + "&rfqid=" + rfqid ;
+	remarks		=	$("#"+action+"_remarks");
+	
+	if(remarks.val() == null || remarks.val().trim() == '' ){
+		displayError(updError, "error", "<strong>Error !</strong> - Please enter Remarks !!!");
+		remarks.focus();
+		return false;
+	}	
+	param	+=	"&remarks=" + remarks.val() ;	
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to '+action+' the Development Request?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+												title:'Update Remarks',
+												width:450,
+												height:'auto',
+												resizable:false,
+												modal:true,
+												buttons:{
+												'Ok':function(){
+													$(this).dialog('close');
+													displayError(updError, "highlight", "<div class='loading' /> <strong>Adding Data to Server . . .</strong>");													
+													//alert(param); return false;
+													XMLContent			=	postback(actionFile, param, "POST", "XML");
+													xmlData				=	parseXMLdoc(XMLContent);
+													error				=	$(xmlData).find("mysql:first status:first").text();
+													if(error == "success"){																
+														alert("Development Request "+action+" action completed Sucessfully");
+														$("#"+updateDialog).dialog("close");
+														updatePageBehaviour();
+													}
+													else{
+														displayError(updError, "error", "<strong>Error !</strong> - Development Request updation failed due to : "+ error);
+														return false;															
+													}
+												},
+												'Cancel':function(){
+													$(this).dialog('close');
+												}
+											},
+											close:function(){
+												$(this).html('').dialog('destroy');
+											}
+										});	
+}
+
+function submitPrint(XMLCont){
+	var WindowObject	=	null;
+	$("#print_item_form").css('visibility', 'visible');	
+	$("#print_item_form").dialog({
+									modal:true,
+									minWidth:'1200',
+									resizable:false,									
+									open: function(event, ui) {
+										var today 		= 	new Date();
+										$("#print_body").html(XMLCont);
+										$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+										$("#hdr_title").html("Development Request List");
+										$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");
+									}									
+								});	
+	var DocumentContainer = document.getElementById('print_item_form');
+	$("#print_item_form").dialog('close');
+	WindowObject = window.open("","_self");
+	WindowObject.document.writeln(DocumentContainer.innerHTML);	
+	loader = document.createElement('link');
+	loader.href = "/style/printTable.css";
+	loader.rel = "stylesheet";
+	WindowObject.document.head.appendChild(loader);
+	WindowObject.document.close();
+	WindowObject.focus();	
+}
+
+$(document).ready(function(){
+
+$("#new_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 1200,
+		height:'auto',
+		buttons: [
+			{
+				text: "Create",
+				id:"button_new",
+				tabindex:"15",
+				click: function(){
+					handleFormSubmit();
+				}
+			},
+			{
+				text: "Clear",
+				id:"button_cancel",
+				tabindex:"16",
+				click: function(){
+					handleFormCancel();
+				}
+			}
+		],
+		close: function(event, ui) {
+			$("#new_item_form form")[0].reset();	
+			$("#error_msg").html("");
+			$("#error_msg").css("display", "none");
+		} 
+	});	
+
+	
+	// Set AutoComplete Text Box
+	var objCusList	=	postback(actionFile,"selecttype=CSTATLIST&outtype=xml","POST","XML");
+	cusXML			=	parseXMLdoc(objCusList);
+	custList		=	new Array();
+	$(cusXML).find('row').each(function(index, element) {
+        custList.push($(this).find('cusname').text() );
+    });
+	
+	$("#new_CustID").autocomplete({
+		source:custList,
+		close:function(event, ui){
+			getCustomerDetails();
+		}
+	});
+	
+	var objCompList	=	postback(actionFile,"selecttype=CMPDLIST&outtype=xml","POST","XML");
+	compXML			=	parseXMLdoc(objCompList);
+	compList		=	new Array();
+	$(compXML).find('row').each(function(index, element) {
+        compList.push($(this).find('cmpdname').text() );
+    });
+	
+	$("#cmpdid_val").autocomplete({
+		source:compList,
+		close:function(event, ui){
+			getComponentDetails();
+		}
+	});
+
+	$("#button_add").button().click(function(){
+		$("#new_item_form").css('visibility', 'visible');
+		$("#new_item_form").dialog("open");
+		$(".comp_exist").hide();
+	});
+	
+	$("#button_cancel").button().click(function(){
+		handleFormCancel();
+	});	
+	
+	$("#update_remarks_form").dialog({
+		autoOpen:false, 
+		width:700,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Add Remarks",
+				tabindex:2,
+				click: function(){
+					updateRFQ("update",$(this).attr("rfqid"))
+				}
+			},
+			{ 
+				text: "Cancel",
+				tabindex:3,
+				click: function(){
+					$(this).dialog('close');
+				}
+			}
+		],
+		close:function(){
+			$("#remarks_error").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});
+	
+	$("#abandon_rfq_form").dialog({
+		autoOpen:false, 
+		width:700,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Abandon",
+				tabindex:2,
+				click: function(){
+					updateRFQ("abandon",$(this).attr("rfqid"))
+				}
+			},
+			{ 
+				text: "Cancel",
+				tabindex:3,
+				click: function(){
+					$(this).dialog('close');
+				}
+			}
+		],
+		close:function(){
+			$("#abandon_error").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});	
+
+	updatePageBehaviour();
+	clearCustomerDetails();
+});

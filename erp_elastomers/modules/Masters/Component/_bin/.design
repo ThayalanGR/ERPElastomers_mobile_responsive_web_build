@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+	<table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+		<thead>
+            <tr>
+                <th width="8%" align="left">Code</th>
+                <th width="12%" align="left">Part Number</th>
+                <th width="15%" align="left">Description</th>
+				<th width="12%" align="left">Customer</th>
+				<th width="8%" align="left">Draw. File</th>	
+                <th width="12%" align="left">Tool Ref.</th>
+                <th width="10%" align="left">Compound Ref.</th>
+                <th width="8%" align="right">Blk. Weight</th>
+                <th align="right" style="padding-right:40px;">#</th>
+            </tr>
+		</thead>
+		<tbody>
+		<xsl:for-each select="xmldata/root/data/row">
+        <tr class="content_rows_light">
+            <td align="left"><xsl:value-of select="cmpdid"/></td>
+            <td align="left"><xsl:value-of select="cmpdname"/></td>			
+            <td align="left"><xsl:value-of select="cmpdrefno"/></td>
+			<td align="left"><xsl:value-of select="cusgroup"/></td>
+			<td align="left">
+                <xsl:choose>
+                    <xsl:when test="cmpddrawfile != ''">
+						<a>
+							<xsl:attribute name="href"><xsl:value-of select="filepath"/><xsl:value-of select="cmpddrawfile"/></xsl:attribute>
+							<xsl:attribute name="target">_blank</xsl:attribute>
+							View
+						</a>
+                    </xsl:when>
+                    <xsl:otherwise>
+						<a>
+							<xsl:attribute name="href">javascript:void(0);</xsl:attribute>
+							<xsl:attribute name="onClick">uploadDrawingFile('<xsl:value-of select="cmpdid" />');</xsl:attribute>
+							Add
+						</a>					
+                    </xsl:otherwise>
+                </xsl:choose>	
+			</td>			
+            <td align="left">
+                <xsl:choose>
+                    <xsl:when test="contains(tool_ref, ',')">
+                        <div>
+                            <xsl:attribute name="class">tooltip</xsl:attribute>
+                            <xsl:attribute name="title"><xsl:value-of select="tool_ref" /></xsl:attribute>
+                            <xsl:value-of select="substring( tool_ref ,0, 6 )"/>...
+                        </div>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <xsl:value-of select="tool_ref" />
+                    </xsl:otherwise>
+                </xsl:choose>
+            </td>
+            <td align="left"><xsl:value-of select="cmpdcpdname"/></td>
+            <td align="right"><xsl:value-of select="cmpdblankwgt"/></td>
+            <td align="right">
+                <span>
+                    <xsl:attribute name="class">link edit_button</xsl:attribute>
+                    <xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+                    Edit
+                </span>
+                &nbsp;|&nbsp;
+                <span>
+                    <xsl:attribute name="class">link delete_button</xsl:attribute>
+                    <xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+                    Delete
+                </span>
+            </td>
+        </tr>
+		</xsl:for-each>
+	</tbody>
+</table>
+</xsl:template>
+</xsl:stylesheet>

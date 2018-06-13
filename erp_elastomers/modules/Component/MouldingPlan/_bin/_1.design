@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+<table border="0" cellpadding="6" cellspacing="0" width="100%">
+	<xsl:for-each select="xmldata/root/data/row">
+        <tr class="content_rows_light" >
+            <xsl:if test="position() mod 2 != 0">
+                <xsl:attribute name="class">content_rows_light</xsl:attribute>
+            </xsl:if>
+            <xsl:if test="position() mod 2 != 1">
+                <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="id"><xsl:value-of select="position()" /></xsl:attribute>
+			<xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+			<td style="width:5%"><xsl:value-of select="position()" /></td>
+            <td style="width:18%">
+				<a>
+					<xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+					<xsl:attribute name="class">view_button link</xsl:attribute>
+					<xsl:value-of select="partnumber" />
+				</a>			
+			</td>
+            <td style="width:12%"><xsl:value-of select="cpdname" /></td>
+			<td style="width:10%"><xsl:value-of select="tool_ref" /></td>
+			<td style="width:10%" align="right"><xsl:value-of select="no_of_active_cavities" /></td>
+			<td style="width:15%" align="right">
+				<input>
+					<xsl:attribute name="id">input_<xsl:value-of select="position()" /></xsl:attribute>
+					<xsl:attribute name="type">text</xsl:attribute>
+					<xsl:attribute name="style">text-align:right;width:70%</xsl:attribute>
+					<xsl:attribute name="value"><xsl:value-of select="liftplanned" /></xsl:attribute>
+					<xsl:attribute name="onkeyup">getExpectedOutput(<xsl:value-of select="position()" />)</xsl:attribute>
+					<xsl:attribute name="class">invisible_text</xsl:attribute>
+					<xsl:attribute name="onfocus">FieldHiddenValue(this, 'in', '0')</xsl:attribute>
+					<xsl:attribute name="onblur">FieldHiddenValue(this, 'out', '0')</xsl:attribute>	
+					<xsl:attribute name="actCavs"><xsl:value-of select="no_of_active_cavities" /></xsl:attribute>
+					<xsl:attribute name="blankWgt"><xsl:value-of select="cmpdblankwgt" /></xsl:attribute>
+					<xsl:attribute name="toolRef"><xsl:value-of select="tool_ref" /></xsl:attribute>
+					<xsl:attribute name="rowcount"><xsl:value-of select="position()" /></xsl:attribute>
+					<xsl:attribute name="nxtValid"><xsl:value-of select="next_validation" /></xsl:attribute>
+					<xsl:attribute name="liftsRun"><xsl:value-of select="lifts_run" /></xsl:attribute>					
+				</input>			
+			</td>
+            <td style="width:10%" align="right">
+				<xsl:attribute name="id">planqty_<xsl:value-of select="position()" /></xsl:attribute>
+				<xsl:value-of select="format-number(planqty,'###,###,##0')" />
+			</td>
+			<td style="width:10%" align="right">
+				<xsl:attribute name="id">cpdreq_<xsl:value-of select="position()" /></xsl:attribute>
+				<xsl:value-of select="format-number(cpdreq,'###,###,##0.000')" />
+			</td>			
+			<td style="width:5%" align="right">				
+            	<select>
+					<xsl:attribute name="id">input_numshifts_<xsl:value-of select="position()" /></xsl:attribute>
+					<xsl:attribute name="style">width:100%</xsl:attribute>
+					<xsl:attribute name="onchange">updateLifts('<xsl:value-of select="position()" />')</xsl:attribute>
+					<xsl:choose>
+						<xsl:when test="numshifts &lt; 2">
+							<option>
+								<xsl:attribute name="selected">selected</xsl:attribute>	
+								<xsl:attribute name="value">1</xsl:attribute>
+								<xsl:attribute name="label">1</xsl:attribute>
+							</option>
+							<option>
+								<xsl:attribute name="value">2</xsl:attribute>
+								<xsl:attribute name="label">2</xsl:attribute>							
+							</option>
+						</xsl:when>
+						<xsl:otherwise>
+							<option>
+								<xsl:attribute name="value">1</xsl:attribute>
+								<xsl:attribute name="label">1</xsl:attribute>															
+							</option>
+							<option>
+								<xsl:attribute name="selected">selected</xsl:attribute>	
+								<xsl:attribute name="value">2</xsl:attribute>
+								<xsl:attribute name="label">2</xsl:attribute>
+							</option>
+						</xsl:otherwise>
+					</xsl:choose>
+				</select>			
+			</td>
+			<td align="center">
+				<div>
+					<xsl:attribute name="class">removebtn</xsl:attribute>
+					<xsl:attribute name="id">delrm_"<xsl:value-of select="position()" /></xsl:attribute>
+					<xsl:attribute name="target">absmiddle</xsl:attribute>
+					<xsl:attribute name="onclick">$("#<xsl:value-of select="position()" />").remove(); updateAllItems();</xsl:attribute>
+				</div>
+			</td>
+        </tr>
+	</xsl:for-each>
+</table>
+</xsl:template>
+</xsl:stylesheet>

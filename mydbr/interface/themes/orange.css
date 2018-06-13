@@ -1,0 +1,100 @@
+.row_header, .drill_header, .cell_header, .cell_ct_top {
+	color: white;
+  background: #F67915; /* Old browsers */
+}
+
+.mydbr_popupframe th.border {
+background: #F67915;
+border-bottom: 0 solid #F67915;
+}
+
+div.pager {
+  border-top: 1px solid #C6C6C6;
+}
+
+div.pager, button.pager {
+  color: black;
+  background-color: #F67915;
+}
+
+.cell_ct_top, .cell_header, .cell_ct {
+	border-color: #C6C6C6;
+}
+
+tr.odd {
+	background-color: #F6F6F6;
+}
+
+table.sortable thead tr .headerSortUp {
+	background-image: url(data:image/gif;base64,R0lGODlhCgAEAJEAAAAAAP///wAAAAAAACH5BAkKAAIALAAAAAAKAAQAAAIKjB+igrl63nOvAAA7);
+}
+table.sortable thead tr .headerSortDown {
+	background-image: url(data:image/gif;base64,R0lGODlhCgAEAJEAAAAAAP///wAAAAAAACH5BAkKAAIALAAAAAAKAAQAAAIKlGOZwXrcFoSpAAA7);
+}
+
+.tablet .mydbr_popupframe .border a.close {
+  background: url(images/close_mobile_orange@2x.png) no-repeat;
+  background-size: 32px 32px;
+}
+
+.odd:hover td, .even:hover td, .popuprow:hover, .autocomplete ul li.selected {
+	background-color: #B3FF00 !important;
+}
+
+.cell {
+  color: #222222;
+}
+
+.summary {
+  font-style: normal;
+  font-weight: bold;
+	border-top: 1px solid #a9a9a9;
+	border-bottom: 1px solid #a9a9a9;
+	background-color: rgb(248, 248, 248);
+	color: black;
+	vertical-align: top;
+	white-space: nowrap;
+}
+
+.summary_level0 {
+	border-bottom: 1px solid #AAA;
+}
+
+.title, .subtitle, .paramTitle {
+	font-weight: bold;
+	color: black;
+}
+
+.loginerr {
+	text-shadow: black 0px 1px 0px;
+}
+
+td.nobottom {
+	border-bottom: none;
+}
+
+.import_header {
+border-top: 2px solid #a9a9a9;
+border-bottom: 1px solid #a9a9a9;
+background-color: #F67915;
+color: white
+}
+
+.im_cell {
+background: white;
+}
+
+.fc-head, .fc-head-container.fc-widget-header {
+  border-top: 1px solid #C6C6C6; 
+  border-bottom: 1px solid #C6C6C6;
+}
+.dbr_calendar .fc-day-header {
+  border-top: 1px solid #C6C6C6; 
+  background: #F67915;
+  color: white;
+} 
+.dbr_calendar .fc-basic-view th.fc-week-number, .dbr_calendar .fc-head-container.fc-widget-header, .dbr_calendar .fc-week-number.fc-widget-header {
+  background: #F67915;
+  color: white;
+  font-weight:bold;
+}

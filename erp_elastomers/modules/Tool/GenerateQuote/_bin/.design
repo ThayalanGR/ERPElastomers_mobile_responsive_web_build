@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0"
+xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xsl:template match="/">
+        <table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+ 			<thead>
+				<tr style="font-size:8px;">
+					<th width="3%">S.No</th>
+					<th width="10%">Part Number</th>
+					<th width="15%">Part Description</th>
+					<th width="20%">Customer Name</th>
+					<th width="10%">AMR</th>
+					<th width="10%">Target Price</th>
+					<th width="10%">Target Date</th>
+					<th width="15%">Drawing Link</th>
+					<th>#</th>
+				</tr>
+			</thead>
+			<tbody>					
+			<xsl:for-each select="xmldata/root/data/row">
+        		<tr>
+					<td align="left"><xsl:value-of select="position()"/></td>
+                    <td align="left"><xsl:value-of select="part_number"/></td>
+                    <td align="left"><xsl:value-of select="part_description"/></td>
+                    <td align="left"><xsl:value-of select="cusname"/></td>
+                    <td align="right"><xsl:value-of select="format-number(ave_monthly_req, '###,###,##0')"/></td>
+                    <td align="right"><xsl:value-of select="format-number(target_price, '###,###,##0.00')"/></td>
+                    <td align="center"><xsl:value-of select="target_date"/></td>
+                    <td align="left">
+						<a>
+							<xsl:attribute name="href"><xsl:value-of select="filepath"/><xsl:value-of select="drawing_file_name"/></xsl:attribute>
+							<xsl:attribute name="target">_blank</xsl:attribute>
+							<xsl:value-of select="drawing_file_name"/>
+						</a>
+					</td>
+                    <td align="right">
+						<xsl:if test="status = 2">
+							<span class="link">
+								<xsl:attribute name="prodref" ><xsl:value-of select="sno"/></xsl:attribute>
+								<xsl:attribute name="class" >generate_button link</xsl:attribute>
+									Generate Quote 
+							</span> 
+						</xsl:if>
+						<xsl:if test="status &gt; 2">
+							<span class="link">
+								<xsl:attribute name="prodref" ><xsl:value-of select="sno"/></xsl:attribute>
+								<xsl:attribute name="quoteid" ><xsl:value-of select="quoteref"/></xsl:attribute>
+								<xsl:attribute name="class" >edit_button link</xsl:attribute>
+									Edit Quote 
+							</span> 
+						</xsl:if>	
+						<xsl:if test="status &lt; 2">
+							Abandoned 
+						</xsl:if>	
+                    </td>
+          		</tr>
+        	</xsl:for-each>
+			</tbody>
+    	</table>    
+    </xsl:template>
+</xsl:stylesheet>

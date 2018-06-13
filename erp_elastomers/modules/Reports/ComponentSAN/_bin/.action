@@ -1,0 +1,17 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$sql_cntlist		=	"SELECT sanId, DATE_FORMAT(sanDate, '%d-%b-%Y') as sanDate, tms.cmpdId, cmpdName, cmpdRefNo, planId,description,sum(bookQty)as bookqty, sum(physicalQty)as phyqty,sum(exc_shrt)as exorshrt
+								FROM tbl_moulding_san tms
+								inner join tbl_component tc on tc.cmpdid = tms.cmpdid
+								where tms.status>0 group by sanId";
+	$list	=	@getMySQLData($sql_cntlist,"xml","root","lower");
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+
+?>

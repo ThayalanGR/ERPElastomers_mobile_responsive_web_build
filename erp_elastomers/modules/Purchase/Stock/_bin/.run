@@ -1,0 +1,197 @@
+var ramId			=	[];
+var ramName			=	[];
+var XSLFile			=	[XSLPath + "_.1.design", XSLPath + "_.2.design", XSLPath + "_.3.design", XSLPath + "_.4.design"];
+var RamPurDetails 	 = 	"";
+
+function getPageData(){
+	getString		=	"type=RAMLIST";
+	RawMaterialList	=	postback(actionFile,getString,"POST","XML");
+	RawMaterialXML	=	parseXMLdoc(RawMaterialList);
+	errDefault		=	$(".window_error");
+	errMsgDefault	=	'<div class="warning_txt"><span>No Data Available . . .</span></div>';
+	errDefault.html(errMsgDefault);	
+	ramId = [];
+	ramName = [];
+	$(RawMaterialXML).find('row').each(function(index, element) {
+		ramId.push($(this).find('ramid').text());
+		ramName.push($(this).find('ramname').text()+" - "+$(this).find('ramgrade').text());
+	});
+	
+	$("#item_code").autocomplete({
+		source: ramName,
+		close: function(){
+			processInput();
+		}
+	});	
+}
+
+function getData(issued,fromdate,todate,ramcode){
+	if(ramcode != null && ramcode != ""){
+		getString			=	"type=GETDAT&ramid="+ramcode+"&issued="+issued+"&fromdate="+fromdate+"&todate="+todate;
+		RamPurDetails		=	postback(actionFile,getString,"POST","XML");
+		//$("#content_body").html(RamPurDetails); return false;
+		listPageData($("#content_body"), RamPurDetails, XSLFile[0]);
+		$("#open_stock").html($(RamPurDetails).find("opening_stock").html().toNumber().toCurrency(3));
+		$("#receipts").html($(RamPurDetails).find("total_receipt").html().toNumber().toCurrency(3));
+		$("#issue").html($(RamPurDetails).find("total_issue").html().toNumber().toCurrency(3));
+		$("#closebal").html($(RamPurDetails).find("closing_stock").html().toNumber().toCurrency(3));
+	}else{
+		getString			=	"type=GETDAT&ramid="+ramcode+"&issued="+issued+"&fromdate="+fromdate+"&todate="+todate;
+		RamPurDetails		=	postback(actionFile,getString,"POST","XML");
+		//alert(RamPurDetails);
+		//$("#content_body").html(RamPurDetails); return false;
+		listPageData($("#content_body"), RamPurDetails, XSLFile[3]);
+	}
+	updateHeader();updateContent();
+}
+
+function checkFields(){
+	itemcode	=	$("#item_code").val();
+	fromdate	=	$("#from_date").val();
+	todate		=	$("#to_date").val();
+	if((itemcode != null && itemcode != "")&&(fromdate != null && fromdate != "")&&(todate != "" && todate != null)){
+		return true;
+	}else{
+		if(itemcode != null && itemcode != ""){
+			return 'itemcode';
+		}else if(fromdate != null && fromdate != ""){
+			return 'fromdate';	
+		}else if(todate != "" && todate != null){
+			return 'todate';	
+		}
+	}
+}
+
+function processInput(){
+	issued		=	$("#recvFrom").val();
+	codeinput	=	$("#item_code").val();
+	fromdate	=	$("#from_date").val();
+	todate		=	$("#to_date").val();
+	code		=	"";
+	for(rn=0; rn<ramName.length; rn++){
+		if(ramName[rn] == codeinput){
+			code	=	ramId[rn];
+			break;
+		}
+	}
+	if(code != null && code != ""){
+		$(RawMaterialXML).find("row").each(function(){
+			if($(this).find("ramid").text() == code){
+				$("#item_desc").val($(this).find("ramname").text());
+				$("#item_unit").html($(this).find("ramunit").text());
+			}
+		});
+		if(checkFields() == true){
+			getData(issued,fromdate,todate,code);
+		}
+	}else{
+		$("#open_stock").html("0.000");
+		$("#receipts").html("0.000");
+		$("#issue").html("0.000");
+		$("#closebal").html("0.000");
+		$("#item_unit").html("&ndash;");
+		if((fromdate != null && fromdate != "")&&(todate != null && todate != "")){
+			getData(issued,fromdate,todate,code);
+		}
+	}
+	if(code == "" && RamPurDetails != "")
+	{
+		$("#button_submit_pss").css('visibility', 'visible');
+		$("#button_submit_pssv").css('visibility', 'visible');
+		$("#button_submit_psvs").css('visibility', 'visible');
+	}
+	else
+	{
+		$("#button_submit_pss").css('visibility', 'hidden');
+		$("#button_submit_pssv").css('visibility', 'hidden');
+		$("#button_submit_psvs").css('visibility', 'hidden');
+	}
+}
+
+function submitPrint(isHtmlCont,xslFile,stkVerify){
+	windowName	=	"PrintWindow";
+	var tDate 	= 	new Date();
+	today		=	tDate.getDate()+"-"+(tDate.getMonth()+1)+"-"+tDate.getFullYear();
+	$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");	
+	customer	=	$("#recvFrom").val();
+	fromDate	=	$("#from_date").val();
+	toDate		=	$("#to_date").val();
+	if(isHtmlCont == 1){
+		customer	=	getUrlParameter('cust');	
+		htmlCont	=	postback(actionFile, "type=GETDAT&issued="+customer+"&fromdate="+tDate.getFullYear()+"-"+(tDate.getMonth()+1)+"-"+"01&todate="+tDate.getFullYear()+"-"+(tDate.getMonth()+1)+"-"+tDate.getDate()+"&conToHTML=1&xslfile="+xslFile, "POST", "XML");
+		fromDate	=	"01-"+(tDate.getMonth()+1)+"-"+tDate.getFullYear();
+		toDate		=	today;			
+		$("#print_body").html(htmlCont);
+		windowName	=	"_self";	
+	}
+	else
+	{
+		listPageData($("#print_body"), RamPurDetails, xslFile);
+	}	
+	$("#hdr_date").html(today);
+	if( customer != '')
+	{
+		$("#hdr_for").html( " for " + customer );
+	}
+	else
+	{
+		$("#hdr_for").html('');
+	}
+	$("#hdr_title").html( " from: " + fromDate + " to: " + toDate);
+	if(stkVerify == 1)	
+		$("#hdr_title").html( " as on: " + today);	
+	var DocumentContainer = document.getElementById('print_item_form');
+	var WindowObject = window.open("",windowName);
+	WindowObject.document.writeln(DocumentContainer.innerHTML);	
+	loader = document.createElement('link');
+	loader.href = "/style/printTable.css";
+	loader.rel = "stylesheet";	
+	WindowObject.document.head.appendChild(loader);	
+	WindowObject.document.close();
+	WindowObject.focus();
+}
+
+/* ++----------------------------------------------------------------------------------------------------------------------------------------++ */
+
+$(document).ready(function(){
+
+	$("#from_date").datepicker({
+		dateFormat:'dd/mm/yy',
+		changeMonth:true,
+		changeYear:true,
+		onClose:function(){
+			processInput();	
+		}
+	});
+	
+	$("#to_date").datepicker({
+		dateFormat:'dd/mm/yy' ,
+		changeMonth:true,
+		changeYear:true,
+		onClose: function(){
+			processInput();	
+		}
+	});
+	
+	getPageData();
+	
+	$("#button_submit_pss").button().click(function(){		
+		submitPrint(0,XSLFile[3]);
+	});
+	
+
+	$("#button_submit_pssv").button().click(function(){
+		submitPrint(0,XSLFile[1]);
+	});	
+
+	$("#button_submit_psvs").button().click(function(){
+		submitPrint(0,XSLFile[2],1);
+	});
+	
+	if (getUrlParameter('type') == 'stocklist')
+	{
+		submitPrint(1,XSLFile[3]);
+	}	
+	
+	
+});

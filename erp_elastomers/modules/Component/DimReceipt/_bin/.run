@@ -1,0 +1,211 @@
+tableFilters.default_date_type 	= 	'DDMMMYYYY';
+tableFilters.col_5				=	"none";
+tableFilters.sort_config		=	{ sort_types:['string', 'string','string', 'us', 'None'] };	
+tableFilters.col_operation		=	{ 
+									   id: ["val_total1"], 
+									   col: [3],
+									   operation: ["sum"],
+									   decimal_precision: [0]
+									};
+var TF_01						=	null;
+var dimarr						=	new Array();
+
+$(document).ready(function(){
+	createAutoComplete();
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function createAutoComplete(){
+	var mouldList       =	postback(actionFile,"type=GETREC","POST","XML");
+	listPageData($("#content_body"), mouldList, XSLFile);
+	$('a').click(function(){
+		job         =   $(this).attr('job');
+		if(job == 'issue'){
+			componentid =   $(this).attr('cmpdid');
+			keyid       =   $(this).attr('planid');
+			userList		=	"";
+			var dimensions	=	postback(actionFile,"type=GETDIM&cmpdid="+componentid,"POST","XML");
+			issueCont   	=   '<div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="new_item_error"></div>'+
+								'<form action="" onsubmit="return false;">' +
+									'<table width="100%" cellpadding=0 >' +
+										'<tr height="25px"><td colspan="2">Plan Reference:</td><th colspan="6" >'+keyid+'</th></tr>' +
+										'<tr height="25px"><td colspan="2">Dimension Check Date</td><th colspan="6"><input type="date" name="dimDate" id="dimDate" style="width:20%" onChange="closeDate(this);" value="<?php echo date("Y-m-d",mktime(0, 0, 0, date("m")  , date("d"), date("Y"))); ?>" /></th></tr>'  + 	
+										'<tr height="25px"  border="1"><th width="5%">No.</th><th width="20%">Parameter</th><th width="25%">Range</th><th width="10%">Sample 1</th><th width="10%">Sample 2</th><th width="10%">Sample 3</th><th width="10%">Sample 4</th><th>Sample 5</th></tr>' ;
+			dimarr			=	[];
+			rowCount		=	1;
+			$(dimensions).find('row').each(function(index, element) {				
+				issueCont	+=			'<tr>'+
+											'<td>'+rowCount+'</td>'+
+											'<td><b>'+$(this).find('paramname').text()+'</b></td>'+
+											'<td><input type=hidden id="dim_ref_'+rowCount+'" value="'+$(this).find('cmpddim').text()+ '"/><input type=hidden id="dim_ll_'+rowCount+'" value="'+$(this).find('cmpddimllimit').text()+ '"/><input type=hidden id="dim_ul_'+rowCount+'" value="'+$(this).find('cmpddimulimit').text()+ '"/><b>'+$(this).find('cmpddimllimit').text()+' - '+$(this).find('cmpddimulimit').text()+ '('+ $(this).find('uom_short_name').text() +')</b></td>'+
+											'<td><input type=text id="dim_samp1_'+rowCount+'" style="width:80%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+											'<td><input type=text id="dim_samp2_'+rowCount+'" style="width:80%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+											'<td><input type=text id="dim_samp3_'+rowCount+'" style="width:80%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+											'<td><input type=text id="dim_samp4_'+rowCount+'" style="width:80%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+											'<td><input type=text id="dim_samp5_'+rowCount+'" style="width:80%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+										'</tr>';
+				dimarr.push($(this).find('cmpddim').text());
+				rowCount++;
+			});
+			issueCont	+=			'</table>' +
+									'<input type="submit" onclick="getSubmitButton(\'issue_dialog\');" style="visibility: hidden; width: 1px; height: 1px; "/>'+
+								'</form>';
+			$('#issue_dialog').html(issueCont).dialog({
+				title:'Dimension Entry',
+				width:800,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'Generate':function(){
+						confirmCont = '<table width="100%" >' +
+									'<tr><td><b>Are you Sure to Update the Dimension Entry?</b></td></tr>' +
+									'</table>'
+						$('#confirm_dialog').html(confirmCont).dialog({
+							title:'Dimension Entry Confirmation',
+							width:450,
+							height:'auto',
+							resizable:false,
+							modal:true,
+							buttons:{
+								'Ok':function(){
+									$(this).dialog('close');									
+									receiveQuality(keyid,componentid);
+								},
+								'Cancel':function(){
+									$(this).dialog('close');
+								}
+							},
+							close:function(){
+								$(this).html('').dialog('destroy');
+							}
+						});	                            
+					},
+					'Generate & Print':function(){
+						confirmCont = '<table width="100%" >' +
+									'<tr><td><b>Are you Sure to Update the Dimension Entry?</b></td></tr>' +
+									'</table>'
+						$('#confirm_dialog').html(confirmCont).dialog({
+							title:'Dimension Entry Confirmation',
+							width:450,
+							height:'auto',
+							resizable:false,
+							modal:true,
+							buttons:{
+								'Ok':function(){
+									$(this).dialog('close');
+									receiveQuality(keyid,componentid,true);										
+								},
+								'Cancel':function(){
+									$(this).dialog('close');
+								}
+							},
+							close:function(){
+								$(this).html('').dialog('destroy');
+							}
+						});                            
+					},
+					'Cancel':function(){
+						$(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+			});
+			if(dimarr.length == 0)
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Parameter(s) for Dimension Entry Not Available in Component Register!!!");
+		}
+	});
+}
+
+function receiveQuality(keyid,cmpdid,doPrint){
+    var	submitval	=	true;
+	dimdate			=	$("#dimDate").val();	
+	getString		=	"type=INSDIM" +
+						"&cmpdid=" + cmpdid +
+						"&dimdate=" + dimdate +
+						"&planid=" + keyid;	
+	rowcount		=	0;
+	$("#issue_dialog table tr").each(function(index, element){
+		if(index > 2)
+		{
+			rowcount	=	index-2;
+			param		=	$(this).find("td:eq(1)").html();
+			dimref		=	Number($("#dim_ref_"+rowcount).val());
+			dimll		=	Number($("#dim_ll_"+rowcount).val().split(",").join(""));
+			dimul		=	Number($("#dim_ul_"+rowcount).val().split(",").join(""));
+			samp1		=	Number($(this).find("td:eq(3) input").val().split(",").join("")); 
+			samp2		=	Number($(this).find("td:eq(4) input").val().split(",").join(""));   
+			samp3		=	Number($(this).find("td:eq(5) input").val().split(",").join(""));
+			samp4		=	Number($(this).find("td:eq(6) input").val().split(",").join(""));
+			samp5		=	Number($(this).find("td:eq(7) input").val().split(",").join(""));		 
+			if(!(samp1 <= dimul && samp1 >= dimll)){
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Dimensions for Sample 1 for "+param+"! ! !");
+				$(this).find("td:eq(3) input").focus();
+				submitval	=	false;
+				return false;
+			}
+			else
+			{
+				getString	+=	"&dimref[]="+dimref+"&dimval1[]="+samp1;		
+			}
+			if(!(samp2 <= dimul && samp2 >= dimll)){
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Dimensions for Sample 2 for "+param+"! ! !");
+				$(this).find("td:eq(4) input").focus();
+				submitval	=	false;
+				return false;
+			}
+			else
+			{
+				getString	+=	"&dimval2[]="+samp2;		
+			}		
+			if(!(samp3 <= dimul && samp3 >= dimll)){
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Dimensions for Sample 3 for "+param+"! ! !");
+				$(this).find("td:eq(5) input").focus();
+				submitval	=	false;
+				return false;
+			}
+			else
+			{
+				getString	+=	"&dimval3[]="+samp3;		
+			}		
+			if(!(samp4 <= dimul && samp4 >= dimll)){
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Dimensions for Sample 4 for "+param+"! ! !");
+				$(this).find("td:eq(6) input").focus();
+				submitval	=	false;
+				return false;
+			}
+			else
+			{
+				getString	+=	"&dimval4[]="+samp4;		
+			}
+			if(!(samp5 <= dimul && samp5 >= dimll)){
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Dimensions for Sample 5 for "+param+"! ! !");
+				$(this).find("td:eq(7) input").focus();
+				submitval	=	false;
+				return false;
+			}
+			else
+			{
+				getString	+=	"&dimval5[]="+samp5;		
+			}
+		}
+	});	
+	if(submitval == true && rowcount > 0){
+		//alert(getString); //return false;
+		$("#issue_dialog").dialog('close');
+		var mouldquality	=	postback(actionFile,getString,"POST","XML");
+		if(mouldquality != 'success'){
+			displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Component Dimension Entry Failed due to: " + mouldquality);
+		}	
+		else if(doPrint == true)
+			openInvoice({invID:mouldquality});	
+		createAutoComplete();
+		TF_01		=	setFilterGrid("resultTable",tableFilters);
+		TF_01.RefreshGrid();		
+	}
+}
+
+

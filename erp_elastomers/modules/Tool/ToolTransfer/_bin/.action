@@ -1,0 +1,93 @@
+<?php
+	session_start();
+
+	header('Content-Type: text/xml');
+	switch($_POST["selecttype"]){
+		case "TOOLREFLIST":
+			$output =@getMySQLData("select tool_ref,comp_part_ref  from tbl_tool where status1='1' and tool_ref != '' and compId != ''", 'xml');
+			echo $output;
+			exit();
+		break;
+		
+		case "TOOLTRANSFERDETAILS":
+			$tool_ref 	=	$_POST['tool_ref'];
+			$output =@getMySQLData("select transferee_userId, transferee_userName from tbl_tool_transfer where tool_ref='$tool_ref' and status='1' order by ttn_date desc limit 1",'xml');
+			echo $output;
+			exit();
+		break;
+		case "TRANSFEREEDETAILS":
+			$cur_transferor = $_POST['cur_transferor'];
+			$output = @getMySQLData("select userId, fullName from tbl_users where userId<>'$cur_transferor' and userType <> 'Employee' and status='1'",'xml');
+			echo $output;
+			exit();
+		break;
+		case "ADDTOOLTRANSFER":
+			if($_POST['tool_ref'] !="" && $_POST['transferor_userId'] !="" && $_POST['transferor_userName'] !="" && $_POST['transferee_userId'] !="" && $_POST['transferee_userName'] !=""){
+				$codeArray		=	@getSettingsData("toolTransferNote");
+				$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+				$tool_ref		=	$_POST['tool_ref'];
+				$user_id 		= 	$_POST['transferee_userId'];
+				$user_name 		= 	$_POST['transferee_userName']; 				
+		
+				$sql = " insert into tbl_tool_transfer(ttn_ref, ttn_date, tool_ref, transferor_userId, transferor_userName, transferee_userId, transferee_userName, updated_on, status, entry_on, entry_by) 
+						values('$codeNo', now(), '".$tool_ref."', '".$_POST['transferor_userId']."', '".$_POST['transferor_userName']."', '".$user_id."', '".$user_name."', '', 1, now(), '".$_SESSION['userdetails']['userId']."')";
+				
+				$output = @getMySQLData($sql);
+				
+				if($output['status'] == "success"){
+					@getMySQLData("update tbl_settings set auto_inc=auto_inc+1 where name='toolTransferNote'");
+					$invCodeNo = "";
+					if($user_id != 'store'){
+						$invCodeArray		=	@getSettingsData("invoicettn");
+						$invCodeNo			=	@getRegisterNo($invCodeArray[0], $invCodeArray[1]);
+						
+						//finds user details
+						$sql_contractor 	= 	"select * from tbl_users where userId='$user_id'";
+						$out_contractor 	= 	@getMySQLData($sql_contractor);
+						$user_address 		= 	$out_contractor['data'][0]['userAddress1']."|".$out_contractor['data'][0]['userAddress2']."|".$out_contractor['data'][0]['userAddress3'];
+						$contractor 		= 	$user_name."|".$user_address;
+
+						//finds Excise Details From tbl_settings 
+						$sql_excise 		= 	"select * from tbl_settings where name in('gstn','pan') order by name";
+						$out_excise 		= 	@getMySQLData($sql_excise);
+						$gstn 				= 	$out_excise['data'][0]['value'];
+						$pan 				= 	$out_excise['data'][1]['value'];
+
+						//finds Tool Details
+						$sql_tool 			=	"select * from tbl_tool where tool_ref='$tool_ref'";
+						$out_tool			= 	@getMySQLData($sql_tool);
+						$part_name 			= 	$out_tool['data'][0]['comp_part_ref'];
+						$noofcav 			= 	$out_tool['data'][0]['no_of_cavities'];
+						$noofactcav 		= 	$out_tool['data'][0]['no_of_active_cavities'];
+						$status 			= 	$out_tool['data'][0]['status'];
+						$next_valid 		= 	$out_tool['data'][0]['next_validation'];
+						
+						//finds partNo
+						$sql_partno 		= 	"select * from tbl_component where cmpdName='$part_name'";
+						$out_partno 		= 	@getMySQLData($sql_partno);
+						$part_no 			= 	$out_partno['data'][0]['cmpdRefNo'];
+						
+						$sql 				=	"insert into tbl_invoice_tool_transfer(invoice_id, contractor_detail, ttn_ref, ttn_date, gstn, pan, tool_code, part_no, part_name, 
+																	 no_of_cavities, no_of_active_cavities, status, lifts_run, last_validation, next_validation, remarks, entry_on, updated_on, status1, entry_by)
+																				values('$invCodeNo','$contractor','$codeNo',now(),'$gstn','$pan','$tool_ref','$part_no','$part_name',
+																	'$noofcav','$noofactcav','$status','','','$next_valid','',now(),'',1, '".$_SESSION['userdetails']['userId']."')";
+						$output = @getMySQLData($sql);						
+
+						if($output['status']=="success"){
+							@getMySQLData("update tbl_settings set auto_inc=auto_inc+1 where name='invoicettn'");
+						}
+					}
+					$output = "<invoiceadd>
+									<sql>$sql</sql>
+									<status>".$output['status']."</status>
+									<ttnref>$codeNo</ttnref>
+									<invoiceid>$invCodeNo</invoiceid>
+								<invoiceadd>";					
+				}
+				echo $output;
+				exit();
+			}
+		break;
+	}
+	
+?>

@@ -1,0 +1,19 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	
+	switch($_POST["selecttype"]){
+		case "MOULDLIST":	
+			$sql_batch	=	"SELECT mdIssRef,  DATE_FORMAT(issueDate,'%d-%b-%Y') as issueDate, issueDate as issDate, operator, sum(qtyIss) as qtyIss,status  FROM `tbl_moulding_issue` where status > 0 and issueDate >= '".$_POST["startDate"]."' and  issueDate <= '".$_POST["endDate"]."' and mdissref != 'CPDSTKADJ' group by mdIssRef,issueDate order by mdIssRef  DESC";
+			$list		=	@getMySQLData($sql_batch,"xml","root","lower");
+			$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>
+				$list
+				$output
+			</xmldata>";
+		break;
+	}
+	
+?>

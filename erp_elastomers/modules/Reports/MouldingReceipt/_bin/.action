@@ -1,0 +1,42 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$sql	=	"SELECT tmr.modRecRef as planid, DATE_FORMAT(tmr.entry_on, '%d-%b-%Y') as keyDate,timp.cmpdName, timp.cmpdRefNo, timp.cmpdCpdName,tmr.plannedLifts, tmr.actualLifts,(timp.no_of_active_cavities  * tmr.plannedLifts) as quantity, tmr.mouldQty,(timp.no_of_active_cavities  * timp.cmpdBlankWgt * tmr.plannedLifts)/1000 as cpdQtyIssued,cpdQtyUsed,timp.operator,tu.fullName  
+					FROM tbl_moulding_receive tmr 
+					inner join tbl_invoice_mould_plan timp on timp.planid = tmr.planRef 
+					inner join tbl_users tu on tu.userId = tmr.entry_by
+					where tmr.status > 2 and tmr.entry_on >= '".$_POST["startDate"]."' and  tmr.entry_on  <= '".$_POST["endDate"]."' order by timp.invdate asc";
+	if($_POST["type"] != 'export')
+	{
+		$list	=	@getMySQLData($sql, "xml", "root", "lower");
+		$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);	
+		echo "<xmldata>
+			$list
+		</xmldata>";
+	}
+	else
+	{	
+		// filename for download
+		$filename 		= 	"moulding_receipts_from_".$_POST["startDate"]."_to_" . $_POST["endDate"] . ".csv";
+		header("Content-Disposition: attachment; filename=\"$filename\"");
+		header("Content-Type: application/vnd.ms-excel");	
+		$output 		=	"";
+		$outSql 		=	@getMySQLData($sql);
+		$recptDetails 	=   $outSql['data'];
+		$output 		.= 	'"Key Ref.","Rcpt Date","Part Number","Part Description","Compound Name","Planned Lifts","Actual Lifts","Planned Qty","Actual Qty","Issued Compound Weight","Used Compound Weight","Operator","Entry By"';
+		$output 		.=	"\n";
+		
+		// Get Records from the table
+		foreach($recptDetails as $keys=>$values) {
+			foreach($values as $key=>$value) {
+				$output .='"'.$value.'",';
+			}
+			$output .="\n";
+		}
+		
+		echo $output;	
+	}
+	
+?>

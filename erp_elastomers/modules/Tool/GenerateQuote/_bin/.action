@@ -1,0 +1,97 @@
+<?php
+	session_start();
+	global $rfqdrawings_upload_dir;
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "NEWPRODLIST":
+			$sql	=	"select sno,quoteref,part_number,part_description,tc.cusName,tdr.status,ave_monthly_req,target_price,drawing_file_name,DATE_FORMAT(target_date, '%d-%b-%Y') as target_date,'/".$rfqdrawings_upload_dir."' as filepath
+						from tbl_develop_request tdr
+							inner join tbl_customer tc on tc.cusId=tdr.cusId
+							inner join tbl_develop_feasibility tdf on tdf.prod_ref=tdr.sno 
+							left join tbl_invoice_quote tiq on tiq.rfqid=tdr.drId
+						where tdr.status > 1 and tdr.status < 5 and approval_status > 0 order by sno";
+			echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+		break;
+		case "GETFEASDATA":
+			$cpdIdSql	=	@getMySQLData("select  cpd_cpdid from tbl_develop_feasibility where prod_ref = '".$_POST['rfqno']."'");
+			$cpdId		=	$cpdIdSql['data'][0]['cpd_cpdid'];
+			$cpdCost	=	($cpdId != null && $cpdId != '' && $cpdId != 'NA')?getCompoundCost($cpdId):0.00;
+			$sql		=	"select ".(($cpdCost > 0)?" cpdname,":" 'NA' as cpdName,")." cpd_base_polymer, tl_insert_used, tl_prod_wgt, tl_blank_wgt, prod_lift_rate, prod_trim_rate, prod_insp_rate, prod_rej_rate, quotePrice as polycost, tl_cavs ,'$cpdCost' as compcost
+							from tbl_develop_feasibility 
+								inner join tbl_polymer_order on polyName = cpd_base_polymer
+								".(($cpdCost > 0)?" inner join tbl_compound tc on cpd_cpdid = cpdId ":"")."
+							where prod_ref = '".$_POST['rfqno']."'";
+			echo @getXML($sql, false);
+			break;
+		case "GETQUOTEDATA":
+			$sql	=	"select * from tbl_invoice_quote where quoteref = '".$_POST['quoteno']."'";
+			echo @getXML($sql, false);
+		break;		
+		case "QUOTEINS":
+			$rfqid						=	$_POST['rfqid'];
+			$sqlDrId					=	@getMySQLData("select drId from tbl_develop_request where sno='$rfqid'");
+			$drId						=	$sqlDrId['data'][0]['drId'];
+			$codeArray					=	@getSettingsData("quotecode");
+			$codeNo						=	@getRegisterNo($codeArray[0], $codeArray[1]);
+			$userId						=	$_SESSION['userdetails']['userId'];
+			if($rfqid != ""){
+				$sql_quote		=	"insert into tbl_invoice_quote ( quoteref,quotedate,rfqid,compcost,mixcost,prodwgt,blankwgt,insertopt,
+										inscost,matlcost,tooldevopt,toolcost,toollife,toolcavs,amortcost,
+										moldoutput,moldhrcost,moldcost,trimoutput,trimhrcost,trimcost,inspoutput,insphrcost,inspcost, 
+										insprepoutput,insprephrcost,insprepcost,adhoutput,adhhrcost,adhcost,manucost,
+										freightcost,inventper,inventcost,rejper,rejcost,adminper,admincost,profitper,profitcost,misccost,finalcost,
+										matlsample,compsample,pilotlot,regsupply,quoteremarks,status,entry_on,entry_by) values";
+				$sql_quote		.=	"('$codeNo','".date('Y-m-d')."','$drId',".$_POST['compcost'] .",". $_POST['mixcost'] .",". $_POST['prodwgt'] .",". $_POST['blankwgt'] .",'". $_POST['insertopt'] ."',".
+										$_POST['inscost'] .",". $_POST['matlcost'] .",'". $_POST['tooldevopt'] ."',". $_POST['toolcost'] .",". $_POST['toollife'] .",". $_POST['toolcavs'] .",". $_POST['amortcost'] .",".
+										$_POST['moldoutput'] .",". $_POST['moldhrcost'] .",". $_POST['moldcost'] .",". $_POST['trimoutput'] .",". $_POST['trimhrcost'] .",". $_POST['trimcost'] .",". $_POST['inspoutput'] .",". $_POST['insphrcost'] .",". $_POST['inspcost'] .",". 
+										$_POST['insprepoutput'] .",".$_POST['insprephrcost'] .",".$_POST['insprepcost'] .",". $_POST['adhoutput'] .",". $_POST['adhhrcost'] .",". $_POST['adhcost'] .",". $_POST['manucost'] .",".
+										$_POST['freightcost'] .",". $_POST['inventper'] .",". $_POST['inventcost'] .",". $_POST['rejper'] .",". $_POST['rejcost'] .",". $_POST['adminper'] .",". $_POST['admincost'] .",". $_POST['profitper'] .",". $_POST['profitcost'] .",". $_POST['misccost'] .",". $_POST['finalcost'] .",'".
+										$_POST['matlsample'] ."','".$_POST['compsample'] ."','".$_POST['pilotlot'] ."','".$_POST['regsupply'] ."','".$_POST['quoteremarks'] ."',1, now(), '$userId')";
+				//echo $sql_quote ; exit();
+				$output			=	@getMySQLData($sql_quote, "xml");
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					if($status == "success" ){
+						@getMySQLData("update tbl_develop_request set status=3 where sno='$rfqid'");
+						@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='quotecode'");
+					}
+				}
+				else
+				{
+					$output	.= "<result_set>failed</result_set>";	
+				}
+				echo "<root>$output</root>";
+			}
+			break;
+		case "QUOTEUPDATE":
+			$quoteno					=	$_POST['quoteno'];
+			$userId						=	$_SESSION['userdetails']['userId'];
+			if($quoteno != ""){
+				$sql_quote		=	"update tbl_invoice_quote set
+										compcost = ".$_POST['compcost'] .",	mixcost = ". $_POST['mixcost'] .",prodwgt = ". $_POST['prodwgt'] .",
+										blankwgt = ". $_POST['blankwgt'] .",insertopt = '". $_POST['insertopt'] ."',inscost = ". $_POST['inscost'] .",
+										matlcost = ". $_POST['matlcost'] .",tooldevopt = '". $_POST['tooldevopt'] ."',toolcost = ". $_POST['toolcost'] .",
+										toollife = ". $_POST['toollife'] .",toolcavs = ". $_POST['toolcavs'] .",amortcost = ". $_POST['amortcost'] .",
+										moldoutput = ". $_POST['moldoutput'] .",moldhrcost = ". $_POST['moldhrcost'] .",moldcost = ". $_POST['moldcost'] .",
+										trimoutput = ". $_POST['trimoutput'] .",trimhrcost = ". $_POST['trimhrcost'] .",trimcost = ". $_POST['trimcost'] .",
+										inspoutput = ". $_POST['inspoutput'] .",insphrcost = ". $_POST['insphrcost'] .",inspcost = ". $_POST['inspcost'] .",
+										insprepoutput = ". $_POST['insprepoutput'] .",insprephrcost = ". $_POST['insprephrcost'] .",insprepcost = ". $_POST['insprepcost'] .",
+										adhoutput = ". $_POST['adhoutput'] .",adhhrcost = ". $_POST['adhhrcost'] .",adhcost = ". $_POST['adhcost'] .",								
+										manucost = ". $_POST['manucost'] .",rejper = ". $_POST['rejper'] .",rejcost = ". $_POST['rejcost'] .",
+										freightcost = ". $_POST['freightcost'] .",inventper = ". $_POST['inventper'] .",inventcost = ". $_POST['inventcost'] .",
+										adminper = ". $_POST['adminper'] .",admincost = ". $_POST['admincost'] .",profitper = ". $_POST['profitper'] .",
+										profitcost = ". $_POST['profitcost'] .",misccost = ". $_POST['misccost'] .",finalcost = ". $_POST['finalcost'] .",
+										matlsample = '".	$_POST['matlsample'] ."',compsample = '".$_POST['compsample'] ."',pilotlot = '".$_POST['pilotlot'] ."',
+										regsupply = '".$_POST['regsupply'] ."',quoteremarks = '".$_POST['quoteremarks'] ."',updated_on = now(),updated_by = '$userId'
+										where quoteref = '$quoteno'";
+				//echo $sql_quote ; exit();
+				$output			=	@getMySQLData($sql_quote, "xml");
+				echo "<root>$output</root>";
+			}
+			break;			
+
+	}
+
+?>

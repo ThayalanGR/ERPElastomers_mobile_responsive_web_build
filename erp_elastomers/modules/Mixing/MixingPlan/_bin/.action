@@ -1,0 +1,238 @@
+<?php
+	session_start();
+	global $cpdMonthCode;
+	$mixDate		=	$_POST['mixdate'];
+
+	//header('Content-Type: text/xml');
+	switch($_POST["selecttype"]){
+		case "MIXADD":
+			$mixCpdIds		=	$_POST['mixcpdid']; 
+			$mixBatWgts		=	$_POST['mixbatwgt'];
+			$mixBatNos		=	$_POST['mixbatno'];				
+			$isMillBatchs	= 	$_POST['ismillbatch'];
+			$mixCusts		= 	$_POST['mixcust'];
+			$mixCpdIds		=	$_POST['mixcpdids'];
+			$mixPolyTots	= 	$_POST['mixpolytot'];
+			$mixPolyRatios	=	$_POST['mixpolyratio'];			
+			$mixSQL			=	"insert into tbl_mixing(batId, cpdId, batDate, batPlanWgt, status,shift,is_mill_batch,batFinaldate,customer,full_test_req, entry_on, entry_by) values";
+			$mixPlanItemInv	=	"insert into tbl_invoice_mixplan_items(batId, ramId, planQty, rmName, grade, UOM, weightLoc) values";
+			$mixPlanInv		=	"insert into tbl_invoice_mixplan(cpdId, cpdName, cpdPolymer, batPlanWgt, batId, invDate, entry_on, entry_by, cpdUOM, mastTime, mastTimeMin, mastTimeMax, 
+																	mastTemp, mastTempMin, mastTempMax, mastPres, mastPresMin, mastPresMax, 
+																	blendTime, blendTimeMin, blendTimeMax, blendTemp, blendTempMin, blendTempMax, 
+																	blendPres, blendPresMin, blendPresMax,  
+																	cblendTime, cblendTimeMin, cblendTimeMax, cblendTemp, cblendTempMin, cblendTempMax, 
+																	cblendPres, cblendPresMin, cblendPresMax, kneadTime, kneadTimeMin, kneadTimeMax, 
+																	kneadTemp, kneadTempMin, kneadTempMax, kneadPres, kneadPresMin, kneadPresMax, 
+																	millRollTime, millRollTimeMin, millRollTimeMax, millRollTemp, millRollTempMin, millRollTempMax,
+																	mixFinalTime, mixFinalTimeMin, mixFinalTimeMax, mixFinalTemp, mixFinalTempMin, mixFinalTempMax, 
+																	mixSheetTime, mixSheetTimeMin, mixSheetTimeMax, mixSheetTemp, mixSheetTempMin, mixSheetTempMax) values";
+			// Generate Code No
+			list($y, $m, $d) 	= 	explode('-', $mixDate);
+			$loc_sql			=	@getMySQLData("select value from tbl_settings where name='mixLocCode'");
+			$locCode			=	$loc_sql['data'][0]['value'];				
+			$partBatId			=	$cpdMonthCode[$m+0].$d.$locCode;
+			$financialYear		= 	$y;
+			if ( $m < 4)
+			{
+				$financialYear		= 	$y - 1;
+			}
+			$financialYear		=	(string) $financialYear;
+			$lastBatId_sql		=	@getMySQLData("SELECT count(*) as lastbatId FROM tbl_mixing where DATE_FORMAT(batdate,'%m-%Y')  = '$m-$y'");
+			$codeNumber 		= 	100;
+			if($lastBatId_sql['count'] > 0)
+			{
+				$codeNumber		=	$codeNumber + $lastBatId_sql['data'][0]['lastbatId'];	
+			}																	
+			$codeNumber++;
+			for($cpdCount=0;$cpdCount < count($mixCpdIds);$cpdCount++){
+				$mixCpdId			=	$mixCpdIds[$cpdCount]; 
+				$mixBatWgt			=	$mixBatWgts[$mixCpdId];
+				$mixBatNo			=	$mixBatNos[$mixCpdId];				
+				$isMillBatch		= 	$isMillBatchs[$mixCpdId];
+				$mixCust			=	$mixCusts[$mixCpdId];
+				$mixPolyTot			= 	$mixPolyTots[$mixCpdId];
+				$mixPolyRatio		=	$mixPolyRatios[$mixCpdId];						
+				$tblMixingstatus 	=	1;
+				$millbatch			= 	0;
+				$finalDate			= 	"0000-00-00";
+				if($isMillBatch == 1)
+				{
+					$tblMixingstatus 	=	2;
+					$millbatch			= 	1;
+					$finalDate			=	$mixDate;
+				}
+				
+				$sql_mix_dtls	=	@getMySQLData("select cpdName, cpdPolymer, cpdUOM, batCountFullTest, mastTime, mastTimeMin, mastTimeMax, mastTemp, mastTempMin, mastTempMax, mastPres, mastPresMin, mastPresMax, 
+												  blendTime, blendTimeMin, blendTimeMax, blendTemp, blendTempMin, blendTempMax, blendPres, blendPresMin, blendPresMax, 
+												  cblendTime, cblendTimeMin, cblendTimeMax, cblendTemp, cblendTempMin, cblendTempMax, cblendPres, cblendPresMin, cblendPresMax, 
+												  kneadTime, kneadTimeMin, kneadTimeMax, kneadTemp, kneadTempMin, kneadTempMax, kneadPres, kneadPresMin, kneadPresMax, 
+												  millRollTime, millRollTimeMin, millRollTimeMax, millRollTemp, millRollTempMin, millRollTempMax,
+												  mixFinalTime, mixFinalTimeMin, mixFinalTimeMax, mixFinalTemp, mixFinalTempMin, mixFinalTempMax, 
+												  mixSheetTime, mixSheetTimeMin, mixSheetTimeMax, mixSheetTemp, mixSheetTempMin, mixSheetTempMax
+												  from tbl_compound where cpdId='$mixCpdId'","arr");
+				
+
+				$uom_sql		=	@getMySQLData("select * from tbl_uom where sno='".$sql_mix_dtls['data'][0]['cpdUOM']."'");
+				$uom			=	$uom_sql['data'][0]['uom_short_name'];
+				
+				$cpdName		=	$sql_mix_dtls['data'][0]['cpdName'];
+				$cpdPolymer		=	$sql_mix_dtls['data'][0]['cpdPolymer'];
+				$countFullTest	=	$sql_mix_dtls['data'][0]['batCountFullTest'];
+				$mastTime		=	$sql_mix_dtls['data'][0]['mastTime']; 
+				$mastTimeMin	=	$sql_mix_dtls['data'][0]['mastTimeMin'];
+				$mastTimeMax	=	$sql_mix_dtls['data'][0]['mastTimeMax'];
+				$mastTemp		=	$sql_mix_dtls['data'][0]['mastTemp'];
+				$mastTempMin	=	$sql_mix_dtls['data'][0]['mastTempMin']; 
+				$mastTempMax	=	$sql_mix_dtls['data'][0]['mastTempMax'];
+				$mastPres 		=	$sql_mix_dtls['data'][0]['mastPres'];
+				$mastPresMin 	=	$sql_mix_dtls['data'][0]['mastPresMin'];
+				$mastPresMax	=	$sql_mix_dtls['data'][0]['mastPresMax'];
+				$blendTime		=	$sql_mix_dtls['data'][0]['blendTime'];
+				$blendTimeMin	=	$sql_mix_dtls['data'][0]['blendTimeMin'];
+				$blendTimeMax	=	$sql_mix_dtls['data'][0]['blendTimeMax'];
+				$blendTemp		=	$sql_mix_dtls['data'][0]['blendTemp']; 
+				$blendTempMin	=	$sql_mix_dtls['data'][0]['blendTempMin'];
+				$blendTempMax	=	$sql_mix_dtls['data'][0]['blendTempMax']; 
+				$blendPres		=	$sql_mix_dtls['data'][0]['blendPres'];
+				$blendPresMin	=	$sql_mix_dtls['data'][0]['blendPresMin']; 
+				$blendPresMax	=	$sql_mix_dtls['data'][0]['blendPresMax']; 
+				$cblendTime		=	$sql_mix_dtls['data'][0]['cblendTime'];
+				$cblendTimeMin	=	$sql_mix_dtls['data'][0]['cblendTimeMin'];
+				$cblendTimeMax	=	$sql_mix_dtls['data'][0]['cblendTimeMax'];
+				$cblendTemp		=	$sql_mix_dtls['data'][0]['cblendTemp']; 
+				$cblendTempMin	=	$sql_mix_dtls['data'][0]['cblendTempMin'];
+				$cblendTempMax	=	$sql_mix_dtls['data'][0]['cblendTempMax']; 
+				$cblendPres		=	$sql_mix_dtls['data'][0]['cblendPres'];
+				$cblendPresMin	=	$sql_mix_dtls['data'][0]['cblendPresMin']; 
+				$cblendPresMax	=	$sql_mix_dtls['data'][0]['cblendPresMax']; 
+				$kneadTime		=	$sql_mix_dtls['data'][0]['kneadTime']; 
+				$kneadTimeMin	=	$sql_mix_dtls['data'][0]['kneadTimeMin']; 
+				$kneadTimeMax	=	$sql_mix_dtls['data'][0]['kneadTimeMax'];
+				$kneadTemp		=	$sql_mix_dtls['data'][0]['kneadTemp'];
+				$kneadTempMin	=	$sql_mix_dtls['data'][0]['kneadTempMin'];
+				$kneadTempMax	=	$sql_mix_dtls['data'][0]['kneadTempMax'];
+				$kneadPres		=	$sql_mix_dtls['data'][0]['kneadPres'];
+				$kneadPresMin	=	$sql_mix_dtls['data'][0]['kneadPresMin'];
+				$kneadPresMax 	=	$sql_mix_dtls['data'][0]['kneadPresMax'];
+				$millRollTime	=	$sql_mix_dtls['data'][0]['millRollTime'];
+				$millRollTimeMin=	$sql_mix_dtls['data'][0]['millRollTimeMin'];
+				$millRollTimeMax=	$sql_mix_dtls['data'][0]['millRollTimeMax'];
+				$millRollTemp	=	$sql_mix_dtls['data'][0]['millRollTemp'];
+				$millRollTempMin=	$sql_mix_dtls['data'][0]['millRollTempMin'];
+				$millRollTempMax=	$sql_mix_dtls['data'][0]['millRollTempMax'];
+				$mixFinalTime	=	$sql_mix_dtls['data'][0]['mixFinalTime'];
+				$mixFinalTimeMin=	$sql_mix_dtls['data'][0]['mixFinalTimeMin'];
+				$mixFinalTimeMax=	$sql_mix_dtls['data'][0]['mixFinalTimeMax'];
+				$mixFinalTemp	=	$sql_mix_dtls['data'][0]['mixFinalTemp'];
+				$mixFinalTempMin=	$sql_mix_dtls['data'][0]['mixFinalTempMin'];
+				$mixFinalTempMax=	$sql_mix_dtls['data'][0]['mixFinalTempMax'];
+				$mixSheetTime	=	$sql_mix_dtls['data'][0]['mixSheetTime'];
+				$mixSheetTimeMin=	$sql_mix_dtls['data'][0]['mixSheetTimeMin'];
+				$mixSheetTimeMax=	$sql_mix_dtls['data'][0]['mixSheetTimeMax'];
+				$mixSheetTemp	=	$sql_mix_dtls['data'][0]['mixSheetTemp'];
+				$mixSheetTempMin=	$sql_mix_dtls['data'][0]['mixSheetTempMin'];
+				$mixSheetTempMax=	$sql_mix_dtls['data'][0]['mixSheetTempMax'];
+				
+				$lastFullTest_sql	=	@getMySQLData("SELECT count(*) as CountLastFullTest FROM tbl_mixing where cpdId = '$mixCpdId' and status > 0 and batid > (select batid from tbl_mixing where status > 0 and cpdId = '$mixCpdId' and full_test_req = 1 order by batDate desc limit 1 )");
+				$countLastFullTest	=	$lastFullTest_sql['data']['0']['CountLastFullTest'];
+				if(!($countLastFullTest >= 0))
+					$countLastFullTest	=	0;
+				if($codeNumber != "")
+				{
+					for($ms=1; $ms<=$mixBatNo; $ms++){
+						$full_test_req	=	0;
+						$currentCount	=	$countLastFullTest	+	$ms;
+						if($countFullTest > 0 && $currentCount >= $countFullTest)
+						{
+							$full_test_req		=	1;
+							$countLastFullTest	=	0;
+						}
+						$codeNo		=	substr($financialYear,-2)."_".$partBatId . $codeNumber;
+						$mixSQL		.=	"('$codeNo', '$mixCpdId', '$mixDate', '$mixBatWgt',$tblMixingstatus,'".$_POST['shift']."',$millbatch,'$finalDate','$mixCust', $full_test_req, now(), '".$_SESSION['userdetails']['userId']."')".(($ms==$mixBatNo && $cpdCount == count($mixCpdIds) - 1)?";":",");
+						$mixPlanInv	.=	"( '$mixCpdId', '$cpdName', '$cpdPolymer', '$mixBatWgt', '$codeNo', '$mixDate', now(), '".$_SESSION['userdetails']['userId']."','$uom', 
+											'$mastTime', '$mastTimeMin', '$mastTimeMax', '$mastTemp', '$mastTempMin', '$mastTempMax', 
+											'$mastPres', '$mastPresMin', '$mastPresMax', '$blendTime', '$blendTimeMin', '$blendTimeMax', 
+											'$blendTemp', '$blendTempMin', '$blendTempMax','$blendPres', '$blendPresMin', '$blendPresMax', 
+											'$cblendTime', '$cblendTimeMin', '$cblendTimeMax', 
+											'$cblendTemp', '$cblendTempMin', '$cblendTempMax','$cblendPres', '$cblendPresMin', '$cblendPresMax', 
+											'$kneadTime', '$kneadTimeMin', '$kneadTimeMax', '$kneadTemp', '$kneadTempMin', '$kneadTempMax', 
+											'$kneadPres', '$kneadPresMin', '$kneadPresMax','$millRollTime', '$millRollTimeMin', '$millRollTimeMax', 
+											'$millRollTemp', '$millRollTempMin', '$millRollTempMax', '$mixFinalTime', '$mixFinalTimeMin', '$mixFinalTimeMax', 
+											'$mixFinalTemp', '$mixFinalTempMin', '$mixFinalTempMax', '$mixSheetTime', '$mixSheetTimeMin', '$mixSheetTimeMax', 
+											'$mixSheetTemp', '$mixSheetTempMin', '$mixSheetTempMax')".(($ms==$mixBatNo && $cpdCount == count($mixCpdIds) - 1)?";":", ");
+						$rmParts_sql	=	@getMySQLData("SELECT ramId, ramParts, is_final_chemical FROM (select t1.ramId, ramParts, item_no, recvQty, is_final_chemical from tbl_compound_rm t1
+																										left join (select invRamId, sum(invRecvQty) as recvQty, sum(avlQty) as avlQty  from tbl_invoice_grn group by invRamId) t2 on t2.invRamId = t1.ramId  
+																										where cpdid = '$mixCpdId' order by avlQty desc,recvQty desc) tcr group by item_no");
+						for($rm=0; $rm<count($rmParts_sql['data']); $rm++){
+							$ramId		=	$rmParts_sql['data'][$rm]['ramId'];
+							$ramParts	=	$rmParts_sql['data'][$rm]['ramParts'];
+							$ramIsFinal	=	$rmParts_sql['data'][$rm]['is_final_chemical'];								
+							$rm_sql		=	@getMySQLData("select * from tbl_rawmaterial where ramId='$ramId'","arr");
+							$rm_dtls	=	$rm_sql['data'][0];
+							$ramClass	=	$rm_dtls['ramClass'];
+							$mixRamQuan	=	round(($ramParts * $mixBatWgt * $mixPolyRatio)/$mixPolyTot,3);
+							
+							$uom_sql	=	@getMySQLData("select * from tbl_uom where sno='".$rm_dtls['ramUnit']."'");
+							$uom		=	$uom_sql['data'][0]['uom_short_name'];
+							$weightLoc	=	-1;
+							switch($ramClass){
+								case 1:
+									$weightLoc	=	0;
+								break;
+								case 2:
+								case 3:
+									$weightLoc	=	2;
+								break;
+								case 4:
+								case 5:	
+								case 6:
+									if($ramIsFinal != 1)
+										$weightLoc	=	1;
+									else
+										$weightLoc	=	3;									
+								break;
+							}
+							$mixPlanItemInv	.=	"('$codeNo', '$ramId', '$mixRamQuan', '".$rm_dtls['ramName']."', '".$rm_dtls['ramGrade']."', '$uom', '$weightLoc')".(($ms==$mixBatNo && $rm==count($rmParts_sql['data'])-1 && $cpdCount == count($mixCpdIds) - 1)?";":", ");
+						}
+						$codeNumber++;
+					}
+				}
+
+			}
+			
+			$output		=	@getMySQLData($mixSQL, "xml", "mixTable");
+			$output		.=	@getMySQLData($mixPlanInv, "xml", "mixPlanInvoice");
+			$output		.=	@getMySQLData($mixPlanItemInv, "xml");
+			break;
+	}
+	
+	$compound_sql	=	"select tc.cpdid,cpdname,cpdpolymer,cpdminstock,round(if(batchWgt > 0,batchWgt,1),3) as batchWgt,polyWgt,batchTotWgt,basepolyratio,IFNULL(cpdawtplan ,0)   as cpdawtplan,ifnull(cntawtissue,0) as cntawtissue,ifnull(cpdawtissue,0) as cpdawtissue,ifnull(cntawtfinal,0) as cntawtfinal,ifnull(cpdawtfinal,0) as cpdawtfinal,ifnull(cntawtrcpt,0) as cntawtrcpt,ifnull(cpdawtrcpt,0) as cpdawtrcpt,ifnull(cntawtqc,0) as cntawtstorercpt,ifnull(cpdawtqc,0) as cpdawtstorercpt,ifnull(cnttotstock,0) as cnttotstock,ifnull(cpdtotstock,0) as cpdtotstock, CURRENT_DATE as currdate
+						from tbl_compound tc
+							inner join tbl_polymer_order on cpdPolymer=polyName
+							left outer join (select cpdId, sum(schQty) as cpdawtplan from (SELECT cpdId_cmpdId as cpdId, schQty  FROM (select * from (select * from tbl_scheduling  where schOrder='compound' and schMonth=DATE_FORMAT(CURDATE(), '%M %Y') and status>0 order by entry_on desc)tbl_ts group by  cusId,cpdId_cmpdId)ts1 
+																							UNION ALL 
+																							SELECT cmpdCpdId as cpdId, (schQty * cmpdBlankWgt/1000) as schQty from ( select * from (select cmpdId, cmpdBlankWgt, cmpdCpdId, t1.schQty, cusId from tbl_scheduling t1 inner join tbl_component t2 on t1.cpdId_cmpdId=t2.cmpdId where t1.schMonth=DATE_FORMAT(CURDATE(), '%M %Y') and t1.status=1 and t2.status=1 order by t1.entry_on desc)as component group by cmpdId,cusId) tab1 ) ts2 group by cpdId ) ts on ts.cpdId = tc.cpdId
+							inner join (select cpdid,sum(rmWght) as batchTotWgt, (sum(rmWght) * (select cpdMinStock from tbl_compound where cpdid = tab1.cpdId ) * if(polyWgt = pripolyWgt,1,(pripolyWgt+secpolywgt)/pripolyWgt)/polyWgt) as batchWgt,if(polyWgt=0,1,ifnull(polyWgt,1)) as polyWgt,if(polyWgt = pripolyWgt,1,(pripolyWgt+secpolywgt)/pripolyWgt) as basepolyratio from (select cpdid, ramParts as rmWght,(SELECT sum(ramparts) FROM (select * from tbl_compound_rm group by cpdid,item_no) tcr inner join tbl_rawmaterial  on tcr.ramId = tbl_rawmaterial.ramId and tbl_rawmaterial.ramClass = 1 where cpdId = t1.cpdId ) as polyWgt,(SELECT ramparts FROM (select * from tbl_compound_rm group by cpdid,item_no) tcr inner join tbl_rawmaterial  on tcr.ramId = tbl_rawmaterial.ramId and tbl_rawmaterial.ramClass = 1 where cpdId = t1.cpdId order by item_no asc limit 1) as pripolyWgt, (SELECT ramparts FROM (select * from tbl_compound_rm group by cpdid,item_no) tcr inner join tbl_rawmaterial  on tcr.ramId = tbl_rawmaterial.ramId and tbl_rawmaterial.ramClass = 1 where cpdId = t1.cpdId order by item_no desc limit 1) as secpolyWgt from (select * from tbl_compound_rm group by cpdid,item_no) t1 ) tab1 group by cpdid) tbw on tbw.cpdid = tc.cpdId
+							left outer join (select cpdid, sum(if(sumPlanned>0,1,0)) as cntawtissue, sum(sumPlanned) as cpdawtissue,sum(if(mastInhand>0,1,0)) as cntawtfinal,sum(mastInhand) as cpdawtfinal, sum(if(finalPlanned>0,1,0)) as cntawtrcpt,sum(finalPlanned) as cpdawtrcpt, sum(if(finalinHand>0,1,0)) as cntawtqc,sum(finalinHand) as cpdawtqc, sum(if(stockinHand>0,1,0)) as cnttotstock,sum(stockinHand) as cpdtotstock  from 
+								(select tm.batid, cpdid, sumPlanned, 0 as mastInhand, 0 as finalPlanned, 0 as finalinHand, 0 as stockinHand   from tbl_mixing tm inner join (select batid, sum(planQty) as sumPlanned from tbl_invoice_mixplan_items group by batid) tmp on tm.batid = tmp.batid	where status = 1 and batFinalDate = '0000-00-00'
+								UNION ALL select batid, cpdid, 0 as sumPlanned, (masterBatchWgt - mstrIssuedQty ) as mastInhand,0 as finalPlanned, 0 as finalinHand, 0 as stockinHand from tbl_mixing where status = 2 and batFinalDate = '0000-00-00' and (masterBatchWgt - mstrIssuedQty ) > 0 
+								UNION ALL select batid, cpdid, 0 as sumPlanned,0 as mastInhand,(masterBatchWgt - mstrIssuedQty ) as finalPlanned, 0 as finalinHand, 0 as stockinHand from tbl_mixing where status = 2 and batFinalDate != '0000-00-00' and (masterBatchWgt - mstrIssuedQty ) > 0
+								UNION ALL select tm.batid, cpdid,0 as sumPlanned,0 as mastInhand, finalPlanned, 0 as finalinHand, 0 as stockinHand from tbl_mixing tm	inner join (select batid, sum(planQty) as finalPlanned from tbl_invoice_mixplan_items group by batid) tmp on tm.batid = tmp.batid	where (status = 1 and batFinalDate != '0000-00-00') or (status = 2 and is_mill_batch = 1)
+								UNION ALL select tm.batid, cpdid,0 as sumPlanned,0 as mastInhand, 0 as finalPlanned, batRecvWgt as finalinHand, 0 as stockinHand from tbl_mixing tm	inner join  tbl_mixing_recv tmr on tm.batid = tmr.batid where tm.status = 3
+								UNION ALL select batid, cpdid, 0 as sumPlanned, 0 as mastInhand,0 as finalPlanned, 0 as finalinHand, avlQty as stockinHand from tbl_mixing where status = 4 and avlQty > 0 
+								)table1
+								group by cpdid) tbl3 on tbl3.cpdid = tc.cpdid
+						where tc.status>0   
+						order by disporder,cpdName asc";	
+		
+	$compound	=	@getMySQLData($compound_sql, "xml", '',"lower");
+	header('Content-Type: text/xml');
+	$sendMsg	=	"<xmldata><root>
+						$compound
+						$output
+					</root>	
+					</xmldata>";
+
+	echo $sendMsg ;
+	
+?>

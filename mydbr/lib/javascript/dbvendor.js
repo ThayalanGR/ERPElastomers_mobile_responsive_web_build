@@ -1,0 +1,1 @@
+function SetDBPort(db){if(db.value=="mysql"){document.forms["admin"].database_port.value=3306}else if(db.value=="mssql"){document.forms["admin"].database_port.value=1433}}

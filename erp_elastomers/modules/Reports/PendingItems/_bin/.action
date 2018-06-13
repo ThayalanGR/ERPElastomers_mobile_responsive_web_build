@@ -1,0 +1,238 @@
+<?php
+	session_start();
+	
+	header("Content-Type: text/xml");
+	$sql	=	"";
+	switch($_POST["type"]){
+		case 'CPDISSGRP':
+			$sql	=	"SELECT 'CPDISS' as operation, tmp.cmpdName, tmp.cmpdRefno, tmp.operator, sum(tmr.plannedLifts) as plannedlifts, sum(tmp.no_of_active_cavities * tmr.plannedLifts) as plannedqty, sum(tmr.plannedLifts) as isslifts, sum(tmp.no_of_active_cavities * tmr.plannedLifts) as issqty, poRate
+						FROM tbl_moulding_receive tmr
+							inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on tmp.cmpdId = tpo.cmpdId
+						WHERE tmr.STATUS = 1 and tmp.invdate < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY ";
+			if($_POST["operator"] != 'ALL')
+				$sql	.= " and tmp.operator = '".$_POST["operator"]."' ";
+			$sql	.= " GROUP BY cmpdName 
+						order by tmp.cmpdName,tmp.operator";
+			$list	=	@getMySQLData($sql,"xml","root","lower");
+			echo "<xmldata>".$list."<currOperation>CPDISS</currOperation></xmldata>";
+			exit();
+		break;	
+		case 'CPDISS':
+			$sql	=	"SELECT  CONCAT( SUBSTRING_INDEX( tmr.modRecRef,  '_', 1 ) ,'-', SUBSTRING_INDEX( tmr.modRecRef,  '-' , -1 ) ) AS planId, DATE_FORMAT(tmp.invdate,'%d-%b-%Y') as issdate,DATE_FORMAT(tmp.invdate,'%d-%b-%Y') as RecDate,tmp.cmpdName, tmp.cmpdRefno, tmp.operator, tmr.plannedLifts, (tmp.no_of_active_cavities * tmr.plannedLifts) as plannedqty, tmr.plannedLifts as isslifts, (tmp.no_of_active_cavities * tmr.plannedLifts) as issqty, poRate
+						FROM tbl_moulding_receive tmr
+							inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on tmp.cmpdId = tpo.cmpdId
+						WHERE tmr.STATUS = 1 and tmp.invdate < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY ";
+			if($_POST["operator"] != 'ALL')
+				$sql	.= " and tmp.operator = '".$_POST["operator"]."' ";						
+			if($_POST["cmpdname"] != "" && $_POST["cmpdname"] != null)
+			{
+				$sql	.= " and tmp.cmpdName = '".$_POST["cmpdname"]."' ";
+				$sql	.= " order by tmp.invdate,tmp.operator";
+				$list	=	@getMySQLData($sql,"xml","root","lower");
+				echo "<xmldata>".$list."</xmldata>";
+				exit();
+			}
+			else
+			{
+				$sql	.= " order by tmp.cmpdName,tmp.invdate,tmp.operator";
+			}
+		break;
+		case 'MLDRCPTGRP':
+			$sql	=	"SELECT 'MLDRCPT' as operation,tmp.cmpdName, tmp.cmpdRefno, tmp.operator, sum(tmr.plannedLifts) as plannedlifts, sum(tmp.no_of_active_cavities * tmr.plannedLifts) as plannedqty,  sum(tmr.plannedLifts) as isslifts, sum(tmp.no_of_active_cavities * tmr.plannedLifts) as issqty, poRate 
+						FROM tbl_moulding_receive tmr
+							inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on tmp.cmpdId = tpo.cmpdId
+							left join tbl_moulding_plan tm on tm.planid = tmr.planRef
+						WHERE tmr.STATUS = 2 and tmp.invdate < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY ";
+			if($_POST["operator"] != 'ALL')
+				$sql	.= " and tmp.operator = '".$_POST["operator"]."' ";
+			$sql	.= " GROUP BY cmpdName order by cmpdName,operator";
+			$list	=	@getMySQLData($sql,"xml","root","lower");
+			echo "<xmldata>".$list."<currOperation>MLDRCPT</currOperation></xmldata>";
+			exit();
+		break;
+		
+		case 'MLDRCPT':
+			$sql	=	"SELECT distinct CONCAT( SUBSTRING_INDEX( tmr.modRecRef,  '_', 1 ) ,'-', SUBSTRING_INDEX( tmr.modRecRef,  '-' , -1 ) ) AS planId, DATE_FORMAT(tmp.invdate,'%d-%b-%Y') as issdate,DATE_FORMAT(tmi.issueDate,'%d-%b-%Y') as RecDate,tmp.cmpdName, tmp.cmpdRefno, tmp.operator, tmr.plannedLifts, (tmp.no_of_active_cavities * tmr.plannedLifts) as plannedqty, tmr.plannedLifts as isslifts, (tmp.no_of_active_cavities * tmr.plannedLifts) as issqty, poRate 
+						FROM tbl_moulding_receive tmr
+							inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on tmp.cmpdId = tpo.cmpdId
+							left join tbl_moulding_plan tm on tm.planid = tmr.planRef
+							left join tbl_moulding_issue tmi on tm.mdIssRef=tmi.mdIssRef
+						WHERE tmr.STATUS = 2 and tmp.invdate < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY ";
+			if($_POST["operator"] != 'ALL')
+				$sql	.= " and tmp.operator = '".$_POST["operator"]."' ";
+			if($_POST["cmpdname"] != "" && $_POST["cmpdname"] != null)
+			{
+				$sql	.= " and tmp.cmpdName = '".$_POST["cmpdname"]."' ";
+				$sql	.= " order by tmp.invdate,tmp.operator";
+				$list	=	@getMySQLData($sql,"xml","root","lower");
+				echo "<xmldata>".$list."</xmldata>";
+				exit();
+			}
+			else
+			{
+				$sql	.= " order by tmp.cmpdName,tmp.invdate,tmp.operator";
+			}
+		break;
+		case 'DEFISSGRP':
+			$sql	=	"SELECT 'DEFISS' as operation,tmp.cmpdName, tmp.cmpdRefno, tmp.operator, sum(tmr.mouldQty) as plannedqty, sum(tmr.mouldQty)  as issqty, poRate 
+						FROM tbl_moulding_receive tmr
+							inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on tmp.cmpdId = tpo.cmpdId
+						WHERE tmr.STATUS = 3 and tmr.entry_on  < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY ";
+			if($_POST["operator"] != 'ALL')
+				$sql	.= " and tmp.operator = '".$_POST["operator"]."' ";
+			$sql	.= " GROUP BY cmpdName order by tmp.cmpdName,tmp.operator";
+			$list	=	@getMySQLData($sql,"xml","root","lower");
+			echo "<xmldata>".$list."<currOperation>DEFISS</currOperation></xmldata>";
+			exit();
+		break;
+		
+		case 'DEFISS':
+			$sql	=	"SELECT distinct CONCAT( SUBSTRING_INDEX( tmr.modRecRef,  '_', 1 ) ,'-', SUBSTRING_INDEX( tmr.modRecRef,  '-' , -1 ) ) AS planId, DATE_FORMAT(tmp.invdate,'%d-%b-%Y') as issdate,DATE_FORMAT(tmr.entry_on,'%d-%b-%Y') as RecDate,tmp.cmpdName, tmp.cmpdRefno, tmp.operator, tmr.mouldQty as plannedqty, tmr.mouldQty  as issqty, poRate 
+						FROM tbl_moulding_receive tmr
+							inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on tmp.cmpdId = tpo.cmpdId
+						WHERE tmr.STATUS = 3 and tmr.entry_on  < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY ";
+			if($_POST["operator"] != 'ALL')
+				$sql	.= " and tmp.operator = '".$_POST["operator"]."' ";
+			if($_POST["cmpdname"] != "" && $_POST["cmpdname"] != null)
+			{
+				$sql	.= " and tmp.cmpdName = '".$_POST["cmpdname"]."' ";
+				$sql	.= " order by tmp.invdate,tmp.operator";
+				$list	=	@getMySQLData($sql,"xml","root","lower");
+				echo "<xmldata>".$list."</xmldata>";
+				exit();
+			}
+			else
+			{
+				$sql	.= " order by tmp.cmpdName,tmp.invdate,tmp.operator";
+			}				
+		break;
+		case 'DEFRECGRP':
+			$sql	=	"SELECT 'DEFREC' as operation,tmp.cmpdName, tmp.cmpdRefno, tmp.operator, sum(tdi.issqty) as plannedqty, sum(tdi.issqty - ifnull((select sum(currrec) from tbl_deflash_reciept where issref = tmr.modRecRef),0)) as issqty, poRate 
+						FROM tbl_moulding_receive tmr
+							inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on tmp.cmpdId = tpo.cmpdId
+							inner join tbl_deflash_issue tdi on tdi.defiss = tmr.modRecRef
+						WHERE tmr.STATUS = 4 and tdi.issdate  < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY ";
+			if($_POST["operator"] != 'ALL')
+				$sql	.= " and tdi.operator = '".$_POST["operator"]."' ";
+			$sql	.= " GROUP BY cmpdName order by tmp.cmpdName,tmp.operator";
+			$list	=	@getMySQLData($sql,"xml","root","lower");
+			echo "<xmldata>".$list."<currOperation>DEFREC</currOperation></xmldata>";
+			exit();
+		break;
+		
+		case 'DEFREC':
+			$sql	=	"SELECT distinct CONCAT( SUBSTRING_INDEX( tmr.modRecRef,  '_', 1 ) ,'-', SUBSTRING_INDEX( tmr.modRecRef,  '-' , -1 ) ) AS planId, DATE_FORMAT(tmp.invdate,'%d-%b-%Y') as issdate,DATE_FORMAT(tdi.issdate ,'%d-%b-%Y') as RecDate,tmp.cmpdName, tmp.cmpdRefno, tmp.operator, tdi.issqty as plannedqty, (tdi.issqty - ifnull((select sum(currrec) from tbl_deflash_reciept where issref = tmr.modRecRef),0)) as issqty, poRate 
+						FROM tbl_moulding_receive tmr
+							inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on tmp.cmpdId = tpo.cmpdId
+							inner join tbl_deflash_issue tdi on tdi.defiss = tmr.modRecRef
+						WHERE tmr.STATUS = 4 and tdi.issdate  < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY ";
+			if($_POST["operator"] != 'ALL')
+				$sql	.= " and tdi.operator = '".$_POST["operator"]."' ";
+			if($_POST["cmpdname"] != "" && $_POST["cmpdname"] != null)
+			{
+				$sql	.= " and tmp.cmpdName = '".$_POST["cmpdname"]."' ";
+				$sql	.= " order by tmp.invdate,tmp.operator";
+				$list	=	@getMySQLData($sql,"xml","root","lower");
+				echo "<xmldata>".$list."</xmldata>";
+				exit();
+			}
+			else
+			{
+				$sql	.= " order by tmp.cmpdName,tmp.invdate,tmp.operator";
+			}
+		break;
+		case 'QUALENTGRP':
+			$sql	=	"Select 'QUALENT' as operation,cmpdName,cmpdRefno,sum(plannedqty) as plannedqty, sum(issqty) as issqty,poRate from (
+							SELECT  tmp.cmpdId,tmp.cmpdName, tmp.cmpdRefno, sum(tdr.currrec) as plannedqty, sum(tdr.currrec - ifnull(mq.receiptqty,0)) as issqty 
+							FROM tbl_moulding_receive tmr
+								inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef							
+								inner join tbl_deflash_reciept tdr on tdr.issref = tmr.modRecRef
+								left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 0 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = tdr.sno
+							WHERE (tmr.STATUS = 5 or tmr.STATUS = 4) and tdr.defrecdate  < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY  GROUP BY tmp.cmpdName
+							UNION ALL
+							SELECT tc.cmpdId,tc.cmpdName, tc.cmpdRefno, sum(tcr.recvqty) as plannedqty, sum(tcr.recvqty - ifnull(mq.receiptqty,0)) as issqty   
+							FROM tbl_component_recv tcr
+								inner join tbl_component tc on tcr.cmpdid=tc.cmpdId
+								left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 1 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = tcr.sno
+							WHERE tcr.STATUS = 1 and tcr.invdate  < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY GROUP BY cmpdName)A1
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on A1.cmpdId = tpo.cmpdId
+						GROUP BY cmpdName
+						order by cmpdName";
+			$list	=	@getMySQLData($sql,"xml","root","lower");
+			echo "<xmldata>".$list."<currOperation>QUALENT</currOperation></xmldata>";
+			exit();
+		break;		
+		case 'QUALENT':
+			$sql	=	"SELECT distinct CONCAT( SUBSTRING_INDEX( tmr.modRecRef,  '_', 1 ) ,'-', SUBSTRING_INDEX( tmr.modRecRef,  '-' , -1 ) ) AS planId, DATE_FORMAT(tmp.invdate,'%d-%b-%Y') as issdate,DATE_FORMAT(tdr.defrecdate ,'%d-%b-%Y') as RecDate,tmp.cmpdName, tmp.cmpdRefno, tmp.operator,  tdr.currrec as plannedqty, (tdr.currrec - ifnull(mq.receiptqty,0)) as issqty, poRate 
+						FROM tbl_moulding_receive tmr
+							inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on tmp.cmpdId = tpo.cmpdId
+							inner join tbl_deflash_reciept tdr on tdr.issref = tmr.modRecRef
+							left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 0 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = tdr.sno
+						WHERE (tmr.STATUS = 5 or tmr.STATUS = 4) and tdr.defrecdate  < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY ".(($_POST["cmpdname"])?" and tmp.cmpdName = '".$_POST["cmpdname"]."' ":"").	
+						" UNION ALL
+						SELECT distinct CONCAT( SUBSTRING_INDEX( planId,  '_', 1 ) ,'-', SUBSTRING_INDEX( planId,  '-' , -1 ) ) AS planId, DATE_FORMAT(tcr.invdate,'%d-%b-%Y') as issdate,DATE_FORMAT(tcr.invdate ,'%d-%b-%Y') as RecDate,tc.cmpdName, tc.cmpdRefno, tcr.operator,  tcr.recvqty as plannedqty, (tcr.recvqty - ifnull(mq.receiptqty,0)) as issqty, poRate 
+						FROM tbl_component_recv tcr
+							inner join tbl_component tc on tcr.cmpdid=tc.cmpdId
+							inner join (SELECT cmpdId, poRate FROM (select * from tbl_customer_cmpd_po_rate where status  > 0 ORDER BY update_on  ) tbl1 group by cmpdid ) tpo on tcr.cmpdId = tpo.cmpdId
+							left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 1 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = tcr.sno
+						WHERE tcr.STATUS = 1 and tcr.invdate  < CURDATE()- INTERVAL ".$_POST["fetchdate"]." DAY ".(($_POST["cmpdname"])?" and tc.cmpdName = '".$_POST["cmpdname"]."' ":"");
+			if($_POST["cmpdname"] != "" && $_POST["cmpdname"] != null)
+			{
+				$sql	.= " order by str_to_date(issdate,'%d-%b-%Y'),operator";
+				$list	=	@getMySQLData($sql,"xml","root","lower");
+				echo "<xmldata>".$list."</xmldata>";
+				exit();
+			}
+			else
+			{
+				$sql	.= " order by cmpdName,str_to_date(issdate,'%d-%b-%Y'),operator";
+			}
+		break;		
+	}	
+	// filename for download
+	$filename = "pending_keys_for_".$_POST["type"]."_" . date('Ymd') . "_for_".$_POST["operator"].".csv";
+	header("Content-Disposition: attachment; filename=\"$filename\"");
+	header("Content-Type: application/vnd.ms-excel");	
+	$output 		=	"";
+	$outSql 		=	@getMySQLData($sql);
+	$pendDetails 	=   $outSql['data']; 
+	$columns_total	=	0;
+	foreach($pendDetails as $keys=>$values){
+		if($keys == 0)
+		{
+			foreach($values as $keyh=>$valueh) {
+				$columns_total++;
+			}
+		}
+	}	
+	$output 		.= 	'"Key No.","Plan Date","Pending From","Part No","Part Description","Operator",';
+	if($columns_total > 9)
+		$output 		.= '"Total Lifts",';
+	$output 		.= 	'"Full Qty",';
+	if($columns_total > 9)
+		$output 		.= '"Pending Lifts",';		
+	$output 		.= '"Pending Qty"';
+	$output 		.=	"\n";
+	
+	// Get Records from the table
+	$noCavs	=	0;
+	foreach($pendDetails as $keys=>$values) {
+			foreach($values as $key=>$value) {
+			if($key != 'poRate')
+				$output .='"'.$value.'",';
+		}
+		$output .="\n";
+	}
+	
+	echo $output;
+		
+?>

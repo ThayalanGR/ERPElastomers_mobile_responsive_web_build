@@ -1,0 +1,176 @@
+tableFilters.sort_config	=	{ sort_types:['us','date', 'string','string','string','string','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+
+$(document).ready(function(){
+	updatePageBehaviour();
+});
+
+function updatePageBehaviour(){
+	var XMLContent	=	postback(actionFile, "selecttype=GETVAL", "POST", "XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	
+	$(".submit_button").click(function(){
+		trnId		=	$(this).attr('trnid');
+		toolRefs	=	$(this).attr('toolrefs');
+		if(toolRefs != "")
+		{
+			toolIds		=	toolRefs.split(",");
+			selectBox	=	'<select id="toolaction">';
+			selectBox	+=	'<option value=""></option>';
+			selectBox	+=	'<option value="new">Create New Tool</option>';
+			for(tlCount	= 0;tlCount < toolIds.length;tlCount++)
+				selectBox	+=	'<option value="'+toolIds[tlCount]+'">Update Tool : '+toolIds[tlCount]+'</option>';
+			selectBox	+=	'</select>';
+			$("#tool_exists").html(	'<table width="100%" >' +
+										'<tr><td colspan="2"><b>Already Tool(s) with same number of cavities available for the same part_number, select appropriate Action you want to perform</b></td></tr>' +
+										'<tr><td align="right"><b>Action on Tool Approval</b></td><td align="left">'+selectBox+'</td></tr>' +
+									'</table>')	;
+		}
+		$("#view_dialog").css('visibility', 'visible');
+		$('#view_dialog').dialog({
+			width:500,
+			resizable:false,
+			modal:true,
+			buttons:[
+				{ 				
+					text:"Approve",
+					id: "button-upload",
+					click: function(){							
+						if(typeof approveTool == 'function')
+							approveTool(trnId,toolRefs);
+					}
+				},
+				{ 
+					id: "button-cancel",
+					text: "Cancel",
+					click: function(){
+						$(this).dialog("close");
+					}
+				}			
+			],
+			close:function(){
+				$("#new_error").css('display','none');
+				$("#tool_exists").html("");
+				$(this).find("form")[0].reset();
+			}		
+		});	
+	});		
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;			
+}
+
+function approveTool(trnId,toolRefs){
+	newError		=	$("#new_error");
+	toolRack		=	$("#tl_rack");
+	toolLife		=	$("#tl_toollife");
+	nextValid		=	$("#tl_nextvalid");
+	toolAction		=	$("#toolaction");
+	if(toolRack.val().trim() == null || toolRack.val().trim() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Invalid Rack Specified!!!");
+		toolRack.focus();
+		return false;
+	}
+	else if(!(toolLife.val().toNumber() > 0)){
+		displayError(newError, "error", "<strong>Error !</strong> - Invalid Tool Life Lifts Specified!!!");
+		toolLife.focus();
+		return false;
+	}	
+	else if(!(nextValid.val().toNumber() > 0)){
+		displayError(newError, "error", "<strong>Error !</strong> - Invalid Next Validation Lifts Specified!!!");
+		nextValid.focus();
+		return false;
+	}
+	else if( toolRefs != "" && toolAction.val() == "")
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Select Appropriate Action to be Done on Tool Approval!!!");
+		toolaction.focus();
+		return false;	
+	}
+	formdata 		= 	new FormData();
+	if (formdata) {	
+		formdata.append("trnid", trnId);
+		formdata.append("blanktype", $("#tl_blanktype").val());
+		var blankmethod = $('input:radio[name="tl_blankmethod"]:checked');
+		formdata.append("blankmethod", blankmethod.val());
+		formdata.append("rack", toolRack.val());
+		formdata.append("toollife", toolLife.val().toNumber());
+		formdata.append("nextvalid", nextValid.val().toNumber());
+		formdata.append("selecttype","APPTOOL");
+		if(toolRefs != "")
+			formdata.append("toolid",toolAction.val());
+	}	
+
+
+	var files 	= 	document.getElementById("tl_file").files;
+	if(files[0])
+	{
+		for (var i = 0, f; f = files[i]; i++) {
+			 formdata.append("tl_file["+i+"]", f,f.name);
+		}	
+		
+	}
+	else
+	{
+		if(!(confirm("No Customer Approval Files are added. Do you want to continue?" )))
+		{
+			return false;
+		}		
+	
+	}	
+
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Approve the Tool?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+												title:'Approve Tool',
+												width:450,
+												height:'auto',
+												resizable:false,
+												modal:true,
+												buttons:{
+													'Ok':function(){														
+														$(this).dialog('close');
+														$("#button-upload").attr("disabled","true");
+														// Set up the request.
+														var xhr = new XMLHttpRequest();
+														// Open the connection.
+														xhr.open('POST', actionFile, true);
+														// Set up a handler for when the request finishes.
+														xhr.onload = function () {
+															if (xhr.status === 200) {
+																// File(s) uploaded.
+																var printObj	=	xhr.response;
+																printData		=	$(printObj);
+																error			=	printData.find("status").html();
+																if(error == "success"){
+																	alert("Tool Approved and Tool Master Created Sucessfully");
+																	$("#view_dialog").dialog("close");															
+																	updatePageBehaviour();
+																}
+																else{
+																	displayError(newError, "error", printObj);
+																	$("#button-upload").removeAttr("disabled");					
+																}			
+															} 
+															else {
+																displayError(newError, "error", "Unable to upload the file, Please retry again");
+																$("#button-upload").removeAttr("disabled");				
+															}
+														};															
+														// Send the Data.
+														xhr.send(formdata);
+													},
+													'Cancel':function(){
+														$(this).dialog('close');
+													}
+												},
+												close:function(){
+													$(this).html('').dialog('destroy');
+												}
+											});
+
+}

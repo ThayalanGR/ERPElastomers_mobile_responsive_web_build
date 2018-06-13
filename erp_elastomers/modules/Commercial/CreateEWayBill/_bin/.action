@@ -1,0 +1,232 @@
+<?php
+	session_start();	
+	header("Content-Type: text/xml");
+	global $eWayCutoffDate, $eWayBillJsonVer, $eWayBillDocType, $company_add1, $company_add2, $company_place, $company_pincode, $HSN, $taxRate;
+	switch($_POST["type"]){
+		case "CSTATLIST":
+			echo getXML("select cusId, cusName	from tbl_customer where status>0",false);
+			exit();
+		break;
+		case "TRANSDETS":
+			$docType	=	$_POST["doctype"];
+			if( $docType == 'inv' ||  $docType == 'dc')
+			{
+				echo getXML("select cusTransportName, cusTransportId, cusDistance, ifnull(vehNum,'') as vehNum 
+								from tbl_customer tc
+									left join (select * from 
+													(select vehNum, invCusId 
+														from tbl_despatch td 
+															inner join tbl_invoice_sales tis on tis.invId = td.docId and (td.docType = 'inv' or td.docType = 'dc') 
+													 order by tis.invDate)t1 
+												group by invCusId) tid on tid.invCusId = tc.cusId
+							where tc.cusId = '".$_POST["cusid"]."' ",false);
+			}
+			exit();
+		break;		
+		case "GETVAL":
+			$docType	=	$_POST["doctype"];
+			switch($docType){
+				case "inv":
+					$sql_invoice	=	"select tic.invid, ici.invCode,  tc.cusName, tc.cusGroup, sum(ici.invqty), ici.invName, ici.invDesc, DATE_FORMAT(invDate, '%d-%b-%Y') as invDate, (if(sum(ici.invqty *ici.invrate)>0,sum(ici.invqty *ici.invrate),0)) as value
+											from tbl_invoice_sales tic 
+												inner join tbl_customer tc on trim(tic.invCusId)=trim(tc.cusId) 
+												inner join tbl_invoice_sales_items ici on tic.invId=ici.invId 
+												left join tbl_despatch td on td.docType = 'inv' and td.docId = tic.invId
+											where tic.invCusId = '".$_POST["cusid"]."' and tic.invDate > '$eWayCutoffDate' and td.docId IS NULL and tic.status > 0
+										group by tic.invId order by tic.invid desc";
+				break;
+				case "dc":
+					$sql_invoice	=	"select tic.dcId as invId, ici.dcCode,  tc.cusName, tc.cusGroup, sum(ici.dcqty) as invqty, ici.dcName as invName, ici.dcDesc as invDesc, DATE_FORMAT(dcDate, '%d-%b-%Y') as invDate, assessValue as value
+											from tbl_invoice_dc tic 
+												inner join tbl_customer tc on trim(tic.dcCusId)=trim(tc.cusId) 
+												inner join tbl_invoice_dc_items ici on tic.dcId=ici.dcId 
+												left join tbl_despatch td on td.docType = 'dc' and td.docId = tic.dcId
+											where tic.dcCusId = '".$_POST["cusid"]."' and tic.dcDate > '$eWayCutoffDate' and td.docId IS NULL and tic.status > 0
+										group by tic.dcId order by tic.dcId desc";
+				break;				
+			}
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>$list</xmldata>";
+		break;	
+		case "EWAYBILLJSON":
+			$eWayBillArr["version"]		=	$eWayBillJsonVer;
+			$settings					=	@getMySQLData("select name,value from tbl_settings where name = 'gstn'");			
+			$GSTN						=	$settings['data'][0]['value'];
+			$docType					=	$_POST['doctype'];
+			$supType					=	$_POST['supType'];
+			$transMode					=	$_POST['transMode'];
+			$distance					=	$_POST['transDistance'];
+			$transId					=	$_POST['transId'];
+			$transName					=	$_POST['transName'];
+			$vehNumber					=	preg_replace('/\s/', '', $_POST['transVehNum']);
+			switch($docType){
+				case "inv":			
+					$sql_invoice				=	"select 
+															'$GSTN' as userGstin,
+															'O' as supplyType,
+															".$supType." as subSupplyType,
+															'".$eWayBillDocType[$docType]."' as docType,
+															t.invId as docNo, 
+															DATE_FORMAT(t.invDate, '%d/%m/%Y') as docDate, 
+															'$GSTN' as fromGstin,
+															'".$_SESSION['app']['comp_name']."' as fromTrdName,
+															'$company_add1' as fromAddr1,
+															'$company_add2' as fromAddr2,
+															'$company_place' as fromPlace,	
+															'$company_pincode' as fromPincode,
+															".substr($GSTN,0,2)." as fromStateCode,
+															".substr($GSTN,0,2)." as actualFromStateCode,
+															t.invBGSTN as toGstin,
+															tc.cusName as toTrdName,
+															tc.cusAdd1 as toAddr1,
+															tc.cusAdd2 as toAddr2,
+															tc.cusPlace  as toPlace,
+															tc.cusPincode as toPincode,
+															SUBSTRING_INDEX(t.invSupplyPlace, '-', 1) as toStateCode,
+															SUBSTRING_INDEX(t.invSupplyPlace, '-', 1) as actualToStateCode,
+															t.invTotalAmt as totalValue, 
+															t.invCGSTAmt as cgstValue, 
+															t.invSGSTAmt as sgstValue, 
+															t.invIGSTAmt as igstValue, 
+															0 as cessValue,
+															".$transMode." as transMode,
+															".$distance." as transDistance,
+															'$transName' as transporterName,
+															'$transId' as transporterId, 
+															'' as transDocNo, 
+															DATE_FORMAT(t.invShipDate, '%d/%m/%Y') as transDocDate,
+															'$vehNumber' as vehicleNo,
+															'R' as vehicleType,
+															t.invGrandTotal as totInvValue,
+															(SELECT invTariff FROM tbl_invoice_sales_items where invId = t.invId order by invAmt Limit 1) as mainHsnCode
+														from tbl_invoice_sales t 
+															inner join tbl_customer tc on tc.cusId = t.invCusId
+													where find_in_set(t.invId ,'".$_POST['invids']."')	and t.status = 1
+													group by t.invId"; 	
+					$output 					=	"";
+					$outSql 					=	@getMySQLData($sql_invoice);
+					$eWayBillArr["billLists"]	=	$outSql['data'];			
+					for($itemCount=0;$itemCount < count($outSql['data']);$itemCount++)
+					{
+						$invId												=	$outSql['data'][$itemCount]['docNo'];
+						$isIGST												=	($outSql['data'][$itemCount]['igstValue'] > 0)?1:0;
+						$isSGST												=	($outSql['data'][$itemCount]['sgstValue'] > 0)?1:0;
+						$taxRateData										=	@getMySQLData("select invSGST, invIGST from tbl_invoice_sales where invId = '$invId'" );
+						$rateSGST											=	$taxRateData['data'][0]['invSGST'];
+						$rateIGST											=	$taxRateData['data'][0]['invIGST'];
+						$sql_invoice_items									=	"select 
+																					(@curRow := @curRow + 1) as itemNo,
+																					invName as productName,
+																					invDesc as productDesc,												
+																					invTariff as hsnCode,
+																					sum(invQty) as quantity,
+																					(CASE invtype
+																						WHEN 'cmpd' THEN 'NOS'
+																						WHEN 'cpd' THEN 'KGS'
+																						WHEN 'mix' THEN 'KGS'
+																						WHEN 'scrap' THEN 'KGS'
+																						WHEN 'tool' THEN 'NOS'
+																						WHEN 'ram' THEN 'KGS'
+																					END) as qtyUnit,
+																					sum(invAmt) as taxableAmount,
+																					".round(($rateSGST*$isSGST),2)." as sgstRate,
+																					".round(($rateSGST*$isSGST),2)." as cgstRate,
+																					".round(($rateIGST*$isIGST),2)." as igstRate,
+																					0 as cessRate
+																					from tbl_invoice_sales_items, (SELECT @curRow:=0) AS t 
+																				where invId = '$invId'	
+																				group by invCode order by itemNo";
+						$outItemsSql 										=	@getMySQLData($sql_invoice_items);
+						$eWayBillArr["billLists"][$itemCount]['itemList']	=	$outItemsSql['data'];
+					}
+				break;
+				case 'dc':
+					$sql_invoice				=	"select 
+															'$GSTN' as userGstin,
+															'O' as supplyType,
+															".$supType." as subSupplyType,
+															'".$eWayBillDocType[$docType]."' as docType,
+															t.dcId as docNo, 
+															DATE_FORMAT(t.dcDate, '%d/%m/%Y') as docDate, 
+															'$GSTN' as fromGstin,
+															'".$_SESSION['app']['comp_name']."' as fromTrdName,
+															'$company_add1' as fromAddr1,
+															'$company_add2' as fromAddr2,
+															'$company_place' as fromPlace,	
+															'$company_pincode' as fromPincode,
+															".substr($GSTN,0,2)." as fromStateCode,
+															".substr($GSTN,0,2)." as actualFromStateCode,
+															t.dcBGSTN as toGstin,
+															tc.cusName as toTrdName,
+															tc.cusAdd1 as toAddr1,
+															tc.cusAdd2 as toAddr2,
+															tc.cusPlace  as toPlace,
+															tc.cusPincode as toPincode,
+															SUBSTRING_INDEX(t.dcSupplyPlace, '-', 1) as toStateCode,
+															SUBSTRING_INDEX(t.dcSupplyPlace, '-', 1) as actualToStateCode,
+															t.assessValue as totalValue, 
+															0 as cgstValue, 
+															0 as sgstValue, 
+															0 as igstValue, 
+															0 as cessValue,
+															".$transMode." as transMode,
+															".$distance." as transDistance,
+															'$transName' as transporterName,
+															'$transId' as transporterId, 
+															'' as transDocNo, 
+															DATE_FORMAT(t.dcShipDate, '%d/%m/%Y') as transDocDate,
+															'$vehNumber' as vehicleNo,
+															'R' as vehicleType,
+															t.assessValue as totInvValue,
+															(CASE t.dctype
+																WHEN 'cmpd' THEN ".$HSN['cmpd']."
+																WHEN 'cpd' THEN ".$HSN['cpd']."
+																WHEN 'ram' THEN (select ramHSNCode from tbl_rawmaterial where ramId = (SELECT dcCode FROM tbl_invoice_dc_items where dcId = t.dcId order by dcQty Limit 1))
+															END) as mainHsnCode
+														from tbl_invoice_dc t 
+															inner join tbl_customer tc on tc.cusId = t.dcCusId
+													where find_in_set(t.dcId ,'".$_POST['invids']."')	and t.status = 1
+													group by t.dcId"; 	
+					$output 					=	"";
+					$outSql 					=	@getMySQLData($sql_invoice);
+					$eWayBillArr["billLists"]	=	$outSql['data'];			
+					for($itemCount=0;$itemCount < count($outSql['data']);$itemCount++)
+					{
+						$dcId												=	$outSql['data'][$itemCount]['docNo'];
+						$sql_invoice_items									=	"select 
+																					(@curRow := @curRow + 1) as itemNo,
+																					dcName as productName,
+																					dcDesc as productDesc,												
+																					(CASE dctype
+																						WHEN 'cmpd' THEN ".$HSN['cmpd']."
+																						WHEN 'cpd' THEN ".$HSN['cpd']."
+																						WHEN 'ram' THEN (select ramHSNCode from tbl_rawmaterial where ramId = tidi.dcCode)
+																					END) as hsnCode,
+																					sum(dcQty) as quantity,
+																					if(dctype ='cmpd','NOS','KGS') as qtyUnit,
+																					0 as taxableAmount,
+																					0 as sgstRate,
+																					0 as cgstRate,
+																					0 as igstRate,
+																					0 as cessRate
+																					from (select * from tbl_invoice_dc_items,(SELECT @curRow:=0) AS t) as tidi
+																						inner join tbl_invoice_dc as tid on tidi.dcId = tid.dcId 
+																				where tidi.dcId = '$dcId'	
+																				group by dcCode order by itemNo";
+						$outItemsSql 										=	@getMySQLData($sql_invoice_items);
+						$eWayBillArr["billLists"][$itemCount]['itemList']	=	$outItemsSql['data'];
+					}
+				break;			
+			}
+			$timeStamp					=	time();
+			// filename for download
+			$filename = "E-WayBill_" . $timeStamp.".json";
+			header("Content-Disposition: attachment; filename=\"$filename\"");
+			header("Content-Type: application/json");			
+			$output 					=  json_encode($eWayBillArr,JSON_NUMERIC_CHECK|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT); 
+			echo $output;
+		break;		
+	}	
+		
+?>

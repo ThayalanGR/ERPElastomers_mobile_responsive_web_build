@@ -1,0 +1,217 @@
+<?php
+	session_start();
+	global $custappdocs_upload_dir,$cmpd_grp_email,$dev_grp_email;
+	header("Content-Type: text/xml");
+	if ( isset($_FILES['tl_file'])) {	
+		$toolId			=	$_POST["toolid"];
+		$codeNo			=	null;
+		if($toolId == null || $toolId == "" || $toolId == "new")
+			$codeNo			=	@getRegisterData("toolRef");
+		$custFiles 		= 	$_FILES['tl_file'];
+		$numFiles		=	count($custFiles["name"]);
+		if($numFiles > 0)
+		{
+			try 
+			{
+				$uploadPath 	= 	$_SESSION['app']['iso_dir'].$custappdocs_upload_dir.(($codeNo != null)?$codeNo:$toolId)."/";
+				if(!(is_dir($uploadPath)))
+					mkdir($uploadPath);
+				$custFiles 		= 	$_FILES['tl_file'];
+				$numFiles		=	count($custFiles["name"]);
+				for($fileCount=0;$fileCount < $numFiles;$fileCount++)
+				{
+					 switch ($custFiles['error'][$fileCount]) {
+						 case UPLOAD_ERR_OK:
+							 break;
+						 case UPLOAD_ERR_NO_FILE:
+							 throw new RuntimeException('No file sent.');
+						 case UPLOAD_ERR_INI_SIZE:
+						 case UPLOAD_ERR_FORM_SIZE:
+							 throw new RuntimeException('Exceeded filesize limit.');
+						 default:
+							 throw new RuntimeException('Unknown errors.');
+					 }
+
+					 // You should also check filesize here. 
+					 if ($custFiles['size'][$fileCount] > $max_upload_filesize) {
+						 throw new RuntimeException('Exceeded filesize limit.');
+					 }
+				
+					if( 'application/pdf' == $custFiles["type"][$fileCount] ) 
+					{
+						if(!move_uploaded_file($custFiles["tmp_name"][$fileCount], $uploadPath.$custFiles["name"][$fileCount]))
+						{
+							throw new RuntimeException('Failed to move uploaded file.');
+						}
+					}
+					else
+					{
+						throw new RuntimeException('Invalid file format.');			 
+					}
+				}
+			} 
+			catch (RuntimeException $e) {
+				array_map('unlink', glob("$uploadPath/*.*"));
+				echo $e->getMessage(); 
+				exit();
+			}     				
+		}
+		$trnId	=	$_POST["trnid"];
+		$output	=	approveTool($codeNo,$trnId,$_POST["rack"],$_POST["blanktype"],$_POST["blankmethod"],$_POST["toollife"],$_POST["nextvalid"],$toolId);
+		if($output != ""){
+				$status		=	split("<status>", $output);
+				$status		=	split("</status>", $status[1]);
+				$status		=	$status[0];				
+				if($status == "success")
+				{
+					// close & send the result to user & then send email									
+					closeConnForAsyncProcess("<root>$output</root>");
+					// send email
+					$aEmail = new AsyncCreatePDFAndEmail("NPD/ToolApprovalRegister",$trnId,$cmpd_grp_email,$dev_grp_email,"Tool Signoff","Dear Sir/Madam, <br/> Please find the Tool Sign off Document attached, Please plan for IPC <br/> thanks <br/> NPD Team");									
+					$aEmail->start();
+					exit();
+				}
+		}
+		echo "<root>$output</root>";
+	} 
+	else 
+	{ 		
+		switch($_POST["selecttype"]){
+			case "GETVAL":			
+				$sql_qan	=	"select * from (select trnId, DATE_FORMAT(subDate,'%d-%b-%Y') as subDate, part_number,part_description,cusName,ifnull(supName,'NA as Existing Tool') as supName,toolCavities,(select group_concat(tool_ref ORDER BY tool_ref DESC) as toolrefs from tbl_tool where compId=tdr.cmpdId and no_of_cavities = tt.toolCavities group by compId) as toolrefs
+													from (select * from (select toolRef, subDate, status from tbl_approval_submit order by subId desc)tbl1 group by toolRef) tas
+													inner join tbl_trn tt on tt.trnId=tas.toolRef and isproto = 0
+													inner join tbl_develop_request tdr on tt.rfqid=tdr.sno and tdr.status > 3
+													inner join tbl_customer tc on tc.cusid=tdr.cusid
+													left join tbl_supplier ts on tt.supid=ts.supid
+													left join ( select compId , no_of_cavities, group_concat(tool_ref ORDER BY tool_ref DESC) as toolrefs from tbl_tool group by compId)  ttl on ttl.compId=tdr.cmpdId and ttl.no_of_cavities = tt.toolCavities
+												where tt.status = 1 and tas.status = 1 order by tas.subDate) tbl1
+									group by trnId";
+								
+				$list		=	getMySQLData($sql_qan,'xml','root','lower');
+				$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+				echo "<xmldata>
+					$list
+					$output
+				</xmldata>";
+			break;
+			case "APPTOOL":
+				$codeNo		=	@getRegisterData("toolRef");
+				$trnId		=	$_POST["trnid"];
+				$output		=	approveTool($codeNo,$trnId,$_POST["rack"],$_POST["blanktype"],$_POST["blankmethod"],$_POST["toollife"],$_POST["nextvalid"],$_POST["toolid"]);
+				if($output != ""){
+						$status		=	split("<status>", $output);
+						$status		=	split("</status>", $status[1]);
+						$status		=	$status[0];				
+						if($status == "success")
+						{
+							// close & send the result to user & then send email									
+							closeConnForAsyncProcess("<root>$output</root>");
+							// send email
+							$aEmail = new AsyncCreatePDFAndEmail("NPD/ToolApprovalRegister",$trnId,$cmpd_grp_email,$dev_grp_email,"Tool Signoff","Dear Sir/Madam, <br/> Please find the Tool Sign off Document attached, Please plan for IPC <br/> thanks <br/> NPD Team");									
+							$aEmail->start();
+							exit();
+						}
+				}
+				echo "<root>$output</root>";				
+			break;
+		}
+	}
+	
+	function approveTool($codeNo,$trnId,$rack,$blanktype,$blankmethod,$toolLife,$nextValid,$toolId){ 
+		global $default_rejections;
+		$userId			=	$_SESSION['userdetails']['userId'];
+		$dimSQL			=	"insert into tbl_component_dim_param(cmpdId, cmpdDim, cmpdDimSpec, cmpdDimULimit, cmpdDimLLimit) ";	
+		$rejSQL			=	"insert into tbl_component_rejection(cmpdId, cmpdRejNo) ";
+		$sql_trn_dtls	=	@getMySQLData("select trn.rfqid,trn.toolId,tc.cmpdId,tc.cmpdname,toolCavities,trn.moldProcess, trn.moldType,ifnull(supName,'NA') as supName,strips_per_lift,strip_weight,strip_dim1,strip_dim2,strip_dim3,tsr.cpdId,cpdName,blank_weight,cure_temperature,cure_time,cure_pressure,postcure_time,postcure_temp,tdf.prod_lift_rate,tdf.prod_trim_rate
+											from tbl_trn trn
+												inner join tbl_develop_request tdr on trn.rfqid = 	tdr.sno
+												inner join tbl_develop_feasibility tdf on trn.rfqid	= tdf.prod_ref
+												inner join tbl_component tc on tdr.cmpdId = tc.cmpdId
+												left join tbl_supplier ts on trn.supId = ts.supId
+												inner join (select * from (select toolRef,planId from tbl_sample_plan where status = '2' order by entry_on)tbl_tmp group by toolRef) tsp on tsp.toolRef = trn.trnId
+												inner join tbl_sample_receipt tsr on tsp.planId = tsr.planId
+												inner join tbl_compound tcpd on tsr.cpdId=tcpd.cpdId
+											where trn.trnId='$trnId'","arr");
+		$toolData		=	$sql_trn_dtls['data'][0];
+		$cmpdName		=	$toolData['cmpdname'];
+		$rfqId			=	$toolData['rfqid'];
+		$toolCavs		=	$toolData['toolCavities'];	
+		$cmpdId			=	$toolData['cmpdId'];
+		$supName		=	$toolData['supName'];
+		$output			=	"";
+		$toolSQL		=	"";
+		if($toolCavs > 0)
+		{
+			if($toolId != null && $toolId != "" && $toolId != "new"){
+				$toolSQL		=	"update tbl_tool set comp_part_ref = '$cmpdName',
+											nature = 'Owned',
+											no_of_cavities = '$toolCavs',
+											no_of_active_cavities = '$toolCavs',
+											mold_process = '".$toolData['moldProcess']."',
+											mold_type = '".$toolData['moldType']."',
+											tool_life = '$toolLife',
+											manufacturer = '$supName',
+											strips_per_lift = '".$toolData['strips_per_lift']."',
+											rack = '$rack',
+											next_validation = '$nextValid',
+											status = 'Active',
+											blanking_type = '$blanktype',
+											blank_method = '$blankmethod',
+											lift_rate = '".$toolData['prod_lift_rate']."',
+											trim_rate = '".$toolData['prod_trim_rate']."',
+											strip_weight_spec = '".$toolData['strip_weight']."',
+											strip_dim1_spec = '".$toolData['strip_dim1']."',
+											strip_dim2_spec = '".$toolData['strip_dim2']."',
+											strip_dim3_spec = '".$toolData['strip_dim3']."',
+											updated_on = now(),
+											status1 = '1'
+										where tool_ref = '$toolId'";
+			}
+			else {
+				$toolId			=	$codeNo;
+				$toolSQL		=	"insert into tbl_tool(tool_ref,compId,comp_part_ref,nature,no_of_cavities,no_of_active_cavities,mold_process,mold_type,
+													tool_life,manufacturer,strips_per_lift,rack,next_validation,status,lift_rate,trim_rate,
+													blanking_type,blank_method,strip_weight_spec,strip_dim1_spec,strip_dim2_spec,
+													strip_dim3_spec,entry_on,status1".(($supName == 'NA')?",remarks":"").") values";				
+				$toolSQL		.=	"('$toolId', '$cmpdId', '$cmpdName', 'Owned', '$toolCavs', '$toolCavs','".$toolData['moldProcess']."','".$toolData['moldType']."',
+									'$toolLife', '".$toolData['supName']."', '".$toolData['strips_per_lift']."', '$rack','$nextValid','Active','".$toolData['prod_lift_rate']."','".$toolData['prod_trim_rate']."',
+									'$blanktype', '$blankmethod', '".$toolData['strip_weight']."','".$toolData['strip_dim1']."', '".$toolData['strip_dim2']."', 
+									 '".$toolData['strip_dim3']."', now(), '1'".(($supName == 'NA')?",'Existing Tool : ".$toolData['toolId']."'":"").")";
+			}	
+								
+			$cmpdSQL		.=	"update tbl_component 
+									set cmpdCpdId = '".$toolData['cpdId']."', cmpdCpdName = '".$toolData['cpdName']."', cmpdCurTime = '".$toolData['cure_time']."',
+									cmpdTemperature = '".$toolData['cure_temperature']."', cmpdPressure = '".$toolData['cure_pressure']."', cmpdBlankWgt = '".$toolData['blank_weight']."',
+									cmpdTempMin = '".($toolData['cure_temperature'] - 10)."', 	cmpdTempMax = '".($toolData['cure_temperature'] + 10)."', cmpdPresMin = '140', cmpdPresMax = '200',
+									cmpdPostTime = '".$toolData['postcure_time']."', cmpdPostTemp = '".$toolData['postcure_temp']."', update_on = now(), update_by = '$userId'
+								where cmpdId = '$cmpdId'";
+			$dimSQL			.=	"SELECT '$cmpdId' as cmpdId, dimRef,dimSpec,dimULimit,dimLLimit from tbl_sample_layout_dim where rfqid = '$rfqId'";
+			
+			$rejSQL			.=	"SELECT '$cmpdId' as cmpdId,sno from tbl_rejection where rej_short_name in ".$default_rejections;
+		
+			//echo $rejSQL ; 
+		
+			$output			=	@getMySQLData($toolSQL, "xml");
+			if($output != ""){
+				$status		=	split("<status>", $output);
+				$status		=	split("</status>", $status[1]);
+				$status		=	$status[0];				
+				if($status == "success"){
+					@getMySQLData("delete from tbl_component_dim_param where cmpdId = '$cmpdId'");
+					@getMySQLData($dimSQL);
+					@getMySQLData("delete from tbl_component_rejection where cmpdId = '$cmpdId'");
+					@getMySQLData($rejSQL);
+					$output		=	@getMySQLData($cmpdSQL, "xml");
+					//if tool newly created
+					if($toolId == $codeNo)
+						@getMySQLData("update tbl_settings set auto_inc = auto_inc + 1 where name='toolRef'");
+					@getMySQLData("update tbl_trn set toolId='$toolId', tool_appr_date = now(), status = 2 where trnId='$trnId'");
+					@getMySQLData("update tbl_develop_request set status = 5 where sno='$rfqId'");					
+				}
+			}
+		}	
+		return $output;
+	}	
+	
+?>

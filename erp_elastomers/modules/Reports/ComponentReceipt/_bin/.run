@@ -1,0 +1,83 @@
+tableFilters.sort_config	=	{ sort_types:['string','date', 'us','us','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+tableFilters.col_operation	=	{ 
+								   id: ["bat_total","inv_total"], 
+								   col: [2,3],
+								   operation: ["sum","sum"],
+								   decimal_precision: [0,0]
+								};
+
+
+$(document).ready(function(){
+	$("#show_key_form").dialog({ autoOpen: false ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 750,
+									height:'auto',
+									buttons: [
+										{
+											text: "Close",
+											click: function(){
+												$(this).dialog("close");
+											}
+										}
+									],
+									open: function(event, ui) {
+										$("#show_key_form").css('visibility','visible');
+									}
+								});		
+updatePageBehaviour();	
+});
+
+function updatePageBehaviour(){	
+	param				=	"type="+$("#grpfield").val()+"&startDate="+$("#from_date").val()+"&endDate="+$("#to_date").val();	
+	//alert(param); return false;						
+	var objCompList		=	postback(actionFile, param, "POST", "XML");
+	//alert(objCompList); 
+	//return false;
+	listPageData($("#content_body"), objCompList, XSLFile);	
+	$(".view_button").click(function(e){
+		invref	=	$(this).attr('invref');
+		if(invref != null && invref != ""){
+			getBatchDetailList(invref);
+		}
+	});			
+	TF_01	=	setFilterGrid("resultTable",tableFilters);
+    if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+}
+
+function getBatchDetailList(invRef){
+	$("#show_key_form").css('visibility', 'visible');
+	$("#show_key_form").dialog("open");
+	var objList	=	postback(actionFile,"type=KEYDETS&invref="+invRef+"&groupby="+$("#grpfield").val()+"&startDate="+$("#from_date").val()+"&endDate="+$("#to_date").val()+"&outtype=xml","POST","XML");
+	$("#new_BatchList table tr:gt(0)").remove();
+	sno 		= 	1;
+	invTot		=	0;
+	recvTot 	= 	0;
+	availTot	= 	0;
+	$(objList).find('row').each(function(index, element) {
+		tabClass		=	(sno%2)?'content_rows_dark':'content_rows_light';
+		invQty			=	$(this).find('invqty').text();
+		recvQty			= 	$(this).find('recvQty').text();
+		tabData			=	"<tr class='"+tabClass+"'>" +
+								"<td width='5%' align='center'>"+sno+"</td>" +
+								"<td width='15%' align='center'>"+$(this).find('invid').text()+"</td>" +
+								"<td width='15%' align='center'>"+$(this).find('invdate').text()+"</td>" +								
+								"<td width='20%' align='center'>"+$(this).find('cmpdRefNo').text()+"</td>" +
+								"<td width='15%' align='center'>"+$(this).find('planId').text()+"</td>" +							
+								"<td align='right'>"+getCurrency(recvQty,0)+"</td>" +
+							"</tr>";	
+		$("#new_BatchList table tr:last").after(tabData);
+		recvTot 		= recvTot + Number(recvQty.split(",").join(""));
+		sno++;
+	});
+	$("#recv_tot_qty").html(getCurrency(recvTot,0));
+
+
+}

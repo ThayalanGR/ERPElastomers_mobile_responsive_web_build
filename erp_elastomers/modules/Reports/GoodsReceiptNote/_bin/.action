@@ -1,0 +1,70 @@
+<?php
+	global $grn_customers, $grn_role,$cpd_grp_email;
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	switch($_POST["selecttype"]){
+		case "GETVAL":	
+			$sql_part 		= 	"";
+			$sql_pt 		= 	"";
+			for($ct=0;$ct<count($grn_customers);$ct++){
+				if($grn_role[$grn_customers[$ct]] == 'client')
+				{
+					if($sql_pt == "")
+						$sql_pt		= 	" invIssuer = '".$grn_customers[$ct]."'";
+					else
+						$sql_pt		.= 	" or invIssuer = '".$grn_customers[$ct]."'";
+				}
+			}
+			if($sql_pt != "")
+			{
+				$sql_part	.=	"if((".$sql_pt."),'1','0')";
+			}	
+			$sql_grn	=	"select grnId, DATE_FORMAT(grnDate,'%d-%b-%Y') as grnDate, ".(($sql_part != "")?$sql_part:"'0'")." as clientrec, invSupName,invIssuer,
+								  invRamName, invGrade, invRecvQty as recvqty, entry_on, entry_by,invRAMRate 
+								from tbl_invoice_grn ig
+							where status>0 and grndate >= '".$_POST["fromdate"]."' and  grndate  <= '".$_POST["todate"]."'
+							order by grnId desc";
+			$list		=	@getMySQLData($sql_grn,'xml','root','lower');
+			$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>
+				$list
+				$output
+			</xmldata>";
+		break;
+		case "SENDGRNDET":
+			// Fetch Record from Database
+			$output 		= 	"";
+			$fromDate		=	$_POST["fromdate"];
+			$todate			=	$_POST["todate"];
+			$sql 			= 	"select grnId, grnDate, invSupName, invSupGSTN, invHSNCode, invNo, invDate,  concat(tig.invRamName,' - ',tig.invGrade) as itemName, invRecvQty, invRAMRate, invTotal, invFreightVal, invCGSTval, invSGSTval, invIGSTVal, invGrandTotal        
+									From tbl_invoice_grn tig		
+									where tig.grnDate BETWEEN '$fromDate' and '$todate'
+								order by tig.grnDate desc,tig.invSupName,tig.invRamName";
+			$outSql 		=	@getMySQLData($sql);
+			$grnDetails 	=   $outSql['data'];
+			
+			foreach($grnDetails as $keys=>$values){
+				// Get The Field Name
+				if($keys == 0)
+				{
+					foreach($values as $keyh=>$valueh) {
+						$output .= '"'.$keyh.'",';
+					}
+					$output .="\n";
+				}
+				// Get Records from the table
+				foreach($values as $key=>$value)  {
+					$output .='"'.$value.'",';
+				}
+				$output .="\n";					
+			}
+
+			$thefile = $_SERVER['DOCUMENT_ROOT']."/export/GRN-details-from-".$_POST["fromdate"]."-to-".$_POST["todate"].".csv";
+			file_put_contents($thefile, $output);
+			$output = sendEmail($cpd_grp_email,"","Detailed GRN Report","please find the Detailed GRN Report  from ".$_POST["fromdate"]." to ".$_POST["todate"],$thefile);
+			echo $output;
+		break;	
+	}
+?>

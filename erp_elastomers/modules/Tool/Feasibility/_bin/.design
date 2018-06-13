@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xsl:template match="/">
+        <table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+            <tr>
+				<th width="6%">Req. ID</th>
+                <th width="8%">Part Number</th>
+                <th width="10%">Part Description</th>
+                <th width="15%">Customer Name</th>
+                <th width="6%">AMR</th>
+                <th width="4%">Target Price</th>
+                <th width="8%">Target Date</th>
+                <th width="12%">Drawing Link</th>
+				<th width="15%">Remarks</th>
+                <th>#</th>
+            </tr>
+			</thead>
+			<tbody>
+			<xsl:for-each select="xmldata/root/data/row">
+        		<tr>
+					<td align="left"><xsl:value-of select="drid"/></td>
+                    <td align="left"><xsl:value-of select="part_number"/></td>
+                    <td align="left"><xsl:value-of select="part_description"/></td>
+                    <td align="left"><xsl:value-of select="cusname"/></td>
+                    <td align="right"><xsl:value-of select="format-number(ave_monthly_req, '###,###,##0')"/></td>
+                    <td align="right"><xsl:value-of select="format-number(target_price, '###,###,##0.00')"/></td>
+                    <td align="center"><xsl:value-of select="target_date"/></td>
+                    <td align="left">
+						<a>
+							<xsl:attribute name="href"><xsl:value-of select="filepath"/><xsl:value-of select="drawing_file_name"/></xsl:attribute>
+							<xsl:attribute name="target">_blank</xsl:attribute>
+							<xsl:value-of select="drawing_file_name"/>
+						</a>
+					</td>
+					<td align="left" ><xsl:value-of select="remarks"/></td>
+                    <td align="right">
+						<xsl:if test="tl_status = '' and status = 1">
+							<span class="link">
+								<xsl:attribute name="prodref" ><xsl:value-of select="sno"/></xsl:attribute>
+								<xsl:attribute name="isnew" ><xsl:value-of select="isnew"/></xsl:attribute>
+								<xsl:attribute name="cmpdid" ><xsl:value-of select="cmpdid"/></xsl:attribute>
+								<xsl:attribute name="class" >tl_button link</xsl:attribute>
+									Engineering Sepcification / Tool 
+							</span> 
+						</xsl:if>
+						&#160;&#160;
+						<xsl:if test="cpd_status = '' and status = 1">
+							<span class="link">
+								<xsl:attribute name="prodref" ><xsl:value-of select="sno"/></xsl:attribute>
+								<xsl:attribute name="isnew" ><xsl:value-of select="isnew"/></xsl:attribute>
+								<xsl:attribute name="cmpdid" ><xsl:value-of select="cmpdid"/></xsl:attribute>
+								<xsl:attribute name="cpdname" ><xsl:value-of select="cmpdcpdname"/></xsl:attribute>
+								<xsl:attribute name="class" >cpd_button link</xsl:attribute>
+									Material / Compound 
+							</span>
+						</xsl:if>	
+						&#160;&#160;
+						<xsl:if test="prod_status = 0 and status = 1">
+							<span class="link">
+								<xsl:attribute name="prodref" ><xsl:value-of select="sno"/></xsl:attribute>
+								<xsl:attribute name="liftrate" ><xsl:value-of select="lift_rate"/></xsl:attribute>
+								<xsl:attribute name="trimrate" ><xsl:value-of select="trim_rate"/></xsl:attribute>
+								<xsl:attribute name="insprate" ><xsl:value-of select="cmpdinsprate"/></xsl:attribute>	
+								<xsl:attribute name="rejrate" ><xsl:value-of select="cmpdrejper"/></xsl:attribute>							
+								<xsl:attribute name="class" >prod_button link</xsl:attribute>
+									Production 
+							</span>
+						</xsl:if>
+						&#160;&#160;
+						<xsl:if test="cpd_status != '' and tl_status != '' and prod_status != 0 and status = 1">
+							<span class="link">
+								<xsl:attribute name="prodref" ><xsl:value-of select="sno"/></xsl:attribute>
+								<xsl:attribute name="tl_status" ><xsl:value-of select="tstatus"/></xsl:attribute>
+								<xsl:attribute name="cpd_status" ><xsl:value-of select="cstatus"/></xsl:attribute>
+								<xsl:attribute name="prod_status" ><xsl:value-of select="pstatus"/></xsl:attribute>								
+								<xsl:attribute name="class" >final_button link</xsl:attribute>
+									Approve Feasibility 
+							</span>
+						</xsl:if>						
+						&#160;&#160;
+						<xsl:if test="cpd_status != '' or tl_status != '' or prod_status != 0">
+							<span class="link">
+								<xsl:attribute name="reqid" ><xsl:value-of select="drid"/></xsl:attribute>
+								<xsl:attribute name="class" >view_button link</xsl:attribute>
+									View 
+							</span>
+						</xsl:if>			
+                    </td>
+          		</tr>
+        	</xsl:for-each>
+			</tbody>
+    	</table>    
+    </xsl:template>
+</xsl:stylesheet>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<!-- To Avoid infinite value in calculation -->
+<xsl:decimal-format name='infi' infinity="0" />
+<xsl:template match="/">
+    <table border="0" id="listings" width="100%" cellspacing="0" cellpadding="5" style="width: 100%;">
+        <xsl:for-each select="xmldata/root/data/row" >
+        	<xsl:for-each select="row/compoundData" >
+				<tr>
+					<xsl:attribute name="class">content_rows_light</xsl:attribute>
+					<td width="5%" align="left"><xsl:value-of select="sno" /></td>
+					<td width="12%" align="left"><xsl:value-of select="compound" /></td>
+					<td width="13%" align="left"><xsl:value-of select="compoundDesc" /></td>
+					<td width="15%" align="right"><xsl:value-of select="format-number(cmpdqty,'###,###,##0.000')" /></td>
+					<td width="15%" align="right"><xsl:value-of select="format-number(rate,'###,###,##0.00')" /></td>
+					<td width="15%" align="right"><xsl:value-of select="format-number(value,'###,###,##0.00')" /></td>
+					<td width="10%" align="right"><xsl:value-of select="format-number(parts, '###,###,##0.000')" /></td>
+					<td align="right"><xsl:value-of select="format-number((cmpdqty * parts)div 1000,'###,###,##0.000')" /></td>
+				</tr>
+            </xsl:for-each>
+        	<xsl:for-each select="row/ramdata" >
+				<tr>
+					<xsl:attribute name="class">content_rows_light</xsl:attribute>				
+					<td width="5%" align="left"><xsl:value-of select="sno" /></td>
+					<td width="25%" align="left"><xsl:value-of select="ramname" /></td>
+					<td width="10%" align="right"><xsl:value-of select="format-number(totrmqty,'###,###,##0.000')" /></td>
+					<td width="10%" align="right"><xsl:value-of select="format-number(avlrmqty,'###,###,##0.000')" /></td>
+					<td width="10%" align="right"><xsl:value-of select="format-number(reqrmqty,'###,###,##0.000')" /></td>							
+					<td width="15%" align="center"><xsl:value-of select="packqty" /></td>
+					<td align="left">
+						<div class="tooltip">
+							<xsl:attribute name="title"><xsl:value-of select="usedin" /></xsl:attribute>
+							<xsl:choose>
+								<xsl:when test="string-length(usedin) &gt; 20">
+									<xsl:value-of select="concat(substring(usedin, 1, 20),'...')" />											 
+								</xsl:when>
+								<xsl:otherwise>	
+									<xsl:value-of select="usedin" />
+								</xsl:otherwise>
+							</xsl:choose>
+						</div>
+					 </td>
+				</tr>
+            </xsl:for-each>	
+			<tr>
+				<xsl:choose>
+					<xsl:when test="title='Class Ref'">
+							<xsl:attribute name="class">content_rows_dark cust_subtot</xsl:attribute>				
+							<th colspan='2' align="right"><xsl:value-of select="classname" /> Total</th>
+							<th align="right"><xsl:value-of select="format-number(totclsrmqty,'###,###,##0.000')" /></th>
+							<th align="right"><xsl:value-of select="format-number(totclsavlqty,'###,###,##0.000')" /></th>
+							<th align="right"><xsl:value-of select="format-number(totclsreqqty,'###,###,##0.000')" /></th>
+							<th colspan='2' align="right"></th>
+					</xsl:when>
+					<xsl:otherwise>
+							<xsl:attribute name="class">content_rows_dark cust_subtot</xsl:attribute>				
+							<th colspan='4' align="right"><xsl:value-of select="ramname" /> Total</th>
+							<th colspan='2' align="right"><xsl:value-of select="format-number(totvalue,'###,###,##0.00')" /></th>
+							<th colspan='2' align="right"><xsl:value-of select="format-number(totrmqty,'###,###,##0.000')" /></th>
+					</xsl:otherwise>
+				</xsl:choose>
+			</tr>
+		</xsl:for-each>
+	</table>
+</xsl:template>    
+</xsl:stylesheet>

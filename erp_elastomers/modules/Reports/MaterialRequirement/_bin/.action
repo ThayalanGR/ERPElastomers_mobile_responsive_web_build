@@ -1,0 +1,296 @@
+<?php
+	session_start();
+	
+	header('Content-Type: text/xml');
+	switch($_POST["selecttype"]){
+		case "GETCPDLIST":
+				$sql_cpdlist	=	"SELECT cpdid,cpdname, cpdpolymer from tbl_compound t1
+										inner join tbl_polymer_order t2 on t2.polyName = t1.cpdPolymer
+										where t1.status>0 and t1.isBlend = 0 order by dispOrder,cpdName asc";
+				$cpdData		=	getXML($sql_cpdlist,false);			
+				echo $cpdData;
+				exit();
+		break;	
+		case "GETCPDDETAIL":
+		    $compoundname   =   $_POST['cpdNames']; 
+			$cpdQty         =   $_POST['cpdQty']; 
+			$category 		=	$_POST['opt_code']; 
+			$curMonth		=	$_POST['value']; 
+			$preMonth		=	$_POST['preMonth'];
+			$curMonthIndex 	=	$_POST['curMonthIndex'];
+			$rmClause		=	$_POST['rm_clause'];
+			
+			switch($category){
+				case 'raw material':
+					$cpdId 			= 	array();
+					$schQty 		= 	array();	
+					$ramFullNames 	= 	array();
+					$ramClasses 	= 	array();
+					$ramClass		=	"";
+					$tot_clsrmqty	=	0;
+					$tot_clsavlqty	=	0;
+					$tot_clsreqqty	=	0;
+					$data			=	"";
+					$sno			=	0;	
+					$ramFName_sql	=	"";
+					$ramClassSql	=	@getMySQLData("select * from tbl_class where status=1");
+					$ramClassArray	=	$ramClassSql['data'];
+					if($rmClause == 1)
+					{
+						$schRef_sql		=	@getMySQLData("select schRef from tbl_scheduling where schMonth='$curMonth' and status=1 and schOrder = 'compound' order by schRef desc limit 1");
+						$schRef			=	$schRef_sql['data'][0]['schRef']; 					
+						$ramFName_sql	=	"SELECT concat( ramName, ':', group_concat( ramGrade order by ramGrade ) ) AS ramFName,t3.ramClass
+											FROM tbl_scheduling t1
+											INNER JOIN tbl_compound_rm t2 ON t1.cpdId_cmpdId = t2.cpdId
+											INNER JOIN tbl_rawmaterial t3 ON t2.ramId = t3.ramId and t3.status = 1
+											WHERE schRef = '$schRef'
+											GROUP BY item_no, cpdId
+											ORDER BY t3.ramClass, t3.ramName";
+					}
+					else  
+					{
+						if($rmClause == 2)
+						{
+							$sql		=	"select * from tbl_scheduling t1 inner join tbl_component t2 on t1.cpdId_cmpdId=t2.cmpdId where t1.schMonth='$curMonth' and t1.status=1";
+							$outputarr	=	@getMySQLData($sql);						
+							if( ($outputarr['errno'] == 0)&&($outputarr['count'] > 0) ){
+								foreach($outputarr['data'] as $com){
+									if(!in_array($com['cmpdCpdId'],$cpdId)){
+										array_push($cpdId,$com['cmpdCpdId']);	
+									}
+								}					  
+								foreach($cpdId as $com){
+									$tot_rmqty	= 	0;
+									$sql_comp	=	@getMySQLData("select * from (select cmpdId, cmpdName, cmpdBlankWgt, cmpdCpdId, cmpdCpdName, cmpdRefNo, t1.schQty,rate,value, t1.status,cusId from tbl_scheduling t1 inner join tbl_component t2 on t1.cpdId_cmpdId=t2.cmpdId where t1.schMonth='$curMonth' and t1.status=1 and t2.status=1 order by t1.entry_on desc)as component group by cmpdId,cusId");
+									if( ($sql_comp['errno'] == 0)&&($sql_comp['count'] > 0) ){
+										foreach($sql_comp['data'] as $compound){
+											if($compound['cmpdCpdId'] == $com){
+												$tot_rmqty	=	(($compound['schQty'] * $compound['cmpdBlankWgt'])/1000) + $tot_rmqty;
+											}
+										}
+									}
+									$schQty[$com] 	=	$tot_rmqty;
+								}
+							}
+						}
+						else if($rmClause == 3)
+						{
+							$cpdId	=	$_POST['cpdids'];
+							$schQty	=	$_POST['cpdwgts'];
+						}
+						$ramFName_sql	=	"SELECT concat( ramName, ':', group_concat( ramGrade order by ramGrade ) ) AS ramFName,t2.ramClass
+											FROM tbl_compound_rm t1
+											INNER JOIN tbl_rawmaterial t2 ON t2.ramId = t1.ramId and t2.status = 1
+											WHERE cpdId in ('".implode("','",$cpdId)."')
+											GROUP BY item_no, cpdId
+											ORDER BY t2.ramClass, t2.ramName";	
+					}
+					$outputarr		=  @getMySQLData($ramFName_sql);					
+					if( ($outputarr['errno'] == 0)&&($outputarr['count'] > 0) ){
+						foreach($outputarr['data'] as $ram){
+							if(!in_array($ram['ramFName'],$ramFullNames)){
+								array_push($ramFullNames,$ram['ramFName']);
+								$ramClasses[$ram['ramFName']] = $ram['ramClass'];
+							}
+						}
+						for($count=0;$count<count($ramFullNames);$count++){
+							$ram		=	$ramFullNames[$count];
+							$tot_rmqty 	= 	0;
+							$compData	=	"";	
+							$comp_sql	=	"";
+							if($ramClass != $ramClasses[$ram])
+							{
+								$tot_clsrmqty	=	0;
+								$tot_clsavlqty	=	0;
+								$tot_clsreqqty	=	0;							
+								$ramClass		=	$ramClasses[$ram];
+								$data			.=	"<row>";
+								$data			.=	"<ramclass>".$ramClass."</ramclass>";
+								$data			.=	"<row>";
+							}
+							if($rmClause == 1)
+							{
+								$comp_sql	=	"select * from (SELECT t2.cpdId, schQty, cpdName_cmpdName, ramParts, concat( ramName, ':', group_concat( ramGrade order by ramGrade ) ) AS ramFName
+													FROM tbl_scheduling t1
+													INNER JOIN tbl_compound_rm t2 ON t1.cpdId_cmpdId = t2.cpdId
+													INNER JOIN tbl_rawmaterial t3 ON t2.ramId = t3.ramId and t3.status = 1
+													WHERE schRef = '$schRef'
+													GROUP BY item_no, cpdId
+													ORDER BY t3.ramClass, t3.ramName) as compound where ramFName='$ram' group by cpdId"	;							
+							}
+							else
+							{
+								$comp_sql	=	"select * from (SELECT t1.cpdId, cpdName as cpdName_cmpdName, ramParts, concat( ramName, ':', group_concat( ramGrade order by ramGrade ) ) AS ramFName
+												FROM tbl_compound_rm t1
+												INNER JOIN tbl_rawmaterial t2 ON t2.ramId = t1.ramId and t2.status = 1
+												INNER JOIN tbl_compound t3 on t1.cpdId = t3.cpdId
+												WHERE t1.cpdId in ('".implode("','",$cpdId)."')
+												GROUP BY item_no, t1.cpdId
+												ORDER BY t2.ramClass, t2.ramName) as compound where ramFName='$ram' group by cpdId"	;
+							}
+							$sql_comp	=	@getMySQLData($comp_sql);
+													
+							if( ($sql_comp['errno'] == 0)&&($sql_comp['count'] > 0) ){								
+								foreach($sql_comp['data'] as $compound){
+									$totRamParts_sql	=	@getMySQLData("select sum(ramParts)as totParts from (select ramParts from tbl_compound_rm where cpdId='".$compound['cpdId']."' group by item_no ) as tbl1 ");									
+									$totParts			=	$totRamParts_sql['data'][0]['totParts'];
+									if($rmClause == 1)
+										$comqty				=	$compound['schQty']; 
+									else
+										$comqty				=	$schQty[$compound['cpdId']];
+									if($comqty!=0 && $totParts!=0){
+										$rmqty			=	(($comqty * $compound['ramParts'])/$totParts);
+									}
+									$tot_rmqty			=	$rmqty + $tot_rmqty;
+									
+										if($compData == "")
+									{
+										$compData		=	$compound['cpdName_cmpdName'];
+									}
+									else
+									{
+										$compData		=	$compData. ",".$compound['cpdName_cmpdName'];
+									}
+						
+									
+								}
+							}
+							$avlQty			=	0;
+							$reqQty			=	0;
+							$ramPQty		=	"";
+							$strRMArr		=	explode(":",$ram);
+							$ramName		=	$strRMArr[0];
+							$ramGrades		=	explode(",",$strRMArr[1]);
+							if(($ramName != null && $ramName != "") && ($ramGrades))
+							{
+								foreach ($ramGrades as $ramGrade)
+								{
+									$avlQty_sql		=	@getMySQLData("select sum(avlQty) as avlQty from (select t1.grnId, t2.avlQty from tbl_rawmaterial_qan t1 inner join tbl_invoice_grn t2 on t2.grnId=t1.grnId and t2.avlQty > 0	where t1.ramId = (select ramId from tbl_rawmaterial where ramGrade = '$ramGrade' and ramName = '$ramName') and t1.ramStatus=1 and t1.ramApproveStatus=1 group by qanId) as ramTbl");
+									$avlQty			+=	$avlQty_sql['data'][0]['avlQty'];
+								}
+								$reqQty				=	$tot_rmqty - $avlQty;
+								if($reqQty < 0)
+								{
+									$reqQty			=	0;
+								}
+								foreach ($ramGrades as $ramGrade)
+								{
+									if($reqQty > 0)
+									{									
+										$ramInfo_sql	=	@getMySQLData("select ramStdPacking from tbl_rawmaterial where ramGrade = '$ramGrade' and ramName = '$ramName'");
+										$ramPackQty		=	$ramInfo_sql['data'][0]['ramStdPacking'];
+										if($ramPackQty > 0 )
+										{
+											if($ramPQty == "")										
+												$ramPQty	=	ceil($reqQty/$ramPackQty);
+											else
+												$ramPQty	.=	",".ceil($reqQty/$ramPackQty);
+										}
+										else
+										{
+											if($ramPQty == "")										
+												$ramPQty	=	"NA";
+											else
+												$ramPQty	.=	",NA";
+										}
+									}
+								}								
+							}
+							$tot_clsrmqty	+=	$tot_rmqty;
+							$tot_clsavlqty	+=	$avlQty;
+							$tot_clsreqqty	+=	$reqQty;	
+							
+							$sno++;
+							$data		.=	"<ramdata>";
+							$data		.=	"<sno>".$sno."</sno>";
+							$data		.=	"<title>RAM Name</title>";
+							$data		.=	"<ramname>".$ram."</ramname>";							
+							$data		.=	"<usedin>".$compData."</usedin>";
+							$data		.=	"<totrmqty>".round($tot_rmqty,3)."</totrmqty>";
+							$data		.=	"<avlrmqty>".round($avlQty,3)."</avlrmqty>";
+							$data		.=	"<reqrmqty>".round($reqQty,3)."</reqrmqty>";
+							$data		.=	"<packqty>".$ramPQty."</packqty>";
+							$data		.=	"</ramdata>";
+							if($ramClass != $ramClasses[$ramFullNames[$count+1]])
+							{
+								$data		.=	"</row>";
+								$data		.=	"<title>Class Ref</title>";
+								$data		.=	"<classname>".$ramClassArray[$ramClass-1]['class_name']."</classname>";
+								$data		.=	"<totclsrmqty>".round($tot_clsrmqty,3)."</totclsrmqty>";
+								$data		.=	"<totclsavlqty>".round($tot_clsavlqty,3)."</totclsavlqty>";
+								$data		.=	"<totclsreqqty>".round($tot_clsreqqty,3)."</totclsreqqty>";
+								$data		.=	"</row>";
+							}							
+						}
+							
+					}
+				break;
+				
+				case "compound":
+					$sql="select cpdId from tbl_compound tc
+							inner join tbl_polymer_order tpo on tc.cpdPolymer = tpo.polyName
+							where cpdId in (select cmpdCpdId from tbl_scheduling t1 inner join tbl_component t2 on t1.cpdId_cmpdId=t2.cmpdId where t1.schMonth='$curMonth' and t1.status=1)
+						order by dispOrder,cpdName";							
+					$outputarr	=  @getMySQLData($sql);
+					$cpdId = array();
+					foreach($outputarr['data'] as $com){
+						if(!in_array($com['cpdId'],$cpdId)){
+							array_push($cpdId,$com['cpdId']);	
+						}
+					}
+				  
+					$data = "";
+					
+					if( ($outputarr['errno'] == 0)&&($outputarr['count'] > 0) ){
+						foreach($cpdId as $com){
+								$ramname_sql = @getMySQLData("select cmpdCpdName from tbl_component where cmpdCpdId='$com'");
+								$ramName = $ramname_sql['data'][0]['cmpdCpdName']; 
+					
+								$tot_rmqty = 0;
+								$tot_value = 0;
+								$data		.=	"<row>";
+								$data		.=	"<ramId>".$com."</ramId>";
+								$data		.=	"<row>";
+								
+								$sql_comp = @getMySQLData("select * from (select cmpdId, cmpdName, cmpdBlankWgt, cmpdCpdId, cmpdCpdName, cmpdRefNo, t1.schQty,rate,value, t1.status, cusId from tbl_scheduling t1 inner join tbl_component t2 on t1.cpdId_cmpdId=t2.cmpdId where t1.schMonth='$curMonth' and t1.status=1 and t2.status=1 order by t1.entry_on desc)as component group by cmpdId,cusId");
+								
+								$sno = 1;
+								
+								if( ($sql_comp['errno'] == 0)&&($sql_comp['count'] > 0) ){
+									foreach($sql_comp['data'] as $compound){
+										if($compound['cmpdCpdId'] == $com){
+											$tot_rmqty = (($compound['schQty'] * $compound['cmpdBlankWgt'])/1000) + $tot_rmqty;
+											$tot_value += $compound['value'];
+											$data		.=	"<compoundData>";
+												$data		.=	"<sno>".$sno."</sno>";
+												$data		.=	"<compound>".$compound['cmpdName']."</compound>";
+												$data		.=	"<compoundDesc>".$compound['cmpdRefNo']."</compoundDesc>";
+												$data		.=	"<cmpdqty>".$compound['schQty']."</cmpdqty>";
+												$data		.=	"<rate>".$compound['rate']."</rate>";
+												$data		.=	"<value>".$compound['value']."</value>";
+												$data		.=	"<parts>".$compound['cmpdBlankWgt']."</parts>";
+												$data		.=	"<category>".$category."</category>";
+											$data		.=	"</compoundData>";
+											$sno++;
+										}
+									}
+								}
+							$data		.=	"</row>";
+							$data		.=	"<title>Compound Ref</title>";
+							$data		.=	"<ramname>".$ramName."</ramname>";
+							$data		.=	"<totrmqty>".$tot_rmqty."</totrmqty>";
+							$data		.=	"<totvalue>".$tot_value."</totvalue>";
+							$data		.=	"</row>";
+							
+						}
+					}
+				break;
+			}
+
+			$output	= "<xmldata><root><count>".$outputarr['count']."</count><values>".$compoundname."</values><data>".$data."</data><status>".$outputarr['status']."</status></root></xmldata>";
+			echo $output;
+			exit();
+		break;
+	}
+
+?>

@@ -1,0 +1,238 @@
+<?php
+	global $appsub_docs,$appsub_docs_cpd,$appsub_min_docs;
+?>
+tableFilters.sort_config	=	{ sort_types:['string','string','string','string','us','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+var compPPAPDoc				=	"<?php echo $appsub_docs[$appsub_min_docs[0]]; ?>";
+var compCpdDoc				=	"<?php echo $appsub_docs_cpd[$appsub_min_docs[1]]; ?>";
+
+$(document).ready(function(){
+	//create buttons 					   
+
+	$("#submit_appdocs").dialog({
+		autoOpen:false, 
+		width:750,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 				
+				text:"Upload",
+				id: "button-upload",
+				click: function(){
+					if(typeof uploadApprovalDocs == 'function')
+					uploadApprovalDocs(false,$(this));
+				}
+			},
+			{ 
+				id: "button-cancel",
+				text: "Cancel",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$("#button-upload").removeAttr("disabled");			
+			$(this).find("form")[0].reset();
+		}
+	});	
+	
+	$("#submit_appdocs_cpd").dialog({
+		autoOpen:false, 
+		width:750,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 				
+				text:"Upload",
+				id: "button-upload",
+				click: function(){
+					if(typeof uploadApprovalDocs == 'function')
+					uploadApprovalDocs(true,$(this));
+				}
+			},
+			{ 
+				id: "button-cancel",
+				text: "Cancel",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$("#button-upload").removeAttr("disabled");			
+			$(this).find("form")[0].reset();
+		}
+	});		
+
+	getPageData();	
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=SAMPLELIST","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	
+	$(".upload_docs").click(function(e) {
+		$("#submit_appdocs").dialog('open');
+		$("#submit_appdocs").attr("rfqid",$(this).attr('rfqid'));
+		$("#submit_appdocs").attr("toolref",$(this).attr('toolref'));
+		$("#submit_appdocs").attr("subid",$(this).attr('subid'));
+		$("#partnum").html($(this).attr('partnum'));
+		$("#partdesc").html($(this).attr('partdesc'));		
+    });
+	
+	$(".upload_docs_cpd").click(function(e) {
+		$("#submit_appdocs_cpd").dialog('open');
+		$("#submit_appdocs_cpd").attr("rfqid",$(this).attr('rfqid'));
+		$("#submit_appdocs_cpd").attr("toolref",$(this).attr('toolref'));
+		$("#submit_appdocs_cpd").attr("subid",$(this).attr('subid'));
+		$("#polymer").html($(this).attr('cpdpolymer'));
+		$("#cpdname").html($(this).attr('cpdname'));
+		$("#compspec").html($(this).attr('compound_spec'));
+		$("#drawing").html("<a href = '"+ $(this).attr('drawing_file_name') +"' target='_blank' >View Drawing</a>");		
+    });	
+		
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+
+}
+
+function uploadApprovalDocs(isCpd,dialogRef){
+	
+	if(isCpd)
+	{
+		docToComp		=	compCpdDoc;
+		newError		=	$("#raise_error_cpd");
+		elementId		=	"cpdfile";
+		divId			=	"DocsList_cpd";
+		numSamples		=	0;
+	}
+	else
+	{
+		docToComp		=	compPPAPDoc;
+		newError		=	$("#raise_error");	
+		elementId		=	"file";
+		divId			=	"DocsList";
+		numSamples		=	$("#num_samples").val();
+		if(!(numSamples.toNumber() > 0)){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid Sample Numbers.");
+			$("#num_samples").focus();
+			return false;
+		}
+	}
+	toolRef			=	dialogRef.attr("toolref");
+	subId			=	dialogRef.attr("subid");
+	rfqId			=	dialogRef.attr("rfqid");
+	okToUpload		=	false;
+	noofFiles		=	0;
+	formdata 		= 	new FormData();
+	if (formdata) {	
+		formdata.append("toolref", toolRef);
+		formdata.append("subid", subId);
+		formdata.append("rfqid", rfqId);
+		formdata.append("num_samples", numSamples);
+		if(isCpd != true)
+		{
+			formdata.append("remarks", $("#remarks").val());
+			
+		}
+	}	
+	
+	DocsTR			=	$("#"+divId+" table tr:gt(1)");	
+	if(DocsTR.length > 0)
+	{
+		// Get Document List
+		for(ptr=0; ptr<DocsTR.length; ptr++){
+			docType			= 	$(DocsTR[ptr]).find("td:eq(1)");
+			var filedata 	= 	document.getElementById(elementId+ptr);	
+			file			=	filedata.files[0];
+			if(file)
+			{
+				noofFiles++;
+				doc			=	docType.html();				
+				if( doc == docToComp)
+					okToUpload	=	true;
+				formdata.append("file"+noofFiles, file,file.name);
+				formdata.append("doctype["+noofFiles+"]", doc);				
+			}
+		}
+	}
+	if(okToUpload)
+	{
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Upload the Documents for Approval?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Upload Docs',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															$("#button-upload").attr("disabled","true");
+															// Set up the request.
+															var xhr = new XMLHttpRequest();
+															// Open the connection.
+															xhr.open('POST', actionFile, true);
+															// Set up a handler for when the request finishes.
+															xhr.onload = function () {
+																if (xhr.status === 200) {
+																	// File(s) uploaded.
+																	var printObj	=	xhr.response;
+																	printData		=	$(printObj);
+																	error			=	printData.find("status").html();
+																	codeNo			=	printData.find("codeno").html();																	
+																	if(error == "success"){
+																		alert("Files have been has been uploaded sucessfully under code : " + codeNo);
+																		dialogRef.dialog("close");															
+																		getPageData();
+																	}
+																	else{
+																		displayError(newError, "error", printObj);
+																		$("#button-upload").removeAttr("disabled");					
+																	}			
+																} 
+																else {
+																	displayError(newError, "error", "Unable to upload the file, Please retry again");
+																	$("#button-upload").removeAttr("disabled");				
+																}
+															};															
+															// Send the Data.
+															xhr.send(formdata);
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});
+
+	}
+	else
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please upload " + docToComp + " along with any other files if any!!!.");
+		return false;	
+	}	
+	
+
+
+
+}
+
+

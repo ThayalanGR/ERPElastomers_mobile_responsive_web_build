@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+        <xsl:for-each select="xmldata/root/data/row">
+            <div>
+                <xsl:attribute name="class">live_screen_patient_rows</xsl:attribute>
+                <xsl:attribute name="id"><xsl:value-of select="cpdid" /></xsl:attribute>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_9"><xsl:value-of select="cpdid"/></span>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_25"><xsl:value-of select="cpdname"/></span>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_9"><xsl:value-of select="shrinkage"/></span>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_20"><xsl:value-of select="cpdpolymer"/></span>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_9" style="text-align:right"><xsl:value-of select="cpdminstock"/></span>
+                <xsl:element name="span">
+                    <xsl:attribute name="id">o<xsl:value-of select="cpdid" /></xsl:attribute>
+                    <xsl:attribute name="class">live_screen_patient_cols live_screen_patient_colwidth_17</xsl:attribute>
+                    <xsl:attribute name="style">text-align:center;text-align:right;</xsl:attribute>
+                    <span>
+                        <xsl:attribute name="class">link edit_button</xsl:attribute>
+                        <xsl:attribute name="cpdid"><xsl:value-of select="cpdid" /></xsl:attribute>
+                        Edit
+                    </span>
+                    &nbsp;|&nbsp;
+                    <span>
+                        <xsl:attribute name="class">link delete_button</xsl:attribute>
+                        <xsl:attribute name="cpdid"><xsl:value-of select="cpdid" /></xsl:attribute>
+                        Delete
+                    </span>
+					&nbsp;|	&nbsp;				
+					<input>
+						<xsl:attribute name="id"><xsl:value-of select="cpdid"/></xsl:attribute>
+						<xsl:attribute name="type">checkbox</xsl:attribute>
+						<xsl:attribute name="value">1</xsl:attribute>
+						<xsl:attribute name="class">checkbox1</xsl:attribute>
+					</input>	
+                </xsl:element>
+            </div>
+            
+            <div>
+                <xsl:attribute name="id"><xsl:value-of select="cpdid" /></xsl:attribute>
+                <xsl:element name="div">
+                    <xsl:attribute name="class">live_screen_patient_cont</xsl:attribute>
+                    <xsl:attribute name="id">cont_<xsl:value-of select="cpdid" /></xsl:attribute>
+                    Loading...
+                </xsl:element>
+            </div>
+        </xsl:for-each>
+    </xsl:template>
+</xsl:stylesheet>

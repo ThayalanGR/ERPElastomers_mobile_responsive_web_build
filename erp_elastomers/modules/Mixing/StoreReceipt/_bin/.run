@@ -1,0 +1,49 @@
+$(document).ready(function(){
+	
+  	var objList     =       postback(actionFile,"type=GETQUALITY","POST","XML");
+	//alert(objList);	
+	listPageData($("#content_body"), objList, XSLFile);
+	
+	$("#button_submit").button().click(function(){
+	
+		param			= "type=APPROVESTORE";	
+		noRows			=	0;
+		$('#content_body table tr').each(function(index, element) {						
+			batidObj	= $(this).find("td:eq(0)")
+			param = param + "&batids[]=" + batidObj.attr("id");
+			param = param + "&expwgts[]=" + batidObj.attr("expwgt");
+			param = param + "&recvwgts[]=" +batidObj.attr("recvwgt");
+			param = param + "&cpdnames[]=" +batidObj.attr("cpdname");
+			noRows++;
+		});	
+		if(noRows < 1)
+		{
+			alert("No Items to update!");
+			return false;
+		}
+		
+		$("#update_item_form").css('visibility', 'visible');
+		
+		$("#update_item_form").dialog({
+									modal:true,
+									minWidth:'400',
+									resizable:false,									
+									buttons: {
+										"Inward":function(){
+												$("#update_item_form").dialog('close');										
+												var approveobj  =   postback(actionFile,param,"POST","XML");
+												var objList     =   postback(actionFile,"type=GETQUALITY","POST","XML");
+												//alert(objList);												
+												listPageData($("#content_body"), objList, XSLFile);
+										}
+										,
+										"Cancel":function(){
+											$("#update_item_form").dialog('close');
+										}
+									}
+		});			
+
+	});		
+
+
+});

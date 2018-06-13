@@ -1,0 +1,330 @@
+<?php
+
+	// Includes
+	session_start();
+	global $rfqdrawings_upload_dir,$cmpd_grp_email,$dev_grp_email,$quality_grp_email;
+	// Do Actions
+	header('Content-Type: text/xml');
+	if ( isset($_FILES['file'])) {
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$rfqdrawings_upload_dir;
+		try {
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			 }
+
+			 // You should also check filesize here. 
+			 if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			 }
+
+			 if( 'application/pdf' == $_FILES['file']['type'] ) 
+			 {
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					echo $_FILES['file']["name"] . " already exists. ";
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath.$_FILES['file']["name"]))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}	
+					$updatesql		=	"update tbl_component set cmpdDrawFile = '".$_FILES['file']["name"]."' where cmpdid = '".$_POST['cmpdid']."'";
+			
+					$sql_query = @getMySQLData($updatesql);				
+					$output = "<drawfileadd>
+									<sql>$updatesql</sql>
+									<status>".$sql_query['status']."</status>
+								</drawfileadd>";
+				}
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			echo 	"<drawfileadd>
+						<result>".$e->getMessage()."</result>
+					</drawfileadd>";
+			exit();
+		}      
+    } 
+	else 
+	{ 	
+		switch($_REQUEST['selecttype']){
+			case "PARAMLIST":
+				$output		=	@getMySQLData("select * from tbl_param where status > 0 ", "xml", "xmldata");
+				echo $output;
+				exit();
+			break;
+			case "PARAMDETAIL":
+				$output		=	@getMySQLData("select paramStdRef,(select uom_short_name from tbl_uom where sno = tbl_param.paramUOM) as paramUOM,paramTestMethod  from tbl_param where status > 0 and sno ='".$_REQUEST['paramid']."';", "xml", "xmldata");
+				echo $output;
+				exit();
+			break;	
+			case "UOMATLIST":
+				$output = @getMySQLData("select uom_short_name from tbl_uom where status>0", "xml");
+				echo $output;
+				exit();
+			break;
+			case "CUSRMATLIST":
+				$output		=	@getMySQLData("select ramId, ramName from tbl_rawmaterial where status>0 and ramClass = 7 ", 'xml', 'xmldata', 'lower');
+				echo $output;
+				exit();
+			break;
+			case "CMPDREJATLIST":
+				$output		=	@getMySQLData("select sno, rej_type, rej_short_name from tbl_rejection where status>0", 'xml', 'xmldata', 'lower');
+				echo $output;
+				exit();
+			break;
+			case "CMPDRMLIST":
+				$output		=	@getMySQLData("select t1.ramId, t2.ramName
+												from tbl_component_insert t1, tbl_rawmaterial t2
+												where t1.cmpdId='".$_REQUEST['cmpdid']."' and t1.ramId = t2.ramId", 'xml', 'xmldata', 'lower');
+				echo $output;
+				exit();
+			break;		
+			case "CMPDDIMLIST":
+				$output		=	@getMySQLData("select cmpddim, paramName, uom_short_name,paramTestMethod,cmpdDimSpec,cmpdDimLLimit,cmpdDimULimit,cmpdDimSamPlan from tbl_component_dim_param t1 
+														left outer join tbl_param t3 on t3.sno = t1.cmpdDim
+														left outer join tbl_uom t4 on t4.sno = t3.paramUOM 
+														where t1.cmpdId='".$_REQUEST['cmpdid']."' and t3.status > 0", 'xml', 'xmldata', 'lower');
+				echo $output;
+				exit();
+			break;
+			case "CMPDREJLIST":
+				$output		=	@getMySQLData("select t1.cmpdRejNo, t2.rej_type as cmpdRejType, t2.rej_short_name as cmpdRejSName
+												from tbl_component_rejection t1, tbl_rejection t2
+												where t1.cmpdId='".$_REQUEST['cmpdid']."' and t1.cmpdRejNo = t2.sno",
+											'xml', 'xmldata', 'lower');
+				echo $output;
+				exit();
+			break;
+			case "CMPDADD":
+				if($_REQUEST['cmpdrefno'] != ""){
+					// Generate Code No
+					$codeArray		=	@getSettingsData("cmpdcode");
+					$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+					if($codeNo != ""){
+						$cmpdDim	=	$_REQUEST['cmpddimdtls'];
+						$cmpdRej	=	$_REQUEST['cmpdrejtype'];
+						$cmpdIns	=	$_REQUEST['cmpdinsref'];
+						$drawDate	=	date("Y-m-d", strtotime($_REQUEST['cmpddrawdate']));
+						$curtime	=	$_REQUEST['cmpdcurtime'];
+						$sql_add	=	"insert into tbl_component(
+															cmpdId, cmpdRefNo, cmpdName, cmpdApp, cmpdSubAss, cmpdOff, cmpdRejPer, cmpdHSN, cmpdShelfLife, cmpdProdWgt, cmpdDrawRef,
+															cmpdDrawRev, cmpdDrawDate, cmpdCpdId, cmpdCpdName, cmpdCurTime, cmpdAMR, cmpdInspRate,cmpdMoldJWCont,cmpdDeflashJWCont,
+															cmpdCurTimeMin, cmpdCurTimeMax, cmpdTemperature, cmpdTempMin, cmpdTempMax, cmpdPressure, cmpdPresMin,
+															cmpdPresMax, cmpdPostTime, cmpdPostTimeMin, cmpdPostTimeMax, cmpdPostTemp, cmpdPostTempMin, cmpdPostTempMax,
+															cmpdBlankWgt, cmpdRemarks, cmpdRackNo, cmpdStdPckQty, cmpdProdGroup, entry_on, entry_by
+														)
+														values(
+															'$codeNo', '".$_REQUEST['cmpdrefno']."', '".$_REQUEST['cmpdname']."', '".$_REQUEST['cmpdapp']."', '".$_REQUEST['cmpdsubass']."', '".$_REQUEST['cmpdoff']."', '".$_REQUEST['cmpdrejper']."', '".$_REQUEST['cmpdhsn']."', '".$_REQUEST['cmpdshelflife']."', '".$_REQUEST['cmpdprodwgt']."', '".$_REQUEST['cmpddrawref']."',
+															'".$_REQUEST['cmpddrawrev']."', '$drawDate', '".$_REQUEST['cmpdcpdref']."', '".$_REQUEST['cmpdcpdtxt']."', '$curtime','".$_REQUEST['cmpdamr']."','".$_REQUEST['cmpdinsprate']."','".$_REQUEST['cmpdmoldjwcont']."','".$_REQUEST['cmpddeflashjwcont']."',
+															'".$_REQUEST['cmpdcurtimemin']."',  '".$_REQUEST['cmpdcurtimemax']."', '".$_REQUEST['cmpdtemp']."', '".$_REQUEST['cmpdcurtempmin']."', '".$_REQUEST['cmpdcurtempmax']."', '".$_REQUEST['cmpdpress']."', '".$_REQUEST['cmpdcurpresmin']."', '".$_REQUEST['cmpdcurpresmax']."', 
+															'".$_REQUEST['cmpdpostcurtime']."', '".$_REQUEST['cmpdpostcurtimemin']."', '".$_REQUEST['cmpdpostcurtimemax']."', '".$_REQUEST['cmpdpostcurtemp']."', '".$_REQUEST['cmpdpostcurtempmin']."', '".$_REQUEST['cmpdpostcurtempmax']."', 
+															'".$_REQUEST['cmpdblankwt']."', '".$_REQUEST['cmpdremarks']."', '".$_REQUEST['cmpdrackno']."', '".$_REQUEST['cmpdstdpckqty']."', '".$_REQUEST['cmpdprodgroup']."', now(), '".$_SESSION['userdetails']['userId']."'
+														)";
+						
+						$output		=	@getMySQLData($sql_add, "xml");
+						$output		.=	"<cmpdAdd><root><cmpdAddData>".$output; 	
+						// Add Dimensions
+						if(is_array($cmpdDim) && count($cmpdDim['dim']) > 0){
+							$appSql		=	"insert into tbl_component_dim_param(
+												cmpdId, cmpdDim, cmpdDimSpec, cmpdDimULimit, cmpdDimLLimit, cmpdDimSamPlan
+											 ) values";
+							for($cd=0; $cd<count($cmpdDim['dim']); $cd++){
+								$appSql		.=	"(
+													'$codeNo', '".$cmpdDim['dim'][$cd]."', '".$cmpdDim['spec'][$cd]."', '".$cmpdDim['ulim'][$cd]."', '".$cmpdDim['llim'][$cd]."', '".$cmpdDim['samplan'][$cd]."'
+												 )".(($cd == (count($cmpdDim['dim'])-1))?'':', ');
+							}
+							$output		.=	@getMySQLData($appSql, "xml");
+						}
+						
+						// Add Rejections
+						if(is_array($cmpdRej) && count($cmpdRej) > 0){
+							$appSql		=	"insert into tbl_component_rejection(
+												cmpdId, cmpdRejNo
+											 ) values";
+							
+							for($cr=0; $cr<count($cmpdRej); $cr++){
+								$appSql		.=	"(
+													'$codeNo', '".$cmpdRej[$cr]."'
+												 )".(($cr == (count($cmpdRej)-1))?'':', ');
+								
+							}
+							$output	.=	@getMySQLData($appSql, "xml");
+						}
+						
+						// Add Inserts
+						if(is_array($cmpdIns) && count($cmpdIns) > 0){
+							$appSql		=	"insert into tbl_component_insert(
+												cmpdId, ramId
+											 ) values";
+							
+							for($cr=0; $cr<count($cmpdIns); $cr++){
+								$appSql		.=	"(
+													'$codeNo', '".$cmpdIns[$cr]."'
+												 )".(($cr == (count($cmpdIns)-1))?'':', ');
+								
+							}
+							$output	.=	@getMySQLData($appSql, "xml");
+						}					
+					}
+					if($output != ""){
+						$status		=	split("<status>", $output);
+						$status		=	split("</status>", $status[1]);
+						$status		=	$status[0];
+						
+						if($status == "success"){
+							$output.="<cmpdid>".$codeNo."</cmpdid></cmpdAddData></root></cmpdAdd>";
+							@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='cmpdcode'");
+						}
+					}
+				}
+			break;
+			case "CMPDEDIT":
+				$cmpdId     		=   $_REQUEST['cmpdid'];
+				$cmpdName 			= 	$_REQUEST['cmpdname'];
+				$curTime			=	$_REQUEST['cmpdcurtime'];
+				$cmpdDim			=	$_REQUEST['cmpddimdtls'];
+				$cmpdRej			=	$_REQUEST['cmpdrejtype'];
+				$cmpdIns			=	$_REQUEST['cmpdinsref'];					
+				$blankWgt 			= 	$_REQUEST['cmpdblankwt'];					
+				$rack 				= 	$_REQUEST['cmpdrackno'];
+				$drawRev  			= 	$_REQUEST['cmpddrawrev'];
+				$curTemp  			= 	$_REQUEST['cmpdtemp'];
+				$curPress 			= 	$_REQUEST['cmpdpress'];	
+				//get old values before updation
+				$cmpdCurrOut		=	@getMySQLData("select * from tbl_component where cmpdId='$cmpdId' and status>0");	
+				$cmpdCurrVals		=	$cmpdCurrOut['data'][0];					
+				$cmpdCurrName	    =	$cmpdCurrVals['cmpdName'];
+				$cmpdCurrBlankWgt	=	$cmpdCurrVals['cmpdBlankWgt'];
+				$cmpdCurrDrawRev	=	$cmpdCurrVals['cmpdDrawRev'];
+				$cmpdCurrRackNo	    =	$cmpdCurrVals['cmpdRackNo'];
+				$cmpdCurrCurTime	=	$cmpdCurrVals['cmpdCurTime'];
+				$cmpdCurrCurTemp	=	$cmpdCurrVals['cmpdTemperature'];
+				$cmpdCurrCurPres	=	$cmpdCurrVals['cmpdPressure'];				
+				
+				$output				=	@getMySQLData("update tbl_component set
+															cmpdRefNo='".$_REQUEST['cmpdrefno']."', cmpdName='$cmpdName',
+															cmpdApp='".$_REQUEST['cmpdapp']."', cmpdSubAss='".$_REQUEST['cmpdsubass']."', cmpdOff='".$_REQUEST['cmpdoff']."', cmpdRejPer='".$_REQUEST['cmpdrejper']."', 
+															cmpdHSN='".$_REQUEST['cmpdhsn']."', cmpdShelfLife='".$_REQUEST['cmpdshelflife']."', cmpdProdWgt='".$_REQUEST['cmpdprodwgt']."',
+															cmpdDrawRef='".$_REQUEST['cmpddrawref']."', cmpdDrawRev='$drawRev', cmpdDrawDate='".$_REQUEST['cmpddrawdate']."',
+															cmpdRackNo='$rack', cmpdStdPckQty='".$_REQUEST['cmpdstdpckqty']."', cmpdProdGroup='".$_REQUEST['cmpdprodgroup']."',
+															cmpdCpdId='".$_REQUEST['cmpdcpdref']."', cmpdCpdName='".$_REQUEST['cmpdcpdtxt']."', cmpdAMR='".$_REQUEST['cmpdamr']."', cmpdInspRate='".$_REQUEST['cmpdinsprate']."',
+															cmpdMoldJWCont='".$_REQUEST['cmpdmoldjwcont']."',cmpdDeflashJWCont='".$_REQUEST['cmpddeflashjwcont']."', cmpdCurTime='$curTime', cmpdCurTimeMin='".$_REQUEST['cmpdcurtimemin']."',
+															cmpdCurTimeMax='".$_REQUEST['cmpdcurtimemax']."', cmpdTemperature='$curTemp', cmpdTempMin='".$_REQUEST['cmpdcurtempmin']."',
+															cmpdTempMax='".$_REQUEST['cmpdcurtempmax']."', cmpdPressure='$curPress', cmpdPresMin='".$_REQUEST['cmpdcurpresmin']."',
+															cmpdPresMax='".$_REQUEST['cmpdcurpresmax']."', cmpdPostTime='".$_REQUEST['cmpdpostcurtime']."', cmpdPostTimeMin='".$_REQUEST['cmpdpostcurtimemin']."',
+															cmpdPostTimeMax='".$_REQUEST['cmpdpostcurtimemax']."', cmpdPostTemp='".$_REQUEST['cmpdpostcurtemp']."', cmpdPostTempMin='".$_REQUEST['cmpdpostcurtempmin']."',
+															cmpdPostTempMax='".$_REQUEST['cmpdpostcurtempmax']."', cmpdBlankWgt='$blankWgt', 
+															cmpdRemarks='".$_REQUEST['cmpdremarks']."',update_on=now(),update_by='".$_SESSION['userdetails']['userId']."'
+															where cmpdId='$cmpdId' and status>0","xml");
+				if($output != ""){
+						$status		=	split("<status>", $output);
+						$status		=	split("</status>", $status[1]);
+						$status		=	$status[0];						
+						if($status == "success")
+						{
+							$message	= 	"";							
+							$message	.=	($blankWgt != $cmpdCurrBlankWgt)?"The Blank weight has been changed from '".$cmpdCurrBlankWgt."' to '".$blankWgt."' , <br>":"";
+							$message	.=	($drawRev != $cmpdCurrDrawRev)?"The Drawing Revision has been changed from '".$cmpdCurrDrawRev."' to '".$drawRev."' , <br>":"";
+							$message	.=	($rack != $cmpdCurrRackNo)?"The Racknumber  has been changed from '".$cmpdCurrRackNo."' to '".$rack."',<br>":"";
+							$message	.=	($curTime != $cmpdCurrCurTime)?"The Curing Time  has been changed from '".$cmpdCurrCurTime."' to '".$curTime."',<br>":"";
+							$message	.=	($curTemp != $cmpdCurrCurTemp)?"The Curing Temperature  has been changed from '".$cmpdCurrCurTemp."' to '".$curTemp."' ,<br>":"";
+							$message	.=	($curPress != $cmpdCurrCurPres)?"The Curing Pressure  has been changed from '".$cmpdCurrCurPres."' to '".$curPress."'":"";
+							if($message != "")								
+								$output = sendEmail(array_merge($dev_grp_email,$cmpd_grp_email),$quality_grp_email,"Component Changed: ".$cmpdName."","Please note: ".$message,"");
+						}
+                }
+				
+				$output		.=	"<cmpdEdit><root><cmpdEditData>".$output;	
+				// Remove Dimensions
+				$output			.=	@getMySQLData("delete from tbl_component_dim_param where cmpdid='$cmpdId'", "xml");
+				
+				// Add Dimensions
+				if(is_array($cmpdDim) && count($cmpdDim['dim']) > 0){
+					$appSql		=	"insert into tbl_component_dim_param(
+										cmpdId, cmpdDim, cmpdDimSpec, cmpdDimULimit, cmpdDimLLimit, cmpdDimSamPlan
+									 ) values";
+					for($cd=0; $cd<count($cmpdDim['dim']); $cd++){
+						$appSql		.=	"(
+											'$cmpdId', '".$cmpdDim['dim'][$cd]."', '".$cmpdDim['spec'][$cd]."', '".$cmpdDim['ulim'][$cd]."', '".$cmpdDim['llim'][$cd]."', '".$cmpdDim['samplan'][$cd]."'
+										 )".(($cd == (count($cmpdDim['dim'])-1))?'':', ');
+					}
+					
+					$output		.=	@getMySQLData($appSql, "xml");
+				}
+				// Remove Rejections
+				$output			.=	@getMySQLData("delete from tbl_component_rejection where cmpdid='$cmpdId'", "xml");
+				
+				// Add Rejections
+				if(is_array($cmpdRej) && count($cmpdRej) > 0){
+					$appSql		=	"insert into tbl_component_rejection(
+										cmpdId, cmpdRejNo
+									 ) values";
+					for($cr=0; $cr<count($cmpdRej); $cr++){
+							$appSql		.=	"(
+												'$cmpdId', '".$cmpdRej[$cr]."'
+											 )".(($cr == (count($cmpdRej)-1))?'':', ');
+					}
+					$output		.=	@getMySQLData($appSql, "xml");
+				}
+				
+				// Remove Inserts
+				$output			.=	@getMySQLData("delete from tbl_component_insert where cmpdid='$cmpdId'", "xml");
+				
+				// Add Inserts
+				if(is_array($cmpdIns) && count($cmpdIns) > 0){
+					$appSql		=	"insert into tbl_component_insert(
+										cmpdId, ramId
+									 ) values";
+					for($cr=0; $cr<count($cmpdIns); $cr++){
+						$appSql		.=	"(
+											'$cmpdId', '".$cmpdIns[$cr]."'
+										 )".(($cr == (count($cmpdIns)-1))?'':', ');
+						
+					}
+					$output		.=	@getMySQLData($appSql, "xml");
+				}				
+				$output.="<cmpdid>$cmpdId</cmpdid></cmpdEditData></root></cmpdEdit>";
+			break;
+			case "CMPDDEL":
+				if($_REQUEST['cmpdid'] != ""){
+					$sql		=	"update tbl_component set status='0' where cmpdId='".$_REQUEST['cmpdid']."' and status>0;";
+					$output		=	@getMySQLData($sql, "xml");
+				}
+			break;
+		}
+	}
+	// List Data
+	$list	=	@getMySQLData("select t1.cmpdId, t1.cmpdRefNo, t1.cmpdName,t1.cmpdApp,t1.cmpdSubAss,t1.cmpdOff, t1.cmpdRejPer,t1.cmpdHSN, t1.cmpdShelfLife, t1.cmpdProdWgt, 
+						t1.cmpdDrawRef,  '/".$rfqdrawings_upload_dir."' as filepath, t1.cmpdDrawFile, t1.cmpdDrawRev, DATE_FORMAT(t1.cmpdDrawDate, '%d-%b-%Y') as cmpdDrawDate,
+			            t1.cmpdCpdId, t2.cpdName as cmpdCpdName, t1.cmpdCurTime, t1.cmpdTemperature, t1.cmpdPressure, t1.cmpdBlankWgt,t1.cmpdAMR,t1.cmpdInspRate,t1.cmpdMoldJWCont,					
+						t1.cmpdDeflashJWCont,t1.cmpdRemarks, t1.cmpdRackNo, t1.cmpdStdPckQty, t1.cmpdProdGroup, t1.cmpdCurTimeMin, t1.cmpdCurTimeMax, 
+						t1.cmpdTempMin, t1.cmpdTempMax, t1.cmpdPresMin, t1.cmpdPresMax, t1.cmpdPostTime, t1.cmpdPostTimeMin, t1.cmpdPostTimeMax,
+						t1.cmpdPostTemp, t1.cmpdPostTempMin, t1.cmpdPostTempMax, t1.entry_by, DATE_FORMAT(t1.entry_on, '%d/%m/%Y') as entry_on,
+						t3.cusId, group_concat(distinct upper(t5.cusGroup) separator',') as cusGroup,	group_concat(distinct t4.tool_ref separator',') as tool_ref					
+						from tbl_component t1
+						left outer join tbl_compound t2 on t1.cmpdCpdId=t2.cpdId and t2.status > 0
+						left outer join ( select distinct cmpdId, cusId from (select cmpdId, cusId as cusId from tbl_customer_cmpd_po_rate where status = 1 order by update_on) tccpr )t3 on t1.cmpdId = t3.cmpdId
+						left outer join tbl_tool t4 on t1.cmpdId=t4.compId and t4.status > 0
+						left outer join tbl_customer t5 on t3.cusId = t5.cusId and t5.status > 0
+				where t1.status>0 group by cmpdId order by cmpdId desc", 'xml','root', 'lower');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+?>

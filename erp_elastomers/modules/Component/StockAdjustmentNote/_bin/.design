@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+<table border="0" cellpadding="6" cellspacing="0" width="100%">
+	<xsl:for-each select="xmldata/root/data/row">
+        <tr class="content_rows_light" >
+            <xsl:if test="position() mod 2 != 0">
+                <xsl:attribute name="class">content_rows_light</xsl:attribute>
+            </xsl:if>
+            <xsl:if test="position() mod 2 != 1">
+                <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+            </xsl:if>
+            <td style="width:10%"><xsl:value-of select="sanid" /></td>
+            <td style="width:15%"><xsl:value-of select="sandate" /></td>
+            <td style="width:20%"><xsl:value-of select="cmpdname" /></td>
+            <td style="width:20%"><xsl:value-of select="cmpdrefno" /></td>
+			<td style="width:25%"><xsl:value-of select="description" /></td>
+            <td align="right">
+                <span>
+                    <xsl:attribute name="sanid"><xsl:value-of select="sanid" /></xsl:attribute>
+                    <xsl:attribute name="class">view_button link</xsl:attribute>
+                    View
+                </span>
+            </td>
+        </tr>
+	</xsl:for-each>
+</table>
+</xsl:template>
+</xsl:stylesheet>

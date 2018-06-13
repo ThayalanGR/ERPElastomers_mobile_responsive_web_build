@@ -1,0 +1,72 @@
+<?php
+	session_start();
+	
+	header('Content-Type: text/xml');
+	
+	switch($_REQUEST["type"]){
+		case 'GETDEF':
+			$doc			=	explode('~', $_POST['invref']);
+			$list			=	"";
+			$alreadyExists	=	@getMySQLData("select docId from tbl_despatch where docId = '".$doc[1]."' and docType = '".$doc[0]."'");
+			if($alreadyExists['data'][0]['docId'] != $doc[1]){
+				switch($doc[0])
+				{
+					case 'inv':
+						$list	=	getXML("select '".$doc[0]."' as doctype, tis.invId, invConsignee, sum(invqty) as invqty, concat(invName,' - ', invDesc) as partNumber, DATE_FORMAT(invDate, '%d-%b-%Y') as invDate, invGrandTotal, if(invtype = 'cmpd' and cmpdstdpckqty > 0,ceil(sum(invqty)/cmpdstdpckqty),count(*)) as numPacks
+											from tbl_invoice_sales tis								
+												inner join tbl_invoice_sales_items tisi on tis.invId=tisi.invId and tisi.invtype != 'mix'
+												left join tbl_component tc on tc.cmpdId = tisi.invCode											
+											where tis.invId = '".$doc[1]."' and tis.status > 0  group by tis.invId", false);	
+					break;
+					case 'dc':
+						$list	=	getXML("select '".$doc[0]."' as doctype, tdc.dcId as invId, dcConsignee as invConsignee, sum(dcqty) as invqty, concat(dcName,' - ', dcDesc) as partNumber, DATE_FORMAT(dcDate, '%d-%b-%Y') as invDate, assessValue as invGrandTotal, count(*) as numPacks
+											from tbl_invoice_dc tdc								
+												inner join tbl_invoice_dc_items tdci on tdc.dcId=tdci.dcId 
+											where tdc.dcId = '".$doc[1]."' and tdc.status > 0 group by tdc.dcId", false);	
+					break;
+					case 'mold':
+						$list	=	getXML("select '".$doc[0]."' as doctype, mdIssRef as invId, operator as invConsignee, sum(qtyIss) as invqty, 'Rubber Compound' as partNumber, DATE_FORMAT(issueDate, '%d-%b-%Y') as invDate, sum(qtyIss*rate) as invGrandTotal, count(*) as numPacks
+											from tbl_moulding_issue 								
+											where mdIssRef = '".$doc[1]."' and status > 0 group by mdIssRef", false);	
+					break;
+					case 'trim':
+						$list	=	getXML("select '".$doc[0]."' as doctype, defissref as invId, operator as invConsignee, sum(issqty) as invqty, concat(cmpdName,' - ', cmpdRefNo) as partNumber, DATE_FORMAT(issdate, '%d-%b-%Y') as invDate, sum(issqty*rate) as invGrandTotal, count(*) as numPacks
+											from tbl_deflash_issue tdi
+												inner join tbl_component tc on tc.cmpdId = tdi.cmpdid
+											where defissref = '".$doc[1]."' and tdi.status > 0 group by defissref", false);	
+					break;
+					case 'tool':
+						$list	=	getXML("select '".$doc[0]."' as doctype, ttn_ref as invId, transferee_userName as invConsignee, '1' as invqty, tool_ref as partNumber, DATE_FORMAT(ttn_date, '%d-%b-%Y') as invDate, '0' as invGrandTotal, '1' as numPacks
+											from tbl_tool_transfer 
+											where ttn_ref = '".$doc[1]."' and status > 0 ", false);	
+					break;							
+				}
+			}
+			echo $list;
+		break;
+		case 'INSDESPDETS':
+			$pickedBy		=	$_REQUEST['pickedby'];
+			$vehNumber		=	$_REQUEST['vehnumber'];
+			$docIds			=	$_REQUEST['docIds'];
+			$numPacks		=	$_REQUEST['numPacks'];
+			$docTypes		=	$_REQUEST['docTypes'];
+			$totQtys		=	$_REQUEST['totQtys'];
+			$sql_ins_items	=	"insert into tbl_despatch (docId, docType, totalQty, packQty, vehNum, despPerson, despOn) values";			
+			for($lp=0;$lp<count($docIds);$lp++)
+			{				
+				$sql_ins_items	.=	" ('".$docIds[$lp]."', '".$docTypes[$lp]."', '".$totQtys[$lp]."',  '".$numPacks[$lp]."','$vehNumber','$pickedBy',now())";
+				if($lp < count($docIds)-1)
+					$sql_ins_items	.=	" ,	";
+			}
+			$res			=   @getMySQLData($sql_ins_items);				
+			if($res['status'] != 'success'){
+				echo $res['errTxt'];
+				exit();
+			}			
+			echo 'success';
+		break;		
+	}
+	
+
+	
+?>

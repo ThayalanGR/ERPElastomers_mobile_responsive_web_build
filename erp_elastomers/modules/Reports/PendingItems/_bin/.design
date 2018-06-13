@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+        <table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">	
+			<thead>	
+				<tr>
+					<th width="5%" align="left">S.No</th>		
+					<th width="10%" align="left">Part Number</th>
+					<th width="15%" align="left">Part Description</th>
+					<th width="10%" align="right">Plan. Lifts</th>
+					<th width="10%" align="right">Full Qty</th>	
+					<th width="10%" align="right">Full Val.</th>
+					<th width="10%" align="right">Pend. Lifts</th>					
+					<th width="10%" align="right">Pend. Qty</th>
+					<th width="10%" align="right">Pend. Val.</th>
+					<th align="center">#</th>
+				</tr>
+			</thead>
+			<tbody>	
+			<xsl:for-each select="xmldata/root/data/row">
+			<tr>
+				<td align="left"><xsl:value-of select="position()" /></td>			
+				<td align="left"><xsl:value-of select="cmpdname" /></td>
+				<td align="left"><xsl:value-of select="cmpdrefno" /></td>
+				<xsl:if test="operation = 'CPDISS' or operation = 'MLDRCPT'">
+					<td align="right"><xsl:value-of select='format-number(plannedlifts, "##,##,##0")' /></td>			
+					<td align="right"><xsl:value-of select='format-number(plannedqty, "##,##,##0")' /></td>
+					<td align="right"><xsl:value-of select='format-number(plannedqty * porate, "##,##,##0.00")' /></td>
+					<td align="right"><xsl:value-of select='format-number(isslifts, "##,##,##0")' /></td>	
+				</xsl:if>
+				<xsl:if test="operation != 'CPDISS' and operation != 'MLDRCPT'">
+					<td align="right">0</td>
+					<td align="right"><xsl:value-of select='format-number(plannedqty, "##,##,##0")' /></td>
+					<td align="right"><xsl:value-of select='format-number(plannedqty * porate, "##,##,##0.00")' /></td>	
+					<td align="right">0</td>
+				</xsl:if>
+				<td align="right"><xsl:value-of select='format-number(issqty, "##,##,##0")' /></td>
+				<td align="right"><xsl:value-of select='format-number(issqty * porate, "##,##,##0.00")' /></td>
+				<td align="center">
+					<span>
+						<xsl:attribute name="cmpdname"><xsl:value-of select="cmpdname" /></xsl:attribute>
+						<xsl:attribute name="operation"><xsl:value-of select="operation" /></xsl:attribute>
+						<xsl:attribute name="class">view_button link</xsl:attribute> View Details
+					</span>	
+				</td> 
+			</tr>
+			</xsl:for-each>	
+			</tbody>
+		</table>
+		<table border="0" cellpadding="6" cellspacing="0" width="100%">
+			<tr>
+				<th align="right" style="width:30%;">Grand Total</th>
+				<th align="right" id="plan_lifts_total" style="width:10%;">0</th>				
+				<th align="right" id="plan_qty_total" style="width:10%;">0</th>
+				<th align="right" id="plan_val_total" style="width:10%;">0</th>
+				<th align="right" id="iss_lifts_total" style="width:10%;">0</th>
+				<th align="right" id="iss_qty_total" style="width:10%;">0</th>
+				<th align="right" id="iss_val_total" style="width:10%;">0</th>				
+				<th align="right">&nbsp;</th>
+			</tr>
+		</table>				
+    </xsl:template>
+</xsl:stylesheet>

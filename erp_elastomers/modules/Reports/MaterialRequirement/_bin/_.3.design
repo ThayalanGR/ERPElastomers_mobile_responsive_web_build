@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<!-- To Avoid infinite value in calculation -->
+<xsl:decimal-format name='infi' infinity="0" />
+<xsl:template name="recursivesum">
+	<xsl:param name="items" />
+	<xsl:param name="sumos" select="0" />
+	<xsl:param name="sumtr" select="0" />
+	<xsl:param name="sumrq" select="0" />
+	<xsl:variable name="head" select="$items[1]" />
+	<xsl:variable name="tail" select="$items[position()>1]" />
+	<xsl:variable name="thissumos" select="number(translate($head/totrmqty,',',''))" />
+	<xsl:variable name="thissumtr" select="number(translate($head/avlrmqty,',',''))" />
+	<xsl:variable name="thissumrq" select="number(translate($head/reqrmqty,',',''))" />
+	<xsl:choose>
+		<xsl:when test="not($tail)">
+			<td align="right">
+				<xsl:value-of select="format-number($sumos+$thissumos,'###,###,##0.000')" />
+			</td>			
+			<td align="right">
+                <xsl:value-of select="format-number($sumtr+$thissumtr,'###,###,##0.000')" />
+			</td>
+			<td align="right">
+                <xsl:value-of select="format-number($sumrq+$thissumrq,'###,###,##0.000')" />
+			</td>				
+			<td align="right">
+                &#160;
+			</td>
+			<td align="right">
+                &#160;
+			</td>		
+		</xsl:when>
+		<xsl:otherwise>
+			<xsl:call-template name="recursivesum">
+				<xsl:with-param name="sumos" select="$sumos+$thissumos" />
+				<xsl:with-param name="sumtr" select="$sumtr+$thissumtr" />
+				<xsl:with-param name="sumrq" select="$sumrq+$thissumrq" />
+				<xsl:with-param name="items" select="$tail" />
+			</xsl:call-template>
+		</xsl:otherwise>
+	</xsl:choose>
+</xsl:template>
+<xsl:template match="/">
+
+	<table width="100%" border="0" class="content_table" cellspacing="0" cellpadding="0" >
+		<xsl:for-each select="xmldata/root" >
+			<tr>
+				<th colspan='7' align="center">For(in Kgs):  <xsl:value-of select="values" /></th>
+				
+			</tr>
+		</xsl:for-each>
+		<tr>
+			<th width="5%" align="left">No.</th>
+			<th width="25%">Raw Material Name</th>
+			<th width="10%">Required Qty.<sup>Kg</sup></th>
+			<th width="10%">In-Stock Qty.<sup>Kg</sup></th>
+			<th width="10%">Shortage Qty.<sup>Kg</sup></th>
+			<th width="15%">No. of Bags<sup>Nos</sup></th>
+			<th> Used In</th>					
+		</tr>
+		<xsl:for-each select="xmldata/root/data/row" >
+			<xsl:for-each select="row/ramdata" >
+				<tr>
+					<td align="left"><xsl:value-of select="sno" /></td>
+					<td align="left"><xsl:value-of select="ramname" /></td>
+					<td align="right"><xsl:value-of select="format-number(totrmqty,'###,###,##0.000')" /></td>
+					<td align="right"><xsl:value-of select="format-number(avlrmqty,'###,###,##0.000')" /></td>
+					<td align="right"><xsl:value-of select="format-number(reqrmqty,'###,###,##0.000')" /></td>							
+					<td align="center"><xsl:value-of select="packqty" /></td>
+					<td align="left"><xsl:value-of select="usedin" /></td>
+				</tr>
+			</xsl:for-each>
+			<tr style="font-weight:900">
+				<xsl:attribute name="class">content_rows_dark cust_subtot</xsl:attribute>				
+				<td colspan='2' align="center"><xsl:value-of select="classname" /> Total</td>
+				<td align="right"><xsl:value-of select="format-number(totclsrmqty,'###,###,##0.000')" /></td>
+				<td align="right"><xsl:value-of select="format-number(totclsavlqty,'###,###,##0.000')" /></td>
+				<td align="right"><xsl:value-of select="format-number(totclsreqqty,'###,###,##0.000')" /></td>
+				<td colspan='2' align="right"></td>
+			</tr>				
+		</xsl:for-each>
+		<tr style="font-weight:900">
+			<td align="center" colspan="2">Grand Total</td>
+			<xsl:call-template name="recursivesum">
+				<xsl:with-param name="items" select="xmldata/root/data/row/row/ramdata" />
+			</xsl:call-template>
+		</tr>
+	</table>
+</xsl:template>    
+</xsl:stylesheet>

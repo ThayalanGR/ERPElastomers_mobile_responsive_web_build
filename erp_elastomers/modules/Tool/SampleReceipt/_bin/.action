@@ -1,0 +1,78 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "PLANLIST":
+			$sql	=	"select planId, DATE_FORMAT(planDate,'%d-%b-%Y') as planDate, operator,part_number,part_description,toolCavities,liftPlanned,cpdName
+							from tbl_sample_plan tsp
+							inner join tbl_trn tt on tt.trnId=tsp.toolRef
+							inner join tbl_develop_request tdr on tt.rfqid=tdr.sno
+							inner join tbl_compound tcpd on tcpd.cpdId=tsp.cpdId
+						where tsp.status=1 and tt.status = 1 order by planId desc";
+			echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+		break;
+		case "PLANDET":
+			$sql	=	"select planId, DATE_FORMAT(planDate,'%d-%b-%Y') as planDate,operator,toolCavities,liftPlanned,tsp.cpdId,cmpdBlankWgt,strip_dim1,strip_dim2,strip_dim3,strip_weight,strips_per_lift,cmpdCurTime,cmpdCurTemp,cmpdPressure
+							from tbl_sample_plan tsp
+							inner join tbl_trn tt on tt.trnId=tsp.toolRef
+							inner join tbl_develop_request tdr on tt.rfqid=tdr.sno
+							inner join tbl_compound tcpd on tcpd.cpdId=tsp.cpdId
+						where tsp.planId='".$_POST['planid']."' and tsp.status=1";
+			echo @getXML($sql, false);
+		break;		
+		case "RECINS":
+			$planId			=	$_POST['planid'];
+			$blankwgt		=	str2num($_POST['blankwgt']);
+			$striplen		=	str2num($_POST['striplen']);
+			$stripbre		=	str2num($_POST['stripbre']);
+			$stripthk		=	str2num($_POST['stripthk']);
+			$stripwgt		=	str2num($_POST['stripwgt']);
+			$stripslift		=	str2num($_POST['stripslift']);
+			$curetemp		=	str2num($_POST['curetemp']);
+			$curetime		=	str2num($_POST['curetime']);
+			$curepress		=	str2num($_POST['curepress']);
+			$nooflifts		=	str2num($_POST['nooflifts']);
+			$postcuretemp	=	str2num($_POST['postcuretemp']);
+			$postcuretime	=	str2num($_POST['postcuretime']);
+			$trimoutput		=	str2num($_POST['trimoutput']);
+			$appqty			=	str2num($_POST['appqty']);
+			$userId			=	$_SESSION['userdetails']['userId'];			
+			$sql_receipt	=	"insert into tbl_sample_receipt(planId, recvDate, cpdId, operator, blank_weight, strip_dim1, strip_dim2, strip_dim3,  
+								 strip_weight, strips_per_lift, cure_temperature, cure_time, cure_pressure, act_lifts, mold_remarks, post_cure,
+								 postcure_time, postcure_temp, trim_operator, trim_output, trim_remarks, inspector, approved_qty,
+								 insp_remarks, entry_on, entry_by) values								 
+								 ('$planId', now(),'".$_POST['cpdid']."', '".$_POST['operator']."','$blankwgt','$stripthk','$striplen','$stripbre', 
+									'$stripwgt', '$stripslift', '$curetemp', '$curetime', $curepress,'$nooflifts', '".$_POST['moldremarks']."', '".$_POST['postcure']."',
+									'$postcuretime','$postcuretemp', '".$_POST['trimoperator']."', '$trimoutput', '".$_POST['trimremarks']."', '".$_POST['inspector']."', '$appqty',
+									'".$_POST['inspremark']."', now(), '$userId')";
+			$output			=	@getMySQLData($sql_receipt, "xml");
+			if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					if($status == "success"){
+						$sql		=   " insert into tbl_sample_quality(planid, rejcode, rejval) values ";
+						if(count($_POST['rejname']) > 0){
+							foreach($_POST['rejname'] as $key=>$val){
+								$rejVal	=	str2num($_POST['rejval'][$key]);
+								$sql	.=	 " ( '$planId', '$val', '$rejVal' ) ";
+								if($key < count($_POST['rejname'])-1){
+									$sql	.=	" , ";
+								}
+							}
+						}						
+						@getMySQLData($sql);
+						@getMySQLData("update tbl_sample_plan set status = 2 where planId = '$planId'");
+					}
+				}
+				else
+					$output	.= "<result_set>failed</result_set>";	
+			echo "<root>$output</root>";
+		break;	
+		case "DELETE":
+			$sql	=	"update tbl_sample_plan set status='0' where planId='".$_POST['planid']."' ";
+			echo @getMySQLData($sql,"xml");
+		break;		
+	}
+
+?>

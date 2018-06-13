@@ -1,0 +1,31 @@
+.print_table_top{ 
+	border-left:2px double black;
+	border-top:2px double black;
+	border-right:2px double black;
+	border-bottom:2px double black;
+}
+.print_table{ 
+	border-left:2px double black;
+	border-right:2px double black;
+}
+
+.print_table_bottom{
+	border-top:1px solid black;
+	border-left:2px double black;
+	border-right:2px double black;
+	border-bottom:2px double black;	
+}
+
+td,th{
+	border-top:0px solid black;
+	border-right:1px solid black;
+	border-bottom:1px solid black;
+}
+
+table { 
+	table-layout:fixed;
+}
+
+thead {
+	display: table-header-group; 
+}

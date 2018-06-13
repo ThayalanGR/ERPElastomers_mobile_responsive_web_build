@@ -1,0 +1,79 @@
+.row_header, .drill_header, .cell_header, 
+   .dbr_calendar .fc-day-header, .dbr_calendar .fc-basic-view th.fc-week-number, .dbr_calendar .fc-week-number.fc-widget-header,
+   .fc-head-container.fc-widget-header {
+	color: white;
+  background: rgb(102,156,199); /* Old browsers */
+  /* IE9 SVG, needs conditional override of 'filter' to 'none' */
+  background: rgb(102,156,199); /* Old browsers */
+  /* IE9 SVG, needs conditional override of 'filter' to 'none' */
+  background: rgb(130,180,213); /* Old browsers */
+  /* IE9 SVG, needs conditional override of 'filter' to 'none' */
+  background: -webkit-linear-gradient(top, rgba(130,180,213,1) 0%,rgba(45,120,178,1) 100%); /* Chrome10+,Safari5.1+ */
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(130,180,213,1)), color-stop(100%,rgba(45,120,178,1))); /* Chrome,Safari4+ */
+  background: -moz-linear-gradient(top, rgba(130,180,213,1) 0%, rgba(45,120,178,1) 100%); /* FF3.6+ */
+  background: -o-linear-gradient(top, rgba(130,180,213,1) 0%,rgba(45,120,178,1) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top, rgba(130,180,213,1) 0%,rgba(45,120,178,1) 100%); /* IE10+ */
+  background: linear-gradient(to bottom, rgba(130,180,213,1) 0%,rgba(45,120,178,1) 100%); /* W3C */
+}
+
+
+th.cell_ct_top, .cell_ct, .cell_ct_middle  {
+	*background-color: #1378FA;
+}
+
+tr.odd {
+	background-color: #EDF3FE;
+}
+
+.odd:hover td, .even:hover td, .popuprow:hover, .autocomplete ul li.selected {
+	background-color: #B3FF00 !important;
+}
+
+.summary {
+	font-style: italic;
+	border-top: 1px solid #a9a9a9;
+	border-bottom: 1px solid #a9a9a9;
+	background-color: #f2eaf2;
+	color: #808080;
+	vertical-align: top;
+	white-space: nowrap;
+}
+
+.summary_level0 {
+	border-bottom: 1px solid #AAA;
+}
+
+.title, .subtitle {
+	font-weight: bold;
+	color: #903;
+}
+
+td.pageview_cell1 {
+	background-color: #E8E8E8;
+	color: #333333;
+	font-weight: bold;
+}
+
+.loginerr {
+	text-shadow: black 0px 1px 0px;
+}
+
+div.pager, button.pager {
+	background-color: #007EAF;
+}
+
+
+table.sortable thead tr .headerSortUp {
+	background-image: url(data:image/gif;base64,R0lGODlhCgAEAJEAAAAAAP///wAAAAAAACH5BAkKAAIALAAAAAAKAAQAAAIKjB+igrl63nOvAAA7);
+}
+table.sortable thead tr .headerSortDown {
+	background-image: url(data:image/gif;base64,R0lGODlhCgAEAJEAAAAAAP///wAAAAAAACH5BAkKAAIALAAAAAAKAAQAAAIKlGOZwXrcFoSpAAA7);
+}
+
+td.nobottom {
+	border-bottom: none;
+}
+.dbr_calendar .fc-week-number.fc-widget-header {
+  font-weight: bold;
+} 
+

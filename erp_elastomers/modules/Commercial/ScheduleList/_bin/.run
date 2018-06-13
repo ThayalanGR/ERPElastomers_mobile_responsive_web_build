@@ -1,0 +1,240 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+monthNames		= 	new Array();
+monthNames[1]	= 	"January";
+monthNames[2]	= 	"February"; 
+monthNames[3]	= 	"March"; 
+monthNames[4]	= 	"April"; 
+monthNames[5]	=	"May"; 
+monthNames[6]	=	"June";
+monthNames[7]	=	"July";
+monthNames[8]	=	"August"; 
+monthNames[9]	=	"September"; 
+monthNames[10]	=	"October"; 
+monthNames[11]	=	"November"; 
+monthNames[12]	=	"December";
+XSLFile			=	[XSLPath + "_1.design", XSLPath + "_2.design"];
+details			=	"";
+param			=	"";
+	
+function getScheduleData(){
+	selMonth			=	$("#to_date").val();
+	param				=	"selecttype=GETCUSDETAIL" +
+							"&outtype=xml" +
+							"&opt_code=" + $(".option:checked").val() +
+							"&grouping=" + $("#groupby").val() +
+							"&comptype=" + $("#comptype").val() +
+							"&value=" + selMonth ;
+	details				=	postback(actionFile, param, "POST", "XML");
+	//$("#content_body").html(details); return false;
+	listPageData($("#content_body"), details, XSLFile[0]);
+	setGrandTotal("#content_body");
+}
+
+function setGrandTotal(divName)
+{
+	varName		=	"grd";
+	avgmonth 	= 	0;
+	preschqty 	= 	0;
+	preschval 	= 	0;
+	percent 	= 	0;
+	schqty		= 	0;
+	schval		= 	0;
+	disqty 		= 	0;
+	disval		= 	0;
+	penqty		= 	0;
+	penval		= 	0;
+	comp		= 	0;
+	$(divName +" .cust_subtot").each(function(index, element){
+		avgM		=	($(this).find("td:eq(1)").html())? Number($(this).find("td:eq(1)").html().split(",").join("")):0;  
+		preschQ		=	($(this).find("td:eq(2)").html())? Number($(this).find("td:eq(2)").html().split(",").join("")):0; 
+		preschV		=	($(this).find("td:eq(3)").html())? Number($(this).find("td:eq(3)").html().split(",").join("")):0; 
+		perc		=	($(this).find("td:eq(4)").html())? Number($(this).find("td:eq(4)").html().split(",").join("")):0; 
+		schQ		=	($(this).find("td:eq(6)").html())? Number($(this).find("td:eq(6)").html().split(",").join("")):0; 
+		schV		=	($(this).find("td:eq(7)").html())? Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+		disQ		=	($(this).find("td:eq(8)").html())? Number($(this).find("td:eq(8)").html().split(",").join("")):0; 
+		disV		=	($(this).find("td:eq(9)").html())? Number($(this).find("td:eq(9)").html().split(",").join("")):0;
+		penQ		=	($(this).find("td:eq(10)").html())? Number($(this).find("td:eq(10)").html().split(",").join("")):0; 
+		penV		=	($(this).find("td:eq(11)").html())? Number($(this).find("td:eq(11)").html().split(",").join("")):0;
+		com			=	($(this).find("td:eq(12)").html())? Number($(this).find("td:eq(12)").html().split(",").join("")):0; 
+		
+		avgmonth 	=	avgmonth	+ 	(isNaN(avgM)?		0	:	avgM);
+		preschqty 	=	preschqty 	+ 	(isNaN(preschQ)?	0	:	preschQ);
+		preschval 	=	preschval 	+ 	(isNaN(preschV)?	0	:	preschV);
+		schqty	 	=	schqty 		+ 	(isNaN(schQ)?		0	:	schQ);
+		schval	 	=	schval 		+ 	(isNaN(schV)?		0	:	schV);
+		disqty	 	=	disqty 		+ 	(isNaN(disQ)?		0	:	disQ);
+		disval 		=	disval		+ 	(isNaN(disV)?		0	:	disV);
+		penqty 		=	penqty		+ 	(isNaN(penQ)?		0	:	penQ);
+		penval 		=	penval		+ 	(isNaN(penV)?		0	:	penV); 
+		
+	});
+	if(preschval != 0 && schval != 0)
+		percent 	=	(((schval - preschval)/preschval) * 100);
+		
+	if(schval != 0 && disval != 0)
+		comp	 	=	((disval/schval) * 100);
+		
+	if(divName == "#content_body")
+	{		
+		varName	=	"grand";
+	}
+	
+	$("#"+varName+"AvgMonth").html(avgmonth.toCurrency(0)); 
+	$("#"+varName+"PreSchQty").html(preschqty.toCurrency(0));
+	$("#"+varName+"PreSchVal").html(preschval.toCurrency(0));
+	$("#"+varName+"Percent").html(percent.toCurrency(0));
+	$("#"+varName+"SchQty").html(schqty.toCurrency(0));
+	$("#"+varName+"SchVal").html(schval.toCurrency(0));
+	$("#"+varName+"DisQty").html(disqty.toCurrency(0));
+	$("#"+varName+"DisVal").html(disval.toCurrency(0));
+	$("#"+varName+"PenQty").html(penqty.toCurrency(0));
+	$("#"+varName+"PenVal").html(penval.toCurrency(0));
+	$("#"+varName+"Comp").html(comp.toCurrency(0));	
+}
+
+function generateReport(printOption,newQuery,isHtmlCont)
+{
+	windowName			=	"PrintWindow";
+	opt_code			=	$(".option:checked").val();
+	selMonth			=	$("#to_date").val();
+	exMessage			=	"";
+	hdrTitle			=	"";
+	penval				=	$("#penval").val();
+	joincond			=	$("#joincond").val();
+	if(newQuery)
+	{
+		objDetails		=	postback(actionFile, param+"&condition=1&percent="+$("#percent").val()+"&oper="+$("#oper").val()+"&joincond="+joincond+"&penval="+penval.toNumber(), "POST", "XML");
+		exMessage		=	" for Desp. Qty "  + $("#oper option:selected").text() + " " + $("#percent option:selected").text() + " of Sched. Qty " + joincond + " Pending Value greater than "+penval.toNumber();
+	}
+	else
+	{
+		objDetails		=	details;
+	}	
+	xslFile				= 	(printOption == "Summary")?XSLFile[1]:XSLFile[0];		
+	tDate 				= 	new Date();
+	today				=	tDate.getDate()+"-"+(tDate.getMonth()+1)+"-"+tDate.getFullYear();
+
+	if(isHtmlCont == 1)
+	{
+		opt_code 	= 	"component";
+		grouping	=	getUrlParameter('grouping');	
+		mix_type	=	getUrlParameter('mixtype');
+		monthVal	=	(tDate.getMonth() > 0)?monthNames[tDate.getMonth()]:monthNames[1]; 
+		yearVal		=	(tDate.getMonth() > 0)?tDate.getFullYear():tDate.getFullYear() - 1;
+		selMonth	=	monthVal + " " + yearVal;
+		htmlCont	=	"";
+		if(printOption == "Exception")
+		{
+			htmlCont	=	postback(actionFile, "selecttype=GETCUSDETAIL&comptype=ALL&opt_code="+opt_code+"&grouping="+ grouping +"&value="+selMonth+"&condition=1&percent=0.3&oper=1&joincond=and&penval=10000&conToHTML=1&xslfile="+xslFile, "POST", "XML");
+			exMessage	=	" for Desp. Qty Lesser Than 30% of Sched. Qty and Pending Value greater than Rs. 10,000";
+		}
+		else
+		{		
+			htmlCont	=	postback(actionFile, "selecttype=GETCUSDETAIL&comptype=ALL&opt_code="+opt_code+"&grouping="+ grouping +"&value="+selMonth+"&conToHTML=1&xslfile="+xslFile, "POST", "XML");
+		}
+		$("#print_body").html(htmlCont);
+		windowName	=	"_self";
+		hdrTitle	=	$("#groupby option").find(grouping).text()+ " " + printOption + " Report for " + selMonth + exMessage  ;
+	}
+	else
+	{
+		listPageData($("#print_body"), objDetails, xslFile);
+		if(opt_code == "component")
+			hdrTitle	=	$("#groupby option:selected").text()+ " " + printOption + " Report for " + selMonth + exMessage  ;
+		else
+			hdrTitle	=	printOption + " Report for " + selMonth + exMessage;		
+	}	
+	$("#hdr_date").html(today);
+	$("#hdr_title").html(hdrTitle);
+	$("#hdr_head").html(opt_code.capitalize());
+	setGrandTotal("#print_body");
+	$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");	
+	var DocumentContainer = document.getElementById('print_item_form');
+	var WindowObject = window.open("",windowName);
+	WindowObject.document.writeln(DocumentContainer.innerHTML);
+	loader = document.createElement('link');
+	loader.href = "/style/printTable.css";
+	loader.rel = "stylesheet";
+	WindowObject.document.head.appendChild(loader);	
+	WindowObject.document.close();
+	WindowObject.focus();
+}
+
+function generateMonthlyReport()
+{
+	selMonth	=	$("#to_date").val();
+	nummonth	=	$("#nummonth").val();
+	percent		=	$("#percent").val();
+	oper		=	$("#oper").val();
+	penval		=	$("#penval").val();
+	joincond	=	$("#joincond").val();	
+	args		=	"selecttype=GETMONTHLYDETAILS" +
+						"&outtype=xml" +
+						"&value=" + selMonth +
+						"&nummonth=" + nummonth +
+						"&joincond=" + joincond +
+						"&penval=" + penval.toNumber() +
+						"&percent=" + percent +
+						"&oper=" + oper;
+	objDetails	=	postback(actionFile, args, "POST", "XML");
+	//alert(objDetails);
+	//$("#content_body").html(objDetails); return false;	
+	filename 	= 	"sch_vs_dis_report_for_last_"+nummonth+"_months.csv";
+	var blob 	= 	new Blob([objDetails], { type: 'text/csv;charset=utf-8;' });
+	var link 	= 	document.createElement("a");
+	var url 	= 	URL.createObjectURL(blob);
+	link.setAttribute("href", url);
+	link.setAttribute("download", filename);
+	link.style.visibility = 'hidden';
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+}
+
+function openReport(){
+	openInvoice({mod:"report",invID:$("#no_months").val()});
+}
+// -------------------------------------------------------------------------------------------------------------------------------------- //
+
+$(document).ready(function(){
+	$(".option").change(function(){
+		getScheduleData();
+	});
+	
+	if (getUrlParameter('type') == 'schedulelist' )
+	{	
+		generateReport(getUrlParameter('reporttype'),false,1);
+	}
+	else
+	{			
+		getScheduleData();
+	}
+	//MonthPicker
+	$('#to_date').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	}).bind('monthpicker-click-month', function (e, month) {
+    	getScheduleData();
+	})
+
+	$("#button_submit").button().click(function(){	
+		generateReport("Detailed",false);
+	});	
+	
+	$("#button_submit_ps").button().click(function(){	
+		generateReport("Summary",false);
+	});	
+	
+	$("#button_submit_ls").button().click(function(){	
+		generateReport("Detailed",true);
+	});	
+	
+	$("#button_submit_ld").button().click(function(){	
+		generateReport("Summary",true);
+	});	
+
+	$("#button_submit_pm").button().click(function(){	
+		generateMonthlyReport();
+	});
+
+});

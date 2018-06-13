@@ -1,0 +1,110 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	
+	switch($_POST["selecttype"]){
+		case "GETVAL":						
+			$sql_invoice	=	"select tiq.rfqid,quoteref,DATE_FORMAT(quotedate, '%d-%b-%Y') as quotedate,application,cusName,part_number,part_description,cpd_base_polymer,ave_monthly_req,target_price,finalcost,tooldevopt,tl_insert_used
+									from tbl_invoice_quote tiq 										 
+										inner join tbl_develop_request tdr on tiq.rfqid=tdr.drId 
+										inner join tbl_develop_feasibility tdf on tdr.sno=tdf.prod_ref
+										inner join tbl_customer tc on tdr.cusId=tc.cusId
+									where tdr.status = 3 order by quoteref desc";
+			$list			=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list			=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";											
+		break;
+		case "GETINSERTLIST":
+			$output		=	@getMySQLData("select ramId, ramName from tbl_rawmaterial where status>0 and ramClass = 7 ", 'xml', 'xmldata', 'lower');
+			echo $output;
+		break;		
+		case "COMPAPPROVE":
+			$rfqId			=	$_POST['rfqid'];
+			$cmpdIns		=	$_POST['cmpdinsert'];
+			$userId			=	$_SESSION['userdetails']['userId'];
+			$codeArray		=	@getSettingsData("cmpdcode");
+			$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);	
+			$sql_rfq_dtls	=	@getMySQLData("select tdr.cusId,part_number,part_description,prodwgt,blankwgt,drawing_revision,drawing_date,cpd_cpdid,cpdName,ave_monthly_req,drawing_file_name,tdf.prod_insp_rate,tdf.prod_rej_rate
+												from tbl_develop_request tdr 										 
+													inner join tbl_develop_feasibility tdf on tdr.sno=tdf.prod_ref
+													inner join tbl_invoice_quote tiq on tiq.rfqid=tdr.drId
+													inner join tbl_customer tc on tdr.cusId=tc.cusId
+													left join tbl_compound tcpd on tdf.cpd_cpdid=tcpd.cpdId
+												where tdr.drId='$rfqId'","arr");
+			$rfqDetails		=	$sql_rfq_dtls['data'][0];
+			$cmpdName		=	$rfqDetails['part_number'];
+			$cpdName		=	$rfqDetails['cpdName'];
+			$cpdId			=	($cpdName != null && $cpdName != '')?$rfqDetails['cpd_cpdid']:"";
+			$existCmpdDtls	=	@getMySQLData("select cmpdId from tbl_component where cmpdName = '$cmpdName'");
+			$cmpdId			=	$existCmpdDtls['data'][0]['cmpdId'];			
+			if($cmpdId != null && $cmpdId != ""){
+				$cmpdSQL		=	"update tbl_component  set 	cmpdRefNo = '".$rfqDetails['part_description']."',
+																cmpdname = '$cmpdName',
+																cmpdProdGroup = '".$_POST['cmpdprodgroup']."',
+																cmpdHSN = '".$_POST['cmpdhsn']."',																
+																cmpdApp = '".$_POST['cmpdapp']."',
+																cmpdSubAss= '".$_POST['cmpdsubass']."',
+																cmpdOff= '".$_POST['cmpdoffs']."',
+																cmpdProdWgt= '".($rfqDetails['prodwgt']*1000)."',
+																cmpdBlankWgt= '".($rfqDetails['blankwgt']*1000)."',
+																cmpdDrawRef= '$cmpdName',
+																cmpdDrawFile= '".$rfqDetails['drawing_file_name']."',
+																cmpdDrawRev = '".$rfqDetails['drawing_revision']."',
+																cmpdDrawDate = '".$rfqDetails['cmpdDrawDate']."',
+																cmpdCpdId = '$cpdId',
+																cmpdCpdName = '$cpdName',
+																cmpdAMR = '".$rfqDetails['ave_monthly_req']."',
+																cmpdInspRate = '".$rfqDetails['prod_insp_rate']."',
+																cmpdRejPer = '".$rfqDetails['prod_rej_rate']."',
+																update_on = now(),
+																update_by = '$userId'
+										where cmpdId = '$cmpdId'";
+			}
+			else {
+				$cmpdId			=	$codeNo;
+				$cmpdSQL		=	"insert into tbl_component(cmpdId,cmpdRefNo,cmpdname,cmpdProdGroup,cmpdHSN,cmpdApp,
+															cmpdSubAss,	cmpdOff,cmpdProdWgt,cmpdBlankWgt,
+															cmpdDrawRef,cmpdDrawFile,cmpdDrawRev,cmpdDrawDate,cmpdCpdId,
+															cmpdInspRate,cmpdRejPer,cmpdCpdName,cmpdAMR,entry_on,entry_by) values";					
+				$cmpdSQL		.=	"('$cmpdId', '".$rfqDetails['part_description']."', '$cmpdName', '".$_POST['cmpdprodgroup']."','".$_POST['cmpdhsn']."','".$_POST['cmpdapp']."',
+										'".$_POST['cmpdsubass']."', '".$_POST['cmpdoffs']."', '".($rfqDetails['prodwgt']*1000)."', '".($rfqDetails['blankwgt']*1000)."',
+										'$cmpdName', '".$rfqDetails['drawing_file_name']."', '".$rfqDetails['drawing_revision']."', '".$rfqDetails['cmpdDrawDate']."', '$cpdId',
+										'".$rfqDetails['prod_insp_rate']."', '".$rfqDetails['prod_rej_rate']."', '$cpdName', '".$rfqDetails['ave_monthly_req']."', now(), '$userId')";
+			}
+			//echo $cmpdSQL ; exit();
+			$poSQL			=	"insert into tbl_customer_cmpd_po_rate(cusId, cmpdId, cmpdName, poRef, poDate, poRate, poQty,insertValue) values";				
+			$poSQL			.=	"('".$rfqDetails['cusId']."', '$cmpdId', '$cmpdName', '".$_POST['poref']."', '".$_POST['podate']."', '".$_POST['porate']."', '".$_POST['poqty']."', '".$_POST['poinsval']."')";
+			//echo $poSQL ; exit();
+			$output			=	@getMySQLData($cmpdSQL, "xml");
+			if($output != ""){
+				$status		=	split("<status>", $output);
+				$status		=	split("</status>", $status[1]);
+				$status		=	$status[0];				
+				if($status == "success"){
+					$output		.=	@getMySQLData($poSQL, "xml");					
+					// Add Inserts
+					if(is_array($cmpdIns) && count($cmpdIns) > 0){
+						$appSql		=	"insert into tbl_component_insert(
+											cmpdId, ramId
+										 ) values";
+						
+						for($cr=0; $cr<count($cmpdIns); $cr++){
+							$appSql		.=	"(
+												'$cmpdId', '".$cmpdIns[$cr]."'
+											 )".(($cr == (count($cmpdIns)-1))?'':', ');
+							
+						}
+						$output	.=	@getMySQLData($appSql, "xml");
+					}					
+					//if newly created
+					if($cmpdId == $codeNo)
+						@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='cmpdcode'");
+					@getMySQLData("update tbl_develop_request set status='4', cmpdId='$cmpdId',approval_date = now() where drId='$rfqId'");
+				}
+			}				
+			echo "<root>$output</root>";			
+			break;	
+
+	}
+
+?>

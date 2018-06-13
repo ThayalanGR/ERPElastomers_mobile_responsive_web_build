@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+   <xsl:template match="/"> 
+		<table id="resultTable" class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="5%">SNo</th>
+					<th width="20%">Compound</th> 
+					<th width="15%">Polymer</th>
+					<th width="10%">Iss. Lifts</th>
+					<th width="10%">Act. Lifts</th>
+					<th width="10%">Compl. %</th>					
+					<th width="10%">Short. Lifts</th>
+					<th width="10%">Short. Comp. Qty<sup>Kg</sup></th>    
+					<th>Ret. Comp. Qty<sup>Kg</sup></th>
+				</tr>
+			</thead>
+			<tbody>	
+            <xsl:for-each select="xmldata/root/data/row">
+				<tr>
+					<td align="left">
+						<xsl:value-of select="position()"/>
+					</td>					
+					<td align="left">	
+							<span>
+								<xsl:attribute name="cpdid"><xsl:value-of select="cpdid"/></xsl:attribute>
+								<xsl:attribute name="cpdname"><xsl:value-of select="cpdname"/></xsl:attribute>
+								<xsl:attribute name="class">view_button link</xsl:attribute> <xsl:value-of select="cpdname"/>
+							</span>
+					</td>					  
+					<td align="left">
+						<xsl:value-of select='cpdpolymer' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(plannedlifts,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(actuallifts,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number((actuallifts div plannedlifts) * 100,"##,##,##0")' />
+					</td>						
+					<td align="right">
+						<xsl:value-of select='format-number(plannedlifts - actuallifts,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(totalcpdplan - cpdqtyused,"##,##,##0.000")' />
+					</td>		
+					<td align="right">
+						<xsl:value-of select='format-number(cpdreturned,"##,##,##0.000")' />
+					</td>
+				</tr>
+            </xsl:for-each>		
+			</tbody> 
+		</table>
+    </xsl:template>		
+</xsl:stylesheet>
+		

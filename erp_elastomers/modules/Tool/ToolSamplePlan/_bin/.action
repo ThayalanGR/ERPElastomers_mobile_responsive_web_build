@@ -1,0 +1,67 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	global $cmpdMonthCode;
+	switch($_POST["type"]){
+		case "TOOLDET":
+			$sql	=	"select trnId, DATE_FORMAT(trnDate,'%d-%b-%Y') as trnDate, rfqid,ifnull(supName,'NA as Existing Tool') as supName,cusName,part_number,part_description,toolSize,toolCavities,moldprocess,moldtype,ifnull(cpd_cpdid,tcomp.cmpdcpdid) as cpd_cpdid,tl_blank_wgt,cpd_cure_time,cpd_cure_temp,cpd_cure_press 
+							from tbl_trn tt
+							inner join tbl_develop_request tdr on tt.rfqid=tdr.sno
+							left join tbl_develop_feasibility tdf on tt.rfqid=tdf.prod_ref
+							left join tbl_component tcomp on tdr.cmpdid=tcomp.cmpdid
+							inner join tbl_customer tc on tdr.cusId=tc.cusId
+							left join tbl_supplier ts on ts.supId=tt.supId
+						where tt.status=1 order by trnId desc";
+			echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+		break;
+		case "PLANINS":
+			$prodDate			=	$_POST['plandate'];
+			$blankwgt			=	@preg_replace("/[,]/", "", $_POST['blankwgt']);
+			$striplen			=	@preg_replace("/[,]/", "", $_POST['striplen']);
+			$stripbre			=	@preg_replace("/[,]/", "", $_POST['stripbre']);
+			$stripthk			=	@preg_replace("/[,]/", "", $_POST['stripthk']);
+			$stripwgt			=	@preg_replace("/[,]/", "", $_POST['stripwgt']);
+			$stripslift			=	@preg_replace("/[,]/", "", $_POST['stripslift']);
+			$advtemp			=	@preg_replace("/[,]/", "", $_POST['advtemp']);
+			$advcuretime		=	@preg_replace("/[,]/", "", $_POST['advcuretime']);
+			$advpress			=	@preg_replace("/[,]/", "", $_POST['advpress']);
+			$nooflifts			=	@preg_replace("/[,]/", "", $_POST['nooflifts']);
+			list($y, $m, $d) 	= 	explode('-', $prodDate);
+			$partPlanId			=	"S".$cmpdMonthCode[$m+0]. $d;
+			$financialYear		= 	$y;
+			if ( $m < 4)
+			{
+				$financialYear	= 	$y - 1;
+			}
+			$financialYear		=	(string) $financialYear;
+			$lastPlanId_sql		=	@getMySQLData("SELECT count(*) as lastPlanId FROM tbl_sample_plan where planDate = '".$prodDate."'");
+			$codeNumber 		= 	0;
+			if($lastPlanId_sql['count'] >0)
+			{
+				$codeNumber		=	$lastPlanId_sql['data'][0]['lastPlanId'];	
+			}
+			$codeNumber++;
+			if($codeNumber < 10){
+				$codeNumber	=	"0".$codeNumber;
+			}
+			$codeNo			=	$partPlanId . $codeNumber."_".substr($financialYear,-2);
+			$userId			=	$_SESSION['userdetails']['userId'];			
+			$sql_grn		=	"insert into tbl_sample_plan(planId, planDate, rfqId, toolRef, cpdId, operator, cmpdBlankWgt, strip_dim1, strip_dim2, strip_dim3,  
+								 strip_weight, strips_per_lift, cmpdCurTemp,cmpdCurTime,cmpdPressure, liftPlanned, entry_on, entry_by) values								 
+								 ('$codeNo', '$prodDate','".$_POST['rfqid']."','".$_POST['toolid']."','".$_POST['cpdid']."', '".$_POST['operator']."','$blankwgt','$stripthk','$striplen','$stripbre', 
+									'$stripwgt', '$stripslift', '$advtemp', '$advcuretime', $advpress,'$nooflifts', now(), '$userId')";
+			$output			=	@getMySQLData($sql_grn, "xml");
+			if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					if($status == "success")
+						$output	.= "<result_set><planid>$codeNo</planid></result_set>";	
+				}
+				else
+					$output	.= "<result_set>failed</result_set>";	
+			echo "<root>$output</root>";
+		break;			
+	}
+
+?>

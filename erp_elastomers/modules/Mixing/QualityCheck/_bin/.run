@@ -1,0 +1,358 @@
+var XSLFile					=	[XSLPath + "_1.design", XSLPath + "_2.design"];
+
+$(document).ready(function(){
+
+	
+	$("#print_list").button().click(function(){
+		invIds 		= 	"";
+		$('.checkbox1').each(function() { 
+			if(this.checked == true)
+			{
+				if(invIds != "")
+					invIds += ",";
+				invIds += this.id;				
+			}
+		});		
+		
+		if(invIds.length == "" )
+		{
+			alert("Please select atleast one Compound for Printing");
+			return false;
+		}
+
+		$("#print_item_form").css('visibility', 'visible');
+		objList		=	postback(actionFile, "type=GETTESTPLAN&invID="+invIds, "POST","XML");
+		$("#print_item_form").dialog({
+										modal:true,
+										minWidth:'1200',
+										resizable:false,									
+										open: function(event, ui) {
+											listPageData($("#print_body"), objList, XSLFile[1]);
+											var today = new Date();											
+											$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+											$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");
+										}									
+									});	
+		var DocumentContainer = document.getElementById('print_item_form');
+		$("#print_item_form").dialog('close');
+		var WindowObject = window.open("","PrintWindow");
+		WindowObject.document.writeln(DocumentContainer.innerHTML);	
+		loader = document.createElement('link');
+		loader.href = "/style/printTable.css";
+		loader.rel = "stylesheet";
+		WindowObject.document.head.appendChild(loader);	
+		WindowObject.document.close();
+		WindowObject.focus();
+
+	});
+
+	$("#qc_popup").dialog({
+		autoOpen:false,
+		modal:true,
+		minWidth:'700',
+		resizable:false,
+		buttons: [
+			{
+				text: "Generate",
+				click: function(){
+					$(this).css("default");
+					if(typeof addFullTestData == "function"){
+						addFullTestData();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Cancel",
+				click: function(){
+					$(this).dialog("close"); 
+				}
+			}
+		],
+		close:function(){
+			$("#quality_chk_comp table tr:gt(0)").remove();
+			$("#qc_error").css("display", "none");
+		}
+	});		
+
+	$("#button_submit").button().click(function(){
+		var inputs = $("#content_body").find(":input");
+		if(inputs.length > 0)
+		{
+			updateCont   =   '<table width="100%" >' +
+									'<tr><td><b>Are you Sure to Update the Values?</b></td></tr>' +
+									'</table>';	
+			$('#confirm_dialog').html(updateCont).dialog({
+				title:'Update',
+				width:300,
+				height:125,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'YES':function(){
+						$(this).dialog('close');
+						addParamData();
+					},
+					'NO':function(){
+					   $(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+			});	
+		}
+		else
+		{			
+			alert(" No Items to be updated!!!");
+		}
+
+	});
+	
+	$("#button_cancel").button().click(function(){
+		var inputs = $("#content_body").find(":input");
+		if(inputs.length > 0)
+		{
+			updateCont   =   '<table width="100%" >' +
+									'<tr><td><b>Are you Sure to Clear all the Entries?</b></td></tr>' +
+									'</table>';	
+			$('#confirm_dialog').html(updateCont).dialog({
+				title:'Create',
+				width:300,
+				height:125,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'YES':function(){
+						$(this).dialog('close');
+						createAutoComplete();
+					},
+					'NO':function(){
+					   $(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+			});	
+		}
+		else
+		{				
+			alert(" No Items to be cleared!!!");
+		}
+	});
+	createAutoComplete();
+});
+
+function runRheoDBUpdate(){
+	displayError($("#raise_error"), "highlight", "<img src='/images/loader_16.gif' align='absmiddle' /> <strong>Running Job . . .</strong>");
+	resData		=	postback(actionFile, "type=RUNJOB&manual=1", "POST", "XML");
+	//alert(resData);
+	result		=	resData.split("~");
+	if(result[0].trim() == 'success')
+	{
+		displayError($("#raise_error"), "highlight", "<strong>Success !</strong> - " + result[1]);
+	}
+	else
+	{
+		displayError($("#raise_error"), "error", "<strong>Error !</strong> - Failed to update Quality Check Data - " + resData);
+		return false;			
+	}
+}
+
+function createAutoComplete(){
+	var objList		=	postback(actionFile,"type=GETITEMS","POST","XML");
+	//$("#content_body").html(objList); return false;
+	listPageData($("#content_body"), objList, XSLFile[0]);
+	
+	$("#content_body a").click(function(e) {
+        batId	=	$(this).attr('batid');
+        cpdId	=	$(this).attr('cpdid');
+		dispGRN(batId, cpdId);
+    });	
+
+	$('#input_select_all').click(function(event) { 
+		if(this.checked) { 
+			$('.checkbox1').each(function() { 
+				this.checked = true;                
+			});
+		}else{
+			$('.checkbox1').each(function() { 
+				this.checked = false;                        
+			});         
+		}
+	});	
+	
+	$(".checkbox1").click(function(e){
+		if(this.checked) {
+				this.checked = true;                
+		}else{
+				this.checked = false;                        
+		}
+	});		
+}
+
+function dispGRN(inpVal, cId){
+	populateLiveScreenPatient(true,inpVal, cId);
+	$("#qc_popup").dialog('open');
+	$("#content_footer").css({ display:'block' });
+}
+
+function getParamValue(obj){
+	batId		=	$(obj).attr('batid'); 
+	paramName 	=	$(obj).attr('param');
+	if(paramName == 'HARDNESS')
+	{
+		obsA	=	$("#hard_"+batId+"_A").val();
+		obsB	=	$("#hard_"+batId+"_B").val()
+		hardVal	=	(Number(obsA) + Number(obsB))/ 2;
+		hardUL	=	$("#hard_"+batId).attr("ullimit");
+		hardLL	=	$("#hard_"+batId).attr("llimit");
+		if(hardVal > Number(hardUL) || hardVal < Number(hardLL))
+			$("#hard_"+batId).attr("style","color:red");
+		else
+			$("#hard_"+batId).attr("style","color:auto");
+		$("#hard_"+batId).html(getCurrency(hardVal, 0));
+	}
+	else
+	{
+		obsA	=	$("#spgr_"+batId+"_A").val();
+		obsB	=	$("#spgr_"+batId+"_B").val();
+		spgrVal	=	(Number(obsA) / (Number(obsA) - Number(obsB)));
+		spgrUL	=	$("#spgr_"+batId).attr("ullimit");
+		spgrLL	=	$("#spgr_"+batId).attr("llimit");
+		if(spgrVal > Number(spgrUL) || spgrVal < Number(spgrLL))
+			$("#spgr_"+batId).attr("style","color:red");
+		else
+			$("#spgr_"+batId).attr("style","color:auto");	
+		$("#spgr_"+batId).html(getCurrency(spgrVal, 2));
+	}
+}
+
+//get live patient list
+function populateLiveScreenPatient(pRebind, ID, cId){
+	var objLiveScreenPatientDetail = postback(actionFile, "type=GETTESTDET&cpdid="+cId, "POST", "XML");
+	$("#quality_chk_comp table tr:gt(0)").remove();
+	$(objLiveScreenPatientDetail).find("row").each(function(index, element) {
+		trClass		=	"content_rows" + ((index%2)?"_light":"_dark");
+		trData		=	"<tr class='" + trClass + "'>" +
+							"<td width='15%' batid='" + ID + "' cpdid='" + $(element).find("cpdid").html() + "'>" + $(element).find("cpdname").html() + "</td>" +
+							"<td width='25%' param='" + $(element).find("cpdqanparamref").html() + "'>" + $(element).find("paramname").html() + "</td>" +
+							"<td width='12%' align='right'>" + $(element).find("cpdqanspec").html() + "</td>" +
+							"<td width='15%' align='right'>" + $(element).find("cpdqanllimit").html() + "</td>" +
+							"<td width='15%' align='right'>" + $(element).find("cpdqanulimit").html() + "</td>" +
+							"<td align='right' style='padding:3px;'><input type='text' value='0.00' class='invisible_text' style='width:70%;text-align:right;' onfocus='FieldHiddenValue(this, \"in\", \"0.00\")' onblur='FieldHiddenValue(this, \"out\", \"0.00\")' /></td>" +
+						"</tr>";
+		$("#quality_chk_comp table tr:last").after(trData);
+    });
+}
+
+function addParamData(){
+	paramString	=	"";	
+	errorFlag	=	false;
+	$("#content_body table tr:gt(0)").each(function(index, element){
+		dispBatid	=	$(this).find("td:eq(1)").html();
+		batid		=	$(this).find("td:eq(10)").attr('batid');
+		cpdid		=	$(this).find("td:eq(10)").attr('cpdid');
+		paramref	=	$(this).find("td:eq(10)").attr('paramref');
+		paramVal	=	$(this).find("td:eq(10)").html();
+		paramVal1	=	$("#hard_"+batid).html();
+		paramref1	=	$("#hard_"+batid).attr('paramref');
+		if((paramVal1 > 0 && !(paramVal > 0)) || (paramVal > 0 && !(paramVal1 > 0)))
+		{
+			paramVal	=	0;
+			$("#hard_"+batid+"_A").focus();
+			displayError($("#raise_error"), "error", "<strong>Error !</strong> - Please Enter values for both Hardness & Specific Gravity for batch ID:" + dispBatid);
+			errorFlag	=	true;
+			return false;
+		}
+		
+			
+		if ( paramVal > 0 )
+		{
+			paramString	+=	"&batid[]=" + batid +
+							"&cpdid[]=" + cpdid +
+							"&qalparam[]=" + paramref +
+							"&data[]=" + paramVal+	
+							"&batid[]=" + batid +
+							"&cpdid[]=" + cpdid +
+							"&qalparam[]=" + paramref1 +
+							"&data[]=" + paramVal1;				
+		}
+	});
+	if (errorFlag)
+		return false;
+
+	if(paramString != ""){
+		getString	=	"type=APPROVE" + paramString;
+		//alert(getString); return false;
+		displayError($("#raise_error"), "highlight", "<img src='/images/loader_16.gif' align='absmiddle' /> <strong>Adding Data to Server . . .</strong>");
+		result	=	postback(actionFile, getString, "POST", "XML");
+		if(result.trim() == 'success' )
+		{
+			createAutoComplete();
+		}
+		else
+		{
+			displayError($("#raise_error"), "error", "<strong>Error !</strong> - Failed to update Quality Check Data - " + result);
+			return false;			
+		}
+	}
+	else
+	{
+		displayError($("#raise_error"), "error", "<strong>Error !</strong> - Enter atleast one value for updation!");
+		return false;	
+	}
+}
+
+function addFullTestData(){
+	okay		=	true;
+	data		=	new Array();
+	param	 	=	new Array();
+	paramString	=	"";						
+	$("#quality_chk_comp tr:gt(0)").each(function(){		
+		batid	=	$("#quality_chk_comp tr:eq(1) td:eq(0)").attr('batid');
+		cpdid	=	$("#quality_chk_comp tr:eq(1) td:eq(0)").attr('cpdid');	
+		val		=	$(this).find("td:eq(1)").attr("param");
+		reg		=	$(this).find("td:last input:text").val();	
+		ul		=	Number($(this).find("td:eq(4)").text());
+		ll		=	Number($(this).find("td:eq(3)").text());		
+		if(reg == null || reg == "" || isNaN(reg) || Number(reg) <= 0){
+			displayError($("#qc_error"), "error", "<strong>Error !</strong> - Invalid Observation ! ! !");
+			$(this).find("td:last input:text").focus();
+			okay		=	false;
+			return false;
+		}
+		else if(reg < ll || reg > ul){
+			displayError($("#qc_error"), "error", "<strong>Error !</strong> - Observation Value must be between Lower Limit and Upper Limit ! ! !");
+			$(this).find("td:last input:text").focus();
+			okay		=	false;
+			return false;
+		}		
+		paramString	+=	"&batid[]=" + batid +
+							"&cpdid[]=" + cpdid +
+							"&qalparam[]=" + val +
+							"&data[]=" + reg;
+	});
+		
+	if(paramString != "" && okay ==	true){
+		getString	=	"type=APPROVE&fulltest=1"  + paramString;
+		//alert(getString); return false;
+		displayError($("#qc_error"), "highlight", "<img src='/images/loader_16.gif' align='absmiddle' /> <strong>Adding Data to Server . . .</strong>");
+		result	=	postback(actionFile, getString, "POST", "XML");
+		if(result.trim() == 'success')
+		{
+			$("#qc_popup").dialog('close');
+			createAutoComplete();
+		}
+		else
+		{
+			displayError($("#qc_error"), "error", "Failed to update Full Test Data - " + result);
+		}
+	}
+	else if(okay == true)
+	{
+		displayError($("#qc_error"), "error", "Please Provide atleast One Parameter for Testing");
+	}	
+}

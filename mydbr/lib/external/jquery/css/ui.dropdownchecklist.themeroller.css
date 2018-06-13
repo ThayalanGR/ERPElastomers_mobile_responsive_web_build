@@ -1,0 +1,60 @@
+/** Simple modifications needed for DropDownCheckList to take advantage of ThemeRoller settings */
+.ui-dropdownchecklist .ui-widget-content
+, .ui-dropdownchecklist .ui-widget-header {
+	border: none;
+}
+.ui-dropdownchecklist-indent {
+	padding-left: 7px;
+}
+/* Font size of 0 on the -selector and an explicit medium on -text required to eliminate 
+   descender problems within the containers and still have a valid size for the text */
+.ui-dropdownchecklist-selector-wrapper
+, .ui-widget.ui-dropdownchecklist-selector-wrapper {
+	vertical-align: middle;
+	font-size: 0px;
+}
+.ui-dropdownchecklist-selector {
+	padding: 1px 2px 2px 2px;
+	font-size: 0px;
+}
+.ui-dropdownchecklist-text {
+	font-size: 12px;
+}
+.ui-dropdownchecklist-item
+, .ui-dropdownchecklist-item input {
+    vertical-align: middle;
+}
+.ui-dropdownchecklist-group {
+	padding: 1px 2px 2px 2px;
+}
+
+span.ui-dropdownchecklist {
+	box-shadow: none;
+	-webkit-box-shadow: none;
+	-moz-box-shadow: none;
+}
+
+
+.ui-dropdownchecklist-item.ui-state-default {
+	background: white !important;
+	border: none;
+}
+
+.ui-dropdownchecklist-item.ui-state-hover {
+	border: none;
+}
+
+.ui-dropdownchecklist-dropcontainer-wrapper {
+	border: 1px solid #AAA;
+}
+
+.ui-dropdownchecklist-selector {
+	background: -moz-linear-gradient(center top,white 0%,#eeeeee 100%);
+	background: -webkit-gradient(linear,left top,left bottom,color-stop(0,white),color-stop(1,#eee));
+	background-image: -o-linear-gradient(top,white 0%,#eee 100%);
+	background-image: linear-gradient(top,white 0%,#eee 100%);
+	background-image: -ms-linear-gradient(top,white 0%,#eee 100%);
+	filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#FFFFFFF',endColorstr='#eeeeee');
+	font-size: 11px;
+	margin-left: 2px;
+}

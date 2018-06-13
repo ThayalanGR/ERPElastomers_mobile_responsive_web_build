@@ -1,0 +1,57 @@
+$(document).ready(function(){
+
+	var objRMList	= postback(actionFile,"selecttype=CNTLIST&type=select&outtype=xml","POST","XML");
+	listPageData($("#content_body"), objRMList, XSLFile);
+	
+	bookQtyTot	=	0;
+	phyTot		=	0;
+	exShrtTot	=	0;
+	$("#content_body table tr").each(function(index, element) {
+        bTot	=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+		pTot	=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().split(",").join("")):0;
+		eTot	=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+		bookQtyTot	=	bookQtyTot + (isNaN(bTot)?	0 :	bTot);
+		phyTot		=	phyTot + (isNaN(pTot)?0 :	pTot);
+		exShrtTot	=	exShrtTot + (isNaN(eTot)?	0 :	eTot);
+		
+    });
+	$("#book_qty_total").html(bookQtyTot.toCurrency(0));
+	$("#phy_qty_total").html(phyTot.toCurrency(0));
+	$("#ex_shrt_total").html(exShrtTot.toCurrency(0));
+	
+	
+	$(".filter-table").filters({
+		onUpdate:function(){
+			$(".view_button").click(function(){
+				mRecId	=	$(this).attr('invoiceid');
+				if(mRecId != null && mRecId != ""){
+					openInvoice({invID:mRecId});
+				}
+			});
+			
+			bookQtyTot	=	0;
+			phyTot		=	0;
+			exShrtTot	=	0;
+			$("#content_body table tr").each(function(index, element) {
+				bTot	=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+				pTot	=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().split(",").join("")):0;
+				eTot	=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+				bookQtyTot	=	bookQtyTot + (isNaN(bTot)?	0 :	bTot);
+				phyTot		=	phyTot + (isNaN(pTot)?0 :	pTot);
+				exShrtTot	=	exShrtTot + (isNaN(eTot)?	0 :	eTot);
+				
+			});
+			$("#book_qty_total").html(bookQtyTot.toCurrency(0));
+			$("#phy_qty_total").html(phyTot.toCurrency(0));
+			$("#ex_shrt_total").html(exShrtTot.toCurrency(0));
+	}
+	});
+	
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('invoiceid');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});	
+
+});

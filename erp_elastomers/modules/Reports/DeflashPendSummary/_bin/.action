@@ -1,0 +1,72 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	$cutoffdate	= "2015-09-01";
+	
+	switch($_POST["selecttype"]){
+		case "GETVAL":
+			$fromDate	=	$_POST["fromdate"];
+			$toDate		=	$_POST["todate"];
+			$getCus		= 	$_POST["cusgrp"];
+			$operator	=	$_POST["operator"];
+			$compname	= 	$_POST["compname"];
+			$step		=	$_POST["step"];			
+			$addSql		=	"left join (select * from (SELECT poRate,cmpdId  FROM tbl_customer_cmpd_po_rate where status = 1 order by update_on desc) tbl1 group by cmpdId) tblrate on timp.cmpdid = tblrate.cmpdId";
+			if($getCus != 'ALL')
+				$addSql =	"inner join (select * from (SELECT poRate,cmpdId  FROM tbl_customer_cmpd_po_rate tccpr	inner join tbl_customer tcus on tcus.cusId = tccpr.cusId where tccpr.status = 1 and upper(cusGroup) =  '".$getCus."' order by tccpr.update_on desc) tbl1 group by cmpdId) tblrate on timp.cmpdid = tblrate.cmpdId";
+
+			switch($step)
+			{
+				case "1":
+					$sql_invoice	=	"select '".$getCus."' as cusgroup, tmp.operator,'' as compname,'".$step."' as step,  tmp.operator as dispname, sum(if(moldqty > (0.9 * quantity),moldqty - recqty,quantity - recqty)) as totalpenqty,sum(if(moldqty > (0.9 * quantity),moldqty - recqty,quantity - recqty) * ifnull(poRate,0)) as totalpenval
+											from  ( select * from (select operator,planRef,sum(mouldQty) as moldqty, sum(ifnull(currrec,0)) as recqty from tbl_moulding_receive tmr
+															left join (select issref, sum(currrec) as currrec from tbl_deflash_reciept group by issref) tdr on tdr.issref = tmr.modrecref where tmr.status > 1  and tmr.status < 6   group by planRef ) ted )tmp
+											inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planRef 
+											".$addSql."
+										where (invDate between '$fromDate' and '$toDate') and invDate > '$cutoffdate' and ((0.9 * quantity) - recqty) > 0 
+										group by tmp.operator order by tmp.operator";
+					break;
+				case "2":
+					$sql_invoice	=	"select '".$getCus."' as cusgroup, '".$operator."' as operator, cmpdName as compname,'".$step."' as step, cmpdName as dispname, sum(if(moldqty > (0.9 * quantity),moldqty - recqty,quantity - recqty)) as totalpenqty,sum(if(moldqty > (0.9 * quantity),moldqty - recqty,quantity - recqty) * ifnull(poRate,0)) as totalpenval
+											from  ( select * from (select operator,planRef,sum(mouldQty) as moldqty, sum(ifnull(currrec,0)) as recqty from tbl_moulding_receive tmr
+															left join (select issref, sum(currrec) as currrec from tbl_deflash_reciept group by issref) tdr on tdr.issref = tmr.modrecref where tmr.status > 1 and tmr.status < 6   group by planRef ) ted )tmp
+											inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planRef 
+											".$addSql."
+										where (invDate between '$fromDate' and '$toDate') and invDate > '$cutoffdate' and ((0.9 * quantity) - recqty) > 0 ".(($operator != 'ALL')?" and tmp.operator = '".$operator."'":"");
+					$sql_invoice	.=	"	group by timp.cmpdId order by timp.cmpdId";
+					break;
+				case "3":
+					$sql_invoice	=	"select '".$getCus."' as cusgroup, '".$operator."' as operator, '".$compname."' as compname,'".$step."' as step, modRecRef as dispname,planRef, if(moldqty > (0.9 * (quantity/numshifts)),moldqty - recqty,(quantity/numshifts) - recqty) as totalpenqty,(if(moldqty > (0.9 * (quantity/numshifts)),moldqty - recqty,(quantity/numshifts) - recqty) * ifnull(poRate,0)) as totalpenval
+											from  ( select operator,planRef,modRecRef,mouldQty as moldqty, ifnull(currrec,0) as recqty from tbl_moulding_receive tmr
+															left join (select issref, sum(currrec) as currrec from tbl_deflash_reciept group by issref) tdr on tdr.issref = tmr.modrecref where tmr.status > 1 and tmr.status < 6   )tmp 
+											inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planRef 
+											".$addSql."
+										where (invDate between '$fromDate' and '$toDate') and invDate > '$cutoffdate' and ((0.9 * (quantity/numshifts)) - recqty) > 0 " .(($operator != 'ALL')?" and tmp.operator = '".$operator."'":"").(($compname != 'ALL')?" and timp.cmpdName = '".$compname."'":""); 
+					$sql_invoice	.=	"	order by modRecRef";
+										
+			}
+			//echo $sql_invoice; exit();		
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";			
+		break;
+		case "GETTOP":
+			$fromDate	=	$_POST["fromdate"];
+			$toDate		=	$_POST["todate"];
+			$addSql 	=	"left join (select * from (SELECT poRate,cmpdId,upper(cusGroup) as cusGroup  FROM tbl_customer_cmpd_po_rate tccpr	inner join tbl_customer tcus on tcus.cusId = tccpr.cusId where tccpr.status = 1 order by tccpr.update_on desc) tbl1 group by cmpdId) tblrate on timp.cmpdid = tblrate.cmpdId";
+
+			$sql_invoice	=	"select ifnull(cusGroup,'') as operator, sum(if(moldqty > (0.9 * quantity),moldqty - recqty,quantity - recqty)) as pendqty,sum(if(moldqty > (0.9 * quantity),moldqty - recqty,quantity - recqty) * ifnull(poRate,0)) as totalpendval 
+									from  ( select * from (select planRef,sum(mouldQty) as moldqty, sum(ifnull(currrec,0)) as recqty from tbl_moulding_receive tmr
+															left join (select issref, sum(currrec) as currrec from tbl_deflash_reciept group by issref) tdr on tdr.issref = tmr.modrecref where tmr.status > 1 and tmr.status < 6   group by planRef ) ted )tmp
+									inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planRef 
+									".$addSql."
+								where (invDate between '$fromDate' and '$toDate') and invDate > '$cutoffdate' and ((0.9 * quantity) - recqty) > 0 
+								group by cusGroup order by cusGroup";
+			//echo $sql_invoice; exit();
+			
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";
+	}
+	
+?>

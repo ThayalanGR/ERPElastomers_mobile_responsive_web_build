@@ -1,0 +1,55 @@
+tableFilters.sort_config	=	{ sort_types:['date','us','us','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+tableFilters.col_operation		=	{ 
+									   id: ["master_total","final_total"], 
+									   col: [1,2],
+									   operation: ["sum","sum"],
+									   decimal_precision: [0,0]
+									};
+
+function openReport(){
+	openInvoice({mod:"report",invID:$("#no_months").val()});
+}
+
+$(document).ready(function(){
+	updatePageBehaviour();		
+});
+
+function updatePageBehaviour(){
+	
+	var objCompList		=	postback(actionFile, "startDate="+$("#from_date").val()+"&endDate="+$("#to_date").val(), "POST", "XML");
+	listPageData($("#content_body"), objCompList, XSLFile);	
+
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('batdate');
+		mModId	=	$(this).attr('module');
+		if(mModId != "label")
+		{
+			if(mRecId != null && mRecId != ""){
+				openInvoice({invID:mRecId,mod:mModId});
+			}
+		}
+		else
+		{
+			if(!(confirm("This will automatically print Labels for this date. Do you want to continue?" )))
+			{
+				return false;
+			}
+			if(mRecId != null && mRecId != ""){
+				resOut	=	postback(actionFile,"selecttype=PRINTLABEL&mixdate="+mRecId,"POST","XML");
+				if(resOut == 1)
+					alert("Label Printout Sent Sucessfully!");
+				else
+					alert("Label Printout Not Sent Due To Error!!!");					
+			}		
+		}
+	});
+	
+	TF_01	=	setFilterGrid("resultTable",tableFilters);
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;		
+	
+}

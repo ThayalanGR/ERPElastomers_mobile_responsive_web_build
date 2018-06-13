@@ -1,0 +1,1113 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+custList		=	new Array();
+componentList	=	new Array();
+componentIds	=	new Array();
+dutyTypeList	=	new Array();
+custId			=	"";
+custState		=	"";
+cusGroup		=	"";
+custSelect		=	false;
+errMsg			=	null;
+cpdSelected		=	0;
+maxCpdInvoice	=	<?php echo $maxItemsInInvoice; ?>;
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+function updateCount(obj){
+	newError	=	$("#err_msg");
+	selected 	= 	$(obj).attr('checked');	
+	if(selected == true)
+	{
+		cpdSelected++;
+	}
+	else
+	{
+		cpdSelected = cpdSelected - 1;
+	}
+	if(cpdSelected > maxCpdInvoice)
+	{
+		$(obj).attr('checked',false);
+		displayError(newError, "error", "<strong>Error !</strong> - Only 5 compounds allowed!!!");
+	}
+}
+
+function getCustomerDetails(){
+	clearCustomerDetails();
+	if(custList.indexOf($("#new_CustID").val()) != -1){
+		newError	=	$("#error_msg");
+		cusid		=	$("#new_CustID").val();
+		$("#new_Billfor option:first").attr("selected", true);
+		if(cusid != null && cusid != ""){
+			var objCusList	=	postback(actionFile,"selecttype=CSTDTLLIST&cusid="+cusid+"&outtype=xml","POST","XML");			
+			cusXML			=	parseXMLdoc(objCusList);
+			rowXML			=	cusXML.getElementsByTagName("row");			
+			row				=	rowXML[0].childNodes;
+			data			=	new Array();
+			customeraddress	=	"";
+			for(cx=0; cx<row.length; cx++){
+				data[row[cx].nodeName]	=	(row[cx].firstChild)?row[cx].firstChild.nodeValue:'';
+			}			
+			custState 		= 	data['cusstate'];
+			if(custState == null || custState == "")
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Customer Supply State Not Set!, Please set it in Customer Master!!!");
+				return false;
+			}
+			if(data['cusgstn'] == null || data['cusgstn'] == '')
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Customer GST Number is Missing, Please set it in Customer Master!!!");
+				return false;
+			}	
+			if(data['cuspan'] == null || data['cuspan'] == '')
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Customer PAN Number is Missing, Please set it in Customer Master!!!");
+				return false;			
+			}			
+			
+			
+			$("#new_ShipAddr").val(data['cusadd1']+ "\n" + ((data['cusadd2'] != '')?data['cusadd2'] + "\n":"") + data['cusplace']+ " - " + data['cuspincode']);
+			$("#new_BillAddr").val(data['cusadd1']+ "\n" + ((data['cusadd2'] != '')?data['cusadd2'] + "\n":"") + data['cusplace']+ " - " + data['cuspincode']);
+			$("#new_VendorCode").html((data['cusrefno'] != null && data['cusrefno'] != "")?data['cusrefno']:'-');
+			$("#new_PayTerms").val((data['cuscreditdays'] != null && data['cuscreditdays'] != "")?data['cuscreditdays']:'-');
+			custId			=	data['cusid'];
+			cusGroup		=	data['cusgroup'];
+			custSelect		=	true;
+		}
+		else{
+			clearCustomerDetails();
+		}
+	}
+	else{
+		clearCustomerDetails();
+	}
+}
+
+function getTaxDetails(taxRate)
+{
+	if(custList.indexOf($("#new_CustID").val()) != -1 )
+	{
+		billfor			=	$("#new_Billfor").val();
+		// Get Taxation for this item
+		dutyTypeList 	=	[];
+		var taxDetails	=	postback(actionFile,"selecttype=GETTAXDETAILS&cusstate="+custState+"&invtype="+((taxRate)?taxRate:billfor),"POST","XML");
+		taxDetailsXML	=	parseXMLdoc(taxDetails);
+		cgst			=	$(taxDetailsXML).find('row cgst').text();
+		sgst			=	$(taxDetailsXML).find('row sgst').text();
+		igst			=	$(taxDetailsXML).find('row igst').text();
+		dutyTypeList 	=	{
+								'cgst':cgst,
+								'sgst':sgst,
+								'igst':igst
+							};
+	}
+	
+	$("#total_field").html('0.00');
+	$("#cgst").html('0');
+	$('#cgst_out').html('0.00');
+	$("#taxableval_out").html('0.00');
+	$("#sgst").html('0');
+	$("#sgst_out").html('0.00');
+	$("#igst").html('0');
+	$('#igst_out').html('0.00');
+	$("#grandtotal_out").html('0.00');	
+
+} 
+
+function changeLayout(){
+	$("#new_Particulars table tr").each(function(index, element) {
+		if(index > 0)
+			$(element).remove();
+	});
+	$("#toolDesc").html("");
+	newError		=	$("#error_msg");
+	if(custList.indexOf($("#new_CustID").val()) != -1 && custSelect)
+	{		
+		billfor	=	$("#new_Billfor").val();		
+		if(billfor == "tool")
+		{
+			// Get Component ID's
+			componentList	=	new Array();
+			componentIds	=	new Array();
+			var compDetail	=	postback(actionFile,"selecttype=GETCOMPONENT&cusid="+custId,"POST","XML");
+			compDetailXML	=	parseXMLdoc(compDetail);
+			$(compDetailXML).find('row').each(function(index, element) {				
+				cmpdId		=	$(this).find('cmpdid').text();
+				cmpdName	=	$(this).find('cmpdname').text();
+				if(cmpdId != "" && cmpdId != null && cmpdName != "" && cmpdName != null){
+					componentList.push(cmpdName); 
+					componentIds.push(cmpdId);
+				}
+			});
+
+			tabData			=	"<tr class='content_rows_dark' id='addbat_1'>" +
+										"<td align='center'>1</td>" +
+										"<td><input type='text' tabindex='5' id='cpdcode_txt' idtxt='1' style='width:90%'  /></td>" +
+										"<td><input type='text' tabindex='5' id='poref_1' style='width:90%' disabled /></td>" + 
+ 										"<td><input type='text' tabindex='5' id='podate_1' style='width:90%' value='DD/MM/YYYY' class='invisible_text' onfocus=\"FieldHiddenValue(this, 'in', 'DD/MM/YYYY')\" onblur=\"FieldHiddenValue(this, 'out', 'DD/MM/YYYY')\" disabled /></td>" +
+										"<td><input type='text' tabindex='5' id='batref_1' idtxt='1' style='width:90%' disabled /></td>" +
+										"<td align='right' id='avlqty_1'>NA</td>" +
+										"<td align='right'><input type='text' tabindex='5' id='quan_1' idtxt='1' value='0'  style='text-align:right;width:90%'  onkeyup='calRowTotal();' onkeydown='numbersOnly(event);' disabled /></td>"+										
+										"<td align='right' id='rate_1'>-</td>" +
+										"<td id='val_1' align='right'>0.00</td>" +
+									"</tr>";
+			$("#new_Particulars table tr:last").after(tabData);			
+			$("#new_Particulars table tr").each(function(index, element) {
+				$(this).find("td:eq(3) input:text").datepicker({
+					dateFormat:'dd/mm/yy',
+					onClose:function(){
+						$(this).removeClass("invisible_text");
+					}
+				});
+				$(this).find("td:eq(6) input:text").keyup(function(){
+					this.value 	= 	this.value.replace(/[^0-9]/g, '');
+					id			=	$(this).attr("idtxt");
+					rate		=	String($("#rate_" + id).html().split(",").join("")).toNumber();
+					availqty	=	String($("#avlqty_" + id).html().split(",").join("")).toNumber();
+					quantity	=	$(this).val().toNumber();						
+					if(quantity > availqty){
+						$(this).val(availqty);
+						quantity	=	availqty;
+					}
+					$("#val_" + id).html(getCurrency((quantity*rate), 2));
+					calculateTotal();
+				});
+			});
+			$("#cpdcode_txt").autocomplete({
+				source:componentList,
+				close:function(event, ui){
+					getToolList(this);
+				},
+				change: function( event, ui ) {
+					getToolList(this);
+				}
+			});
+			tabData			=	"<table><tr>" +
+									"<td align='right' width='10%'><b>Custom Part No:</b></td>" +
+									"<td align='left' width='40%'><input type='text' tabindex='7' id='cust_partnum' style='width:75%' /></td>" + 
+									"<td align='right' width='10%' ><b>Custom Description:</b></td>" +
+									"<td align='left'><input type='text' tabindex='7' id='cust_desc' style='width:75%' /></td>"+										
+								"</tr></table>";
+			$("#toolDesc").html(tabData);
+			getTaxDetails();
+		}
+		else if(billfor == "scrap")
+		{
+			
+			tabData			=	"<tr class='content_rows_dark' id='addbat_1'>" +
+										"<td align='center'>1</td>" +
+										"<td><input type='text' value='SCRAP' tabindex='5' id='cpdcode_1' idtxt='1' cpdid='scrap' style='width:90%' readonly/></td>" +
+										"<td><input type='text' tabindex='5' id='poref_1' style='width:90%'  /></td>" + 
+ 										"<td><input type='text' tabindex='5' id='podate_1' style='width:90%' value='DD/MM/YYYY' class='invisible_text' onfocus=\"FieldHiddenValue(this, 'in', 'DD/MM/YYYY')\" onblur=\"FieldHiddenValue(this, 'out', 'DD/MM/YYYY')\" /></td>" +
+										"<td><input type='text' value='scrap' tabindex='5' id='batref_1' idtxt='1' style='width:90%' disabled /></td>" +
+										"<td align='right' id='avlqty_1'>NA</td>" +
+										"<td align='right'><input type='text' tabindex='5' id='quan_1' idtxt='1' value='0'  style='text-align:right;width:90%'  onkeyup='calRowTotal();' onkeydown='numbersOnly(event);' /></td>"+										
+										"<td align='right' id='rate_1'><input type='text' tabindex='7' value='0.00' id='rate_txt_1' idtxt='1' style='width:95%;text-align:right' onkeyup='calRowTotal();' onkeydown='numbersOnly(event);'  /></td>" +
+										"<td id='val_1' align='right'>0.00</td>" +
+									"</tr>";
+			$("#new_Particulars table tr:last").after(tabData);
+			$("#new_Particulars table tr").each(function(index, element) {
+				$(this).find("td:eq(3) input:text").datepicker({
+					dateFormat:'dd/mm/yy',
+					onClose:function(){
+						$(this).removeClass("invisible_text");
+					}
+				});	
+			});
+			getTaxDetails();
+		}
+		else if(billfor == "mix")
+		{
+			var dcDetail	=	postback(actionFile,"selecttype=GETDCDETAILS&cusgrp="+cusGroup,"POST","XML");
+			dcDetailXML		=	parseXMLdoc(dcDetail);
+			$(dcDetailXML).find('row').each(function(index, element) {				
+				dcId		=	$(this).find('dcid').text();
+				dcQty		=	$(this).find('dcqty').text();
+				dcRate		=	$(this).find('dcrate').text();
+				if(dcId != "" && dcId != null && dcQty > 0){
+					date			=	new Date();
+					today			=	(((date.getDate() > 9)?'':'0') + date.getDate()) + '/' +
+										((((date.getMonth()+1) > 9)?'':'0') + (date.getMonth()+1)) + '/' +
+										(date.getFullYear());
+					idNum			=	date.getTime() + "_" + index;
+					totLen			=	$("#new_Particulars table tr").length;
+					tabClass		=	(totLen%2)?'content_rows_light':'content_rows_dark';
+					tabData			=	"<tr class='"+tabClass+"' id='addbat_" + idNum + "'>" +
+											"<td align='center'>"+totLen+"</td>" +
+											"<td><input type='text' tabindex='5' value='MIXING' id='cpdcode_" + idNum + "' idtxt='" + idNum + "' style='width:90%' cpdid='mixing' readonly /></td>" +
+											"<td><input type='text' tabindex='5' id='poref_" + idNum + "' style='width:90%' "+((index == 0)?"":"disabled")+"/></td>" + 
+											"<td><input type='text' tabindex='5' id='podate_" + idNum + "' style='width:90%' value='DD/MM/YYYY' class='invisible_text' onfocus=\"FieldHiddenValue(this, 'in', 'DD/MM/YYYY')\" onblur=\"FieldHiddenValue(this, 'out', 'DD/MM/YYYY')\"  "+((index == 0)?"":"disabled")+"/></td>" +
+											"<td><input type='text' tabindex='5' value='"+ dcId +"' id='batref_" + idNum + "' idtxt='" + idNum + "' style='width:90%' readonly /></td>" +
+											"<td align='right' id='avlqty_" + idNum + "'>"+dcQty+"</td>" +
+											"<td align='right'><input type='text' tabindex='5' id='quan_" + idNum + "' idtxt='" + idNum + "' value='"+dcQty+"' class='invisible_text' style='text-align:right;width:90%'  onfocus=\"FieldHiddenValue(this, 'in', '0.00')\" onblur=\"FieldHiddenValue(this, 'out', '0.00')\" /></td>"+										
+											"<td align='right' id='rate_" + idNum + "'>"+getCurrency(dcRate,2)+"</td>" +
+											"<td id='val_" + idNum + "' align='right'>"+getCurrency((dcRate * dcQty),2)+"</td>" +
+										"</tr>";
+					$("#new_Particulars table tr:last").after(tabData);
+					$("#new_Particulars table tr").each(function(index, element) {
+						$(this).find("td:eq(3) input:text").datepicker({
+							dateFormat:'dd/mm/yy',
+							onClose:function(){
+								$(this).removeClass("invisible_text");
+							}
+						});						
+						$(this).find("td:eq(6) input:text").keyup(function(){
+							id			=	$(this).attr("idtxt");
+							rate		=	String($("#rate_" + id).html().split(",").join("")).toNumber();
+							availqty	=	$("#avlqty_" + id).html().split(",").join("");
+							quantity	=	$(this).val().toNumber();						
+							if(quantity != 0){
+								$(this).val(availqty);
+								quantity	=	availqty.toNumber();
+							}
+							$("#val_" + id).html(getCurrency((quantity*rate), 2));
+							calculateTotal();
+						});
+					});
+				}
+			});
+			getTaxDetails();
+			calculateTotal();
+		}
+		else if(billfor == "cpd")
+		{
+			cpdSelected		=	0;
+			cpdRates		=	new Array();
+			contBatch		=	'<table border="1" cellpadding="6" cellspacing="0" width="100%">' +
+									'<tr>'+
+										'<td align="center" width="50%">Name</td>'+
+										'<td align="center" width="20%">Master Avl</td>'+
+										'<td align="center" width="20%">Final Avl</td>'+
+										'<td align="left"> Select </td>'+
+									'</tr>';
+			compDetail		=	postback(actionFile,"selecttype=GETAVLCPD4CUS&cusid="+custId,"POST","XML");
+			compDetailXML	=	parseXMLdoc(compDetail);
+			$(compDetailXML).find('row').each(function(index, element) {
+				cpdId			=	$(this).find('cpdid').text();
+				cpdRates[cpdId]	=	$(this).find('cpdcost').text();
+				contBatch		+=		'<tr class ='+((index % 2 == 1)?"content_rows_light":"content_rows_dark")+'>'+
+											'<th>'+$(this).find('cpdname').text()+'</th>'+
+											'<th align="right">'+$(this).find('mcount').text()+'</th>'+
+											'<th align="right">'+$(this).find('fcount').text()+'</th>'+
+											'<th align="left"> <input type="checkbox" id="'+cpdId+'" onClick="updateCount(this);" class="checkbox1" /> </th>'+
+										'</tr>';
+			});			
+			contBatch	+=		'<tr>'+
+										'<th align="left">Incl. Master ?: <select id="inMaster"><option>No</option><option>Yes</option></select></th>'+
+										'<th align="left" colspan="3">Calculate Cpdrate ?: <select id="calcCpdRate"><option>No</option><option>Yes</option></select></th>'+
+									'</tr>'+
+								"</table>";	
+			contBatch		+=	'<span id="err_msg"/>';			
+		
+			$("#receive_dialog").html(contBatch).dialog({
+				title:'Select upto '+maxCpdInvoice+' Compounds',
+				width:400,
+				height:'auto',
+				resizable:false,
+				modal:true,
+				buttons: 
+				[
+					{
+						text: "Submit",
+						click: function(){
+							cpdIds 			=	new Array();
+							compList		=	$('.checkbox1');
+							for(rl=0; rl<compList.length; rl++){
+								if(compList[rl].checked == true)
+								{
+									cpdId		=	compList[rl].id;
+									cpdIds.push(cpdId);
+								}
+							}
+							if(cpdIds.length > 0)
+							{					
+								$(this).dialog("close");
+								calcCpdRate		=	$("#calcCpdRate").val();
+								param			=	"selecttype=GETCPDBATCHES&cusid="+custId+"&incmaster=" + (($("#inMaster").val() == 'Yes')?1:0)+"&customer="+cusGroup;														
+								for(rm=0; rm<cpdIds.length; rm++){
+									param = param + "&cpdids[]=" + cpdIds[rm] ;
+								}								
+								cpdDetails		=	postback(actionFile, param, "POST", "XML");
+								//$("#receive_dialog").html(cpdDetails);
+								cpdDetailXML	=	parseXMLdoc(cpdDetails);
+								$(cpdDetailXML).find('row').each(function(index, element) {				
+									cpdId		=	$(this).find('cpdid').text();
+									cpdQty		=	$(this).find('avlqty').text();
+									poRate		=	$(this).find('porate').text();
+									wastage		=	$(this).find('wastage').text();
+									cpdRate		=	((calcCpdRate == "Yes")?((1*poRate) + (1*cpdRates[cpdId]) + (cpdRates[cpdId] * (wastage/100))):poRate);
+									cpdRate		=	Number(cpdRate.toFixed(2));
+									if(cpdId != "" && cpdId != null && cpdQty > 0){
+										date			=	new Date();
+										today			=	(((date.getDate() > 9)?'':'0') + date.getDate()) + '/' +
+															((((date.getMonth()+1) > 9)?'':'0') + (date.getMonth()+1)) + '/' +
+															(date.getFullYear());
+										idNum			=	date.getTime() + "_" + index;
+										totLen			=	$("#new_Particulars table tr").length;
+										tabClass		=	(totLen%2)?'content_rows_light':'content_rows_dark';
+										tabData			=	"<tr class='"+tabClass+"' id='addbat_" + idNum + "'>" +
+																"<td align='center'>"+totLen+"</td>" +
+																"<td><input type='text' tabindex='5' value='"+$(this).find('cpdname').text()+"' id='cpdcode_" + idNum + "' idtxt='" + idNum + "' style='width:90%' cpdid='"+cpdId+"' readonly /></td>" +
+																"<td><input type='text' tabindex='5' value='"+$(this).find('poref').text()+"' id='poref_" + idNum + "' style='width:90%' disabled /></td>" + 
+																"<td><input type='text' tabindex='5' value='"+$(this).find('podate').text()+"' id='podate_" + idNum + "' style='width:90%' value='DD/MM/YYYY'  disabled/></td>" +
+																"<td><input type='text' tabindex='5' value='"+ $(this).find('batid').text() +"' id='batref_" + idNum + "' idtxt='" + idNum + "' style='width:90%' readonly /></td>" +
+																"<td align='right' id='avlqty_" + idNum + "'>"+cpdQty+"</td>" +
+																"<td align='right'><input type='text' tabindex='5' id='quan_" + idNum + "' idtxt='" + idNum + "' value='"+cpdQty+"' class='invisible_text' style='text-align:right;width:90%'  onfocus=\"FieldHiddenValue(this, 'in', '0.00')\" onblur=\"FieldHiddenValue(this, 'out', '0.00')\" /></td>"+										
+																"<td align='right' id='rate_" + idNum + "'>"+getCurrency(cpdRate,2)+"</td>" +
+																"<td id='val_" + idNum + "' align='right'>"+getCurrency((cpdRate * cpdQty),2)+"</td>" +
+															"</tr>";
+										$("#new_Particulars table tr:last").after(tabData);
+										$("#new_Particulars table tr").each(function(index, element) {								
+											$(this).find("td:eq(6) input:text").keyup(function(){
+												this.value 	= 	this.value.replace(/[^0-9],./g, '');
+												id			=	$(this).attr("idtxt");
+												rate		=	String($("#rate_" + id).html().split(",").join("")).toNumber();
+												availqty	=	$("#avlqty_" + id).html().split(",").join("");
+												quantity	=	$(this).val().toNumber();						
+												if(quantity > availqty){
+													$(this).val(availqty);
+													quantity	=	availqty;
+												}
+												$("#val_" + id).html(getCurrency((quantity*rate), 2));
+												calculateTotal();
+											});
+										});																	
+									}
+								});
+								getTaxDetails();
+								calculateTotal();								
+							}
+							else
+							{
+								displayError(newError, "error", "<strong>Error !</strong> - Select Atleast 1 compound!!!");
+								return false;							
+							}
+						}
+					},
+					{
+						text: "Close",
+						click: function(){ 
+							$(this).dialog("close"); 
+						}
+					}
+				],
+				close: function(event, ui) {
+					$(this).dialog("destroy");
+				} 
+			});		
+		}
+		else if(billfor == "ram")
+		{
+			cpdSelected		=	0;
+			ramRates		=	new Array();
+			contBatch		=	'<span id="err_msg"/>';
+			contBatch		+=	'<table border="1" cellpadding="0" cellspacing="0" width="100%">' +
+									'<tr>'+
+										'<td align="center" width="70%">Name</td>'+
+										'<td align="center" width="20%">TaxRate</td>'+
+										'<td align="left"> Select </td>'+
+									'</tr>';
+			compDetail		=	postback(actionFile,"selecttype=GETAVLRAM4CUS&cusid="+custId,"POST","XML");
+			compDetailXML	=	parseXMLdoc(compDetail);
+			$(compDetailXML).find('row').each(function(index, element) {
+				ramId			=	$(this).find('ramid').text();
+				ramRates[ramId]	=	$(this).find('ramcost').text();
+				taxRate			=	$(this).find('taxrate').text();
+				contBatch		+=		'<tr style ='+((index % 2 == 1)?"background-color:#FFFFFF;":"background-color:#EEEEEE;")+'>'+
+											'<td>'+$(this).find('ramname').text()+'</td>'+
+											'<td align="right">'+taxRate+'</td>'+
+											'<td align="left"> <input type="checkbox" id="'+ramId+'" taxrate="'+taxRate+'" onClick="updateCount(this);" class="checkbox1" /> </td>'+
+										'</tr>';
+			});			
+			contBatch	+=		"</table>";	
+						
+		
+			$("#receive_dialog").html(contBatch).dialog({
+				title:'Select upto '+maxCpdInvoice+' Raw Materials with Same TaxRate',
+				width:600,
+				height:400,
+				resizable:false,
+				modal:true,
+				buttons: 
+				[
+					{
+						text: "Submit",
+						click: function(){
+							ramIds 			=	new Array();
+							compList		=	$('.checkbox1');
+							taxRate			=	"";							
+							for(rl=0; rl<compList.length; rl++){
+								if(compList[rl].checked == true)
+								{
+									ramId		=	compList[rl].id;
+									ramIds.push(ramId);
+									tempTaxRate	=	$("#"+ramId).attr('taxrate');
+									if(taxRate == "")
+									{
+										taxRate	=	tempTaxRate;
+									}
+									else if(tempTaxRate != taxRate)
+									{
+										taxRate	=	"error";
+										rl		=	compList.length;
+									}										
+									
+								}
+							}
+							if(taxRate == "error")
+							{
+								displayError(newError, "error", "<strong>Error !</strong> - Select Raw Material From Same TaxRate!!!");
+								return false;							
+							}
+							if(ramIds.length > 0)
+							{					
+								$(this).dialog("close");
+								param			=	"selecttype=GETRAMGRNS";														
+								for(rm=0; rm<ramIds.length; rm++){
+									param = param + "&ramids[]=" + ramIds[rm] ;
+								}								
+								ramDetails		=	postback(actionFile, param, "POST", "XML");
+								//$("#receive_dialog").html(ramDetails);
+								ramDetailXML	=	parseXMLdoc(ramDetails);
+								$(ramDetailXML).find('row').each(function(index, element) {				
+									ramId		=	$(this).find('ramid').text();
+									ramQty		=	$(this).find('avlqty').text();
+									poRate		=	$(this).find('porate').text();
+									ramRate		=	Number(poRate);
+									if(ramId != "" && ramId != null && ramQty > 0){
+										date			=	new Date();
+										today			=	(((date.getDate() > 9)?'':'0') + date.getDate()) + '/' +
+															((((date.getMonth()+1) > 9)?'':'0') + (date.getMonth()+1)) + '/' +
+															(date.getFullYear());
+										idNum			=	date.getTime() + "_" + index;
+										totLen			=	$("#new_Particulars table tr").length;
+										tabClass		=	(totLen%2)?'content_rows_light':'content_rows_dark';
+										tabData			=	"<tr class='"+tabClass+"' id='addbat_" + idNum + "'>" +
+																"<td align='center'>"+totLen+"</td>" +
+																"<td><input type='text' tabindex='5' value='"+$(this).find('ramname').text()+"' id='cpdcode_" + idNum + "' idtxt='" + idNum + "' style='width:90%' cpdid='"+ramId+"' readonly /></td>" +
+																"<td><input type='text' tabindex='5' value='"+$(this).find('poref').text()+"' id='poref_" + idNum + "' style='width:90%' disabled /></td>" + 
+																"<td><input type='text' tabindex='5' value='"+$(this).find('podate').text()+"' id='podate_" + idNum + "' style='width:90%' value='DD/MM/YYYY'  disabled/></td>" +
+																"<td><input type='text' tabindex='5' value='"+ $(this).find('grnid').text() +"' id='batref_" + idNum + "' idtxt='" + idNum + "' style='width:90%' readonly /></td>" +
+																"<td align='right' id='avlqty_" + idNum + "'>"+ramQty+"</td>" +
+																"<td align='right'><input type='text' tabindex='5' id='quan_" + idNum + "' idtxt='" + idNum + "' value='"+ramQty+"' class='invisible_text' style='text-align:right;width:90%'  onfocus=\"FieldHiddenValue(this, 'in', '0.00')\" onblur=\"FieldHiddenValue(this, 'out', '0.00')\" /></td>"+										
+																"<td align='right' id='rate_" + idNum + "'>"+getCurrency(ramRate,2)+"</td>" +
+																"<td id='val_" + idNum + "' align='right'>"+getCurrency((ramRate * ramQty),2)+"</td>" +
+															"</tr>";
+										$("#new_Particulars table tr:last").after(tabData);
+										$("#new_Particulars table tr").each(function(index, element) {								
+											$(this).find("td:eq(6) input:text").keyup(function(){
+												this.value 	= 	this.value.replace(/[^0-9],./g, '');
+												id			=	$(this).attr("idtxt");
+												rate		=	String($("#rate_" + id).html().split(",").join("")).toNumber();
+												availqty	=	$("#avlqty_" + id).html().split(",").join("");
+												quantity	=	$(this).val().toNumber();						
+												if(quantity > availqty){
+													$(this).val(availqty);
+													quantity	=	availqty;
+												}
+												$("#val_" + id).html(getCurrency((quantity*rate), 2));
+												calculateTotal();
+											});
+										});																	
+									}
+								});
+								getTaxDetails(taxRate);
+								calculateTotal();								
+							}
+							else
+							{
+								displayError(newError, "error", "<strong>Error !</strong> - Select Atleast 1 Raw Material!!!");
+								return false;							
+							}
+						}
+					},
+					{
+						text: "Close",
+						click: function(){ 
+							$(this).dialog("close"); 
+						}
+					}
+				],
+				close: function(event, ui) {
+					$(this).dialog("destroy");
+				} 
+			});		
+		}		
+		else if(billfor == "cmpd")
+		{
+			contBatch		=	"<table width='100%'>";
+			contBatch		+=	'<tr height="30px">'+
+									'<td align="left"> <input type="text" id="sampId" style="width:60%;" /> </td>'+
+								'</tr>';
+			contBatch		+=	"</table>";	
+			compDetail		=	postback(actionFile,"selecttype=GETAVLSAMP4CUS&cusid="+custId,"POST","XML");
+			//alert(compDetail);
+			compDetailXML	=	parseXMLdoc(compDetail);
+			sampArray		=	new Array();
+			rfqIds			=	new Array();
+			$(compDetailXML).find('row').each(function(index, element) {
+				partNum			=	$(this).find('part_number').text();
+				sampArray.push(partNum);
+				rfqIds[partNum]	=	$(this).find('rfqid').text();
+			});			
+			contBatch		+=	'<span id="err_msg"/>';	
+			$("#receive_dialog").html(contBatch);
+			$("#sampId").autocomplete({
+				source:sampArray,
+				close:function(event, ui){
+					//nothing to do;
+				}
+			});		
+		
+			$("#receive_dialog").dialog({
+				title:'Enter the Sample Part Number',
+				width:300,
+				height:'auto',
+				resizable:false,
+				modal:true,
+				buttons: 
+				[
+					{
+						text: "Submit",
+						click: function(){
+							selPartNum		=	$("#sampId").val()
+							if(rfqIds[selPartNum] > 0)
+							{					
+								$(this).dialog("close");
+								param			=	"selecttype=GETSAMPBATCHES&rfqid="+rfqIds[selPartNum];														
+								sampDetails		=	postback(actionFile, param, "POST", "XML");
+								//$("#receive_dialog").html(sampDetails);
+								cpdDetailXML	=	parseXMLdoc(sampDetails);
+								$(cpdDetailXML).find('row').each(function(index, element) {				
+									avlQty			=	$(this).find('avlqty').text();
+									date			=	new Date();
+									today			=	(((date.getDate() > 9)?'':'0') + date.getDate()) + '/' +
+														((((date.getMonth()+1) > 9)?'':'0') + (date.getMonth()+1)) + '/' +
+														(date.getFullYear());
+									idNum			=	date.getTime() + "_" + index;
+									totLen			=	$("#new_Particulars table tr").length;
+									tabClass		=	(totLen%2)?'content_rows_light':'content_rows_dark';
+									tabData			=	"<tr class='"+tabClass+"' id='addbat_" + idNum + "'>" +
+															"<td align='center'>"+totLen+"</td>" +
+															"<td><input type='text' tabindex='5' value='"+$(this).find('part_number').text()+"' id='cpdcode_" + idNum + "' idtxt='" + idNum + "' style='width:90%' cpdid='"+$(this).find('rfqid').text()+"' readonly /></td>" +
+															"<td>"+((index == 0)?"<input type='text' tabindex='5' value='' id='poref_" + idNum + "' style='width:90%' />":"-")+"</td>" + 
+															"<td>"+((index == 0)?"<input type='text' tabindex='5' value='' id='podate_" + idNum + "' style='width:90%' value='DD/MM/YYYY' />":"-")+"</td>" +
+															"<td><input type='text' tabindex='5' value='"+ $(this).find('planid').text() +"' id='batref_" + idNum + "' idtxt='" + idNum + "' style='width:90%' readonly /></td>" +
+															"<td align='right' id='avlqty_" + idNum + "'>"+avlQty+"</td>" +
+															"<td align='right'><input type='text' tabindex='5' id='quan_" + idNum + "' idtxt='" + idNum + "' value='"+avlQty+"' style='text-align:right;width:90%'  onfocus=\"FieldHiddenValue(this, 'in', '0.00')\" onblur=\"FieldHiddenValue(this, 'out', '0.00')\" /></td>"+										
+															"<td align='right'>"+((index == 0)?"<input type='text' tabindex='5' value='0.00' id='rate_txt_1' style='width:95%;text-align:right' onkeyup='calSampleTotal();' onkeydown='numbersOnly(event);' />":"-")+"</td>" +
+															"<td id='val_" + idNum + "' align='right'>0.00</td>" +
+														"</tr>";
+									$("#new_Particulars table tr:last").after(tabData);
+									$("#new_Particulars table tr").each(function(index, element) {
+										$(this).find("td:eq(3) input:text").datepicker({
+											dateFormat:'dd/mm/yy',
+											onClose:function(){
+												$(this).removeClass("invisible_text");
+											}
+										});		
+										$(this).find("td:eq(6) input:text").keyup(function(){
+											this.value 	= 	this.value.replace(/[^0-9],./g, '');
+											id			=	$(this).attr("idtxt");
+											availqty	=	$("#avlqty_" + id).html().split(",").join("");
+											quantity	=	$(this).val().toNumber();						
+											if(quantity > availqty){
+												$(this).val(availqty);
+												quantity	=	availqty;
+											}
+											calSampleTotal();
+											calculateTotal();
+										});
+									});																	
+								});
+								tabData			=	"<table><tr>" +
+														"<td align='right' width='10%'><b>Custom Part No:</b></td>" +
+														"<td align='left' width='40%'><input type='text' tabindex='7' id='cust_partnum' style='width:75%' /></td>" + 
+														"<td align='right' width='10%' ><b>Custom Description:</b></td>" +
+														"<td align='left'><input type='text' tabindex='7' id='cust_desc' style='width:75%' /></td>"+										
+													"</tr></table>";
+								$("#toolDesc").html(tabData);								
+								getTaxDetails();
+								calculateTotal();								
+							}
+							else
+							{
+								displayError(newError, "error", "<strong>Error !</strong> - Select a correct Sample Part Number!!!");
+								return false;							
+							}
+						}
+					},
+					{
+						text: "Close",
+						click: function(){ 
+							$(this).dialog("close"); 
+						}
+					}
+				],
+				close: function(event, ui) {
+					$(this).dialog("destroy");
+				} 
+			});		
+		}
+		else
+		{
+			$("#new_CustID").val("");
+			clearCustomerDetails();
+		}
+	}
+	else
+	{
+		$("#new_CustID").val("");
+		$("#new_Billfor option:first").attr("selected", true);
+		displayError(newError, "error", "<strong>Error !</strong> - Customer Name or Details Missing.");
+		$("#new_CustID").focus();
+		return false;	
+	}
+}
+
+function clearCustomerDetails(){
+	$("#new_Billfor option:first").attr("selected", true);
+	$("#new_ShipAddr").val('');
+	$("#new_BillAddr").val('');
+	$("#new_VendorCode").html('-');
+	$("#new_totItems").val(0);
+	$("#new_PayTerms").val('-');
+	$("#toolDesc").html("");
+	$("#new_Particulars table tr").each(function(index, element) {
+        if(index > 0)
+		$(element).remove();
+    });
+
+	componentList	=	new Array();
+	componentIds	=	new Array();
+	custId			=	"";	
+	custState		=	"";
+	cusGroup		=	"";
+	dutyTypeList	=	new Array();
+	custSelect		=	false;
+}
+
+function getToolList(obj){	
+	cmpdName 	= 	$(obj).val();	
+	cmpdId 		= 	componentIds[componentList.indexOf(cmpdName)];
+	if(cmpdId != null && cmpdId != ""){
+		$(obj).attr('cpdid',cmpdId);
+		$("#poref_1").attr("disabled",false);
+		$("#podate_1").attr("disabled",false);
+		
+		// Get Tool List
+		var batchObj	=	postback(actionFile,"selecttype=GETTOOL4CUS&cmpdid="+cmpdId+"&outtype=xml","POST","XML");
+		batchObjXML		=	parseXMLdoc(batchObj);
+		batchList		=	new Array();
+		$(batchObjXML).find('row').each(function(index, element) {
+			bid			=	$(this).find('tool_ref').text()
+			if(bid != "" && bid != null){
+				batchList.push(bid);
+			}
+		});
+		$("#batref_1").val("");
+		$("#batref_1")
+			.attr({"autocomp":batchList.join("|")})
+			.autocomplete({
+				source:batchList,
+				close:function(event, ui){
+					getToolDetails(this);
+				},
+				change:function(event, ui){
+					getToolDetails(this);
+				}					
+			});
+		$("#batref_1").removeAttr("disabled");
+		$("#avlqty_1").html("0");
+		$("#quan_1").val("0");
+		$("#quan_1").attr("disabled", true);
+		$("#val_1").val("0.00");		
+	}
+	else
+	{
+		clearCompDetails();	
+	}
+}
+
+function clearCompDetails(){
+	
+	clearToolDetails();
+	$("#poref_1").attr("disabled",true);
+	$("#podate_1").attr("disabled",true);	
+	$("#cpdcode_1").removeAttr('cpdid');
+	$("#batref_1").val('');
+	$("#quan_1").val('0.00');
+	$("#avlqty_1").html('0.00');
+	
+	$("#quan_1").removeClass("normal_text").addClass("invisible_text");
+	$("#batref_1").autocomplete('destroy');
+	$("#batref_1").attr("disabled", 'disable');
+	$("#quan_1").attr("disabled", 'disable');
+	
+}
+function getToolDetails(obj){
+	toolId	=	$(obj).val();
+	if(toolId != null && toolId != ""){
+		$("#avlqty_1").text(1);
+		$("#quan_1").val(1);
+		$("#quan_1").attr("disabled","true");			
+		$("#rate_1").html("<input type='text' tabindex='7' value='0.00' id='rate_txt_1' idtxt='1' style='width:95%;text-align:right' onkeyup='calRowTotal();' onkeydown='numbersOnly(event);'  />");
+		$("#val_1").val("0.00");
+	}
+	else{
+		clearToolDetails();
+	}
+}
+
+function clearToolDetails(){
+	$("#quan_1").val("0");
+	$("#quan_1").addClass("invisible_text");
+	$("#quan_1").attr("disabled", "disable");
+	$("#avlqty_1").html('0');
+	$("#rate_1").html('');
+	$("#val_1").html('0.00');
+	calculateTotal();
+}
+
+function calRowTotal(){
+	rate		=	Number($("#rate_txt_1").val());
+	qty			=	Number($("#quan_1").val());
+	$("#val_1").html(getCurrency((qty*rate), 2));
+	calculateTotal();
+}
+
+function calSampleTotal(){
+	rate	=	Number($("#rate_txt_1").val());
+	$("#new_Particulars table tr:gt(0)").each(function(index, element) {
+		aplQty	=	$(this).find("td:eq(6) input:text").val();		
+		$(this).find('td:eq(8)').html(getCurrency((aplQty*rate), 2));
+    });
+	calculateTotal();
+}
+
+function calculateTotal(){
+	total	=	0;
+	$("#new_Particulars table tr:gt(0)").each(function(index, element) {
+		totTxt	=	$(this).find('td:eq(8)').html();
+		totNum	=	Number(
+						(totTxt.indexOf(",") > -1)
+							?totTxt.split(",").join("")
+							:totTxt
+					);
+        total	+=	totNum;
+    });
+	$("#total_field").html(getCurrency(total, 2));
+	
+	if(dutyTypeList != null && typeof dutyTypeList == "object"){
+		
+		cgst			=	dutyTypeList['cgst'];
+		sgst			=	dutyTypeList['sgst'];
+		igst			=	dutyTypeList['igst'];
+		cgstout			=	( cgst * total ) / 100;
+		sgstout			=	( sgst * total ) / 100;
+		igstout			=	( igst * total ) / 100;
+	
+		$("#cgst").html(cgst);
+		$("#sgst").html(sgst);
+		$("#igst").html(igst);
+		$("#cgst_out").html(getCurrency(cgstout, 2));
+		$("#taxableval_out").html(getCurrency(total, 2));
+		$("#sgst_out").html(getCurrency(sgstout, 2));
+		$("#igst_out").html(getCurrency(igstout, 2));
+		grandtotal	=	(total + cgstout + sgstout + igstout);
+		grandtotal	=	grandtotal.toFixed(2);
+		$("#grandtotal_out").html(getCurrency(grandtotal, 2));		
+	}
+}
+
+
+function dateFormat(dateinp){
+	datearr		=	dateinp.split("/");
+	date		=	datearr[2]+"-"+datearr[1]+"-"+datearr[0];
+	return date;
+}
+
+function handleFormSubmit(){
+	calculateTotal();
+	custName		=	$("#new_CustID");
+	shipAddr		=	$("#new_ShipAddr");
+	billAddr 		=	$("#new_BillAddr");
+	invoicedate		=	$("#new_InvDate");
+	paymentterm		=	$("#new_PayTerms");
+	shipdate		=	$("#new_ShipDate");
+	grandtotal		=	$("#grandtotal_out");
+	billfor			=	$("#new_Billfor").val();
+	newError		=	$("#error_msg");
+	if(billfor == "" || billfor == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Invoice Type Missing.");
+		$("#new_Billfor").focus();
+		return false;
+	}	
+	var_split		=	(isRewrite)?"/":"&";
+	stat			=	true;
+	getstring		=	"selecttype=CREATEINVOICE&invtype="+billfor;
+	chkNoEmpty		=	0;
+	firstObj		=	null;
+	firstPORef		=	null;
+	firstPODate		=	null;
+	cpdIds			=	new Array();
+
+	
+	if(errMsg != null)
+	clearTimeout(errMsg);
+	errMsg			=	setTimeout(function(){
+							newError.css("display", "none");
+						}, 2500);
+	
+	if(custName.val() == "" || custName.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Customer Name Missing.");
+		custName.focus();
+		return false;
+	}
+	else if(shipAddr.val() == "" || shipAddr.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Shipping Address Missing.");
+		return false;
+	}	
+	else if(billAddr.val() == "" || billAddr.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Billing Address Missing.");
+		custName.focus();
+		return false;
+	}
+	else if(invoicedate.html() == "" || invoicedate.html() == null || invoicedate.html() == "DD//MM/YYYY"){
+		displayError(newError, "error", "<strong>Error !</strong> - Invoice Date Missing.");
+		return false;
+	}
+	else if(shipdate.val() == "" || shipdate.val() == null || shipdate.val() == "DD//MM/YYYY"){
+		displayError(newError, "error", "<strong>Error !</strong> - Shipment Date Missing.");
+		shipdate.focus();
+		return false;
+	}
+
+	
+	totQty			=	0;
+	$("#new_Particulars").find('table tr:gt(0)').each(function(index, element) {
+		cpdCodeObj	=	$(this).find('td:eq(1) input');
+		poRefObj	=	$(this).find('td:eq(2) input');
+		poDateObj	=	$(this).find('td:eq(3) input');
+		batRefObj	=	$(this).find('td:eq(4) input');
+		aplQtyObj	=	$(this).find('td:eq(6) input');
+		rateObj		=	((billfor != "cpd" && billfor != "mix" && billfor != "ram")?$("#rate_txt_1").val():$(this).find('td:eq(7)').html());
+		valObj		=	$(this).find('td:eq(8)');
+		
+		if(index == 0)
+		{
+			firstObj		=	cpdCodeObj;
+			firstPORef		=	poRefObj;
+			firstPODate		=	poDateObj;		
+		}
+		
+		cpdCode		=	cpdCodeObj.attr('cpdid');
+		poRef		=	firstPORef.val();
+		poDate		=	firstPODate.val();
+		
+		
+		batRef		=	batRefObj.val() ;
+		if(billfor == "tool")
+		{
+			toolList	=	batRefObj.attr("autocomp");
+			toolList	=	toolList.split("|");
+			if(toolList.indexOf(batRef) == -1)
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Row " + (index+1) + " - Invalid Tool Reference.");
+				batRefObj.focus();
+				stat = false;
+				return false;			
+			}
+		}
+	
+		aplQty		=	(aplQtyObj.val() != null && aplQtyObj.val() != "")
+							?Number(aplQtyObj.val())
+							:0;
+		rate		=	(rateObj != null && rateObj != "")
+							?(rateObj.indexOf(",") > -1)
+								?Number(rateObj.split(",").join(""))
+								:Number(rateObj)
+							:0;
+		val			=	(valObj.html() != null && valObj.html() != "")
+							?(valObj.html().indexOf(","))
+								?Number(valObj.html().split(",").join(""))
+								:Number(valObj.html())
+							:0;
+		
+
+		if(cpdCode == null || cpdCode == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - Row " + (index+1) + " - Component Missing.");
+			cpdCodeObj.focus();
+			stat = false;
+			return false;
+		}
+		else if((poRef == null || poRef == "") && (billfor != "mix" && billfor != "scrap")){
+			displayError(newError, "error", "<strong>Error !</strong> - Row " + (index+1) + " - PO reference Missing. ");
+			stat = false;
+			return false;
+		}
+		else{
+			if(batRef != null && batRef.trim() != ""){				
+				if(aplQty > 0)
+				{
+					if(!cpdIds.inArray(cpdCode) )
+						cpdIds.push(cpdCode);				
+					totQty += Number(aplQty);					
+					getstring	+=	"&templatepost[particulars][cpdcode][]="	+	cpdCode +
+									"&templatepost[particulars][poref][]="		+	poRef +
+									"&templatepost[particulars][podate][]="		+	poDate +
+									"&templatepost[particulars][batref][]="		+	batRef +
+									"&templatepost[particulars][aplqty][]="		+	aplQty +
+									"&templatepost[particulars][rate][]="		+	rate +
+									"&templatepost[particulars][value][]="		+	val;
+					chkNoEmpty++;
+				}
+			}
+		}
+	});
+	
+	
+	if(stat == true && chkNoEmpty <= 0){
+		displayError(newError, "error", "<strong>Error !</strong> - Row 1 - Key Reference Missing or Total Qty is Zero");
+		firstObj.focus();
+		stat = false;
+		return false;
+	}	
+
+	if(stat == false){
+		return false;
+	}		
+	else if(grandtotal.html() == "" || Number(grandtotal.html().split(",").join("")) <= 0){
+		displayError(newError, "error", "<strong>Error !</strong> - Grand Total Particulars Missing.");
+		$("#new_Particulars table tr:eq(1) td:eq(1) input").focus();
+		return false;
+	}	
+	
+	
+	
+	/*	to template	*/
+	getstring		+=	"&templatepost[custid]="				+	custId +
+						"&templatepost[invoicedate]="			+	$("#new_InvDate").html() +
+						"&templatepost[payment_terms]="			+	$("#new_PayTerms").val() +
+						"&templatepost[shipmentdate]="			+	$("#new_ShipDate").val() +
+						"&templatepost[multiitems]="			+	((cpdIds.length > 1)?"1":"0") +
+						"&templatepost[totqty]="				+	totQty +
+						"&templatepost[total]="					+	$("#total_field").html() +
+						"&templatepost[cgst]="					+	$("#cgst").html() +
+						"&templatepost[cgst_out]="				+	$("#cgst_out").html() +
+						"&templatepost[taxableval_out]="		+	$("#taxableval_out").html() +
+						"&templatepost[sgst]="					+	$('#sgst').html() +
+						"&templatepost[sgst_out]="				+	$("#sgst_out").html() +
+						"&templatepost[igst]="					+	$("#igst").html() +
+						"&templatepost[igst_out]="				+	$("#igst_out").html() +
+						"&templatepost[grandtotal_out]="		+	$("#grandtotal_out").html() +
+						"&templatepost[invremarks]="			+	$("#new_Remarks").val();
+	//Check if Custom Part number/Description is needed
+	if(billfor == "tool" || billfor == "cmpd")
+	{	
+		custPartNum			=	$("#cust_partnum").val();
+		custDesc			=	$("#cust_desc").val();
+		if(billfor == "cmpd")
+		{
+			if (custPartNum == null || custPartNum == "" )
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Custom Part Number Missing.");
+				$("#cust_partnum").focus();
+				return false;		
+			}
+			if (custDesc == null || custDesc == "")
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Custom Description Missing.");
+				$("#cust_desc").focus();
+				return false;		
+			}			
+		}
+		
+		getstring			+=	"&templatepost[custpartnum]="		+	custPartNum +
+								"&templatepost[custdesc]="			+	custDesc ;
+	}	
+	
+
+		//alert(getstring); return false;
+	$.post(actionFile,getstring,function(data){
+		//alert(data); //return false;
+		//newError.html(data); return false;
+		error	=	data.split("~");
+		if(error[0] == "success"){
+			openInvoice({mod:billfor, invID:error[1]});
+			setTimeout(function(){window.location.reload();}, 500);
+		}
+		else{
+			displayError(newError, "error", data);
+		}
+	});	
+}
+
+function handleFormCancel(){
+	$("#new_CustID").val('');
+	clearCustomerDetails();
+	
+	$("#total_field").html('0.00');
+	$("#cgst").html('0');
+	$('#cgst_out').html('0.00');
+	$("#taxableval_out").html('0.00');
+	$("#sgst").html('0');
+	$("#sgst_out").html('0.00');
+	$("#igst").html('0');
+	$('#igst_out').html('0.00');
+	$("#grandtotal_out").html('0.00');
+}
+
+$(document).ready(function(){
+	$("#new_ShipDate").datepicker({
+		dateFormat: 'dd/mm/yy',
+		onClose: function(dateText, inst){
+			$("#new_ShipDate").focus();
+		}
+	});
+	
+	// Set AutoComplete Text Box
+	var objCusList	=	postback(actionFile,"selecttype=CSTATLIST&outtype=xml","POST","XML");
+	cusXML			=	parseXMLdoc(objCusList);
+	custList		=	new Array();
+	$(cusXML).find('row').each(function(index, element) {
+        custList.push($(this).find('cusname').text() );
+    });
+	
+	$("#new_CustID").autocomplete({
+		source:custList,
+		close:function(event, ui){
+			getCustomerDetails();
+		}
+	});
+	
+	$("#button_add").button().click(function(){
+		createCont   =   '<table width="100%" >' +
+						'<tr><td><b>Are you Sure to Create this Invoice ?</b></td></tr>' +
+						'</table>';
+		$('#create_dialog').html(createCont).dialog({
+			title:'Create Invoice',
+			width:300,
+			height:125,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'YES':function(){
+					$(this).dialog('close');
+					handleFormSubmit();
+				},
+				'NO':function(){
+				   $(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	
+		
+	});
+	
+	$("#button_cancel").button().click(function(){
+		handleFormCancel();
+	});
+	
+	clearCustomerDetails();
+});

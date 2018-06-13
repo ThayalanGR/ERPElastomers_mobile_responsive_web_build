@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+    <table border="0" cellpadding="6" cellspacing="0" width="100%" class="mix_stock">
+		<xsl:for-each select="xmldata/root/data/row">
+			<tr>
+				<xsl:if test="position() mod 2 != 0">
+					<xsl:attribute name="class">content_rows_light</xsl:attribute>
+				</xsl:if>
+				<xsl:if test="position() mod 2 != 1">
+					<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+				</xsl:if>
+				<xsl:attribute name="id"><xsl:value-of select="batid" /></xsl:attribute>
+				<xsl:attribute name="cpdid"><xsl:value-of select="cpdid" /></xsl:attribute>
+				<xsl:attribute name="masterwgt"><xsl:value-of select="format-number(masterbatchwgt, '##,##,##0.000')"/></xsl:attribute>
+				<xsl:attribute name="batexwgt"><xsl:value-of select="format-number(expbatchqty, '##,##,##0.000')"/></xsl:attribute>
+				<td width="15%" align="center"><xsl:value-of select="batid"/></td>	
+				<td width="20%"><xsl:value-of select="cpdname"/></td>	
+				<td width="10%"><xsl:value-of select="cpdpolymer"/></td>
+				<td width="15%">				
+					<a>
+						<xsl:attribute name="href">javascript:void(0);</xsl:attribute>
+						<xsl:attribute name="onClick">updateCustomer('<xsl:value-of select="batid" />');</xsl:attribute>
+						<xsl:value-of select="customer"/>
+					</a>				
+				</td>
+				<td width="15%" align="right"><xsl:value-of select="format-number(masterbatchwgt, '##,##,##0.000')"/></td>
+				<td width="15%" align="right"><xsl:value-of select="format-number(expbatchqty, '##,##,##0.000')"/></td>
+				<td width="15%" align="right">
+					<input>
+						<xsl:attribute name="id">input_<xsl:value-of select="batid" /></xsl:attribute>
+						<xsl:attribute name="type">checkbox</xsl:attribute>
+						<xsl:attribute name="value">1</xsl:attribute>
+						<xsl:attribute name="style">text-align:right;width:90%</xsl:attribute>
+						<xsl:attribute name="onClick">updateCount('<xsl:value-of select="batid" />');</xsl:attribute>
+					</input>
+				</td>
+			</tr>
+		</xsl:for-each>
+	</table>
+</xsl:template>
+</xsl:stylesheet>

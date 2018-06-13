@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0"
+xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+<table class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+	<tr style="font-size:8px;">
+		<th align="left" style="width:5%">S.NO</th>	
+		<th align="left" style="width:30%">RM Name</th>
+		<th align="left" style="width:20%">RM Grade</th>
+		<th align="left" style="width:10%">RM Class</th>
+		<th align="left" style="width:5%">UOM</th>
+		<th align="right" style="width:15%">MinStock</th>
+		<th align="right">Stock</th>
+	</tr>
+	<xsl:for-each select="xmldata/root/data/row">
+        <tr style="font-size:10px;">
+			<xsl:if test="minstock  &gt;=  stock">
+				<xsl:attribute name="style">color:#FF0000;font-size:10px;</xsl:attribute>
+			</xsl:if>
+			<td><xsl:value-of select="position()" /></td>
+            <td><xsl:value-of select="ramname" /></td>
+            <td><xsl:value-of select="ramgrade" /></td>
+            <td><xsl:value-of select="ramclass" /></td>
+            <td><xsl:value-of select="uom" /></td>
+            <td align="right"><xsl:value-of select="minstock" /></td>
+            <td align="right"><xsl:value-of select="stock" /></td>
+        </tr>
+	</xsl:for-each>
+</table>
+</xsl:template>
+</xsl:stylesheet>

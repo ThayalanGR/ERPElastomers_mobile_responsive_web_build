@@ -1,0 +1,305 @@
+<?php
+	session_start();
+	global $cpdreceipt_upload_dir;
+	$today		=	date('Y-m-d');	
+	header('Content-Type: text/xml');
+	  if ( isset($_FILES['file'])) {
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$cpdreceipt_upload_dir;
+		$ticket = uniqid(rand(), true);
+		$storagename 	= $ticket."uploaded_file.csv";
+		try {
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			 }
+
+			 // You should also check filesize here. 
+			 if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			 }
+
+			 if( 'text/csv' == $_FILES['file']['type'] ||  'application/vnd.ms-excel' == $_FILES['file']['type'] ) 
+			 {
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					echo $_FILES['file']["name"] . " already exists. ";
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath . $storagename))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+					$schArray 		= 	array();
+					$delimiter 		= 	",";
+					if (($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+					{
+						while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE)
+						{
+							$schArray[] = $row ; 
+						}
+						fclose($handle);
+					}
+					$cpdName	= 	"";					
+					$schFillArr	=	array();
+					$invId		=	$schArray[0][0];
+					for($i=0;$i<count($schArray);$i++)
+					{
+						if($cpdName != $schArray[$i][2])
+						{
+							$cpdName 	= 	$schArray[$i][2];
+							$cpdIdArr	=  	@getMySQLData("select cpdId from tbl_compound where upper(cpdName) = upper('".$cpdName."')" );
+							$cpdId		=	$cpdIdArr['data'][0]['cpdId'];
+						}
+						if($cpdId != null && $cpdId != "")
+						{
+							$schFillArr[$i]['cpdId'] 	= 	$cpdId;
+							if($schArray[$i][0] != null && $schArray[$i][0] != '' && $schArray[$i][1] != null && $schArray[$i][1] != '' && $schArray[$i][3] != null && $schArray[$i][3] != '' )
+							{
+								$schFillArr[$i]['invId']	=	$schArray[$i][0];
+								$schFillArr[$i]['invDate']	=	date('Y-m-d', strtotime($schArray[$i][1]));
+								if($schFillArr[$i]['invDate'] > $today )
+								{
+									throw new RuntimeException("Invoice date greater than today's date in row number : ". ($i+1));
+								}
+								$schFillArr[$i]['batId']	=	$schArray[$i][3]; 
+							}
+							else
+							{
+								throw new RuntimeException('Invoice Details like invoice number, date or batch id missing in row number : '. ($i+1));
+							}								
+							if($schArray[$i][4] > 0 && $schArray[$i][5] > 0)
+							{
+								$schFillArr[$i]['invQty']	=	$schArray[$i][4];
+								$schFillArr[$i]['recvQty']	=	$schArray[$i][5];
+							}	
+							else
+							{
+								throw new RuntimeException('Invoice Or Actual Qty missing in row number : '. ($i+1));
+							}								
+						}
+						else
+						{
+							throw new RuntimeException('No Compound such as : ' .$cpdName. ' in row number : '. ($i+1));
+						}
+					}
+					$insertsql				=	"insert into tbl_component_cpd_recv(invId, invDate, cpdId, batId,invQty,recvQty,full_test_req) values";
+					$sql_sub				=	"";
+					$fullTestCount			= 	array();
+					$lastCount				=	array();
+					$alreadyCheckedCpdIds	=	array();
+					for($lp=0;$lp<count($schFillArr);$lp++){
+						$full_test_req	=	0;
+						if (in_array($schFillArr[$lp]['cpdId'], $alreadyCheckedCpdIds,true) == false) {
+							$countFullTest_sql							=	@getMySQLData("SELECT batCountFullTest FROM tbl_compound where cpdId = '".$schFillArr[$lp]['cpdId']."'");					
+							$fullTestCount[$schFillArr[$lp]['cpdId']]	=	$countFullTest_sql['data']['0']['batCountFullTest'];
+							$lastFullTest_sql							=	@getMySQLData("SELECT count(*) as CountLastFullTest FROM tbl_component_cpd_recv where cpdId = '".$schFillArr[$lp]['cpdId']."' and status > 0 and invId != 'CPDRETURN' and sno > (select sno from tbl_component_cpd_recv where status > 0 and cpdId = '".$schFillArr[$lp]['cpdId']."' and full_test_req > 0 and invId != 'CPDRETURN' order by sno desc limit 1 )");
+							$lastCount[$schFillArr[$lp]['cpdId']]		=	$lastFullTest_sql['data']['0']['CountLastFullTest'];	
+							array_push($alreadyCheckedCpdIds, $schFillArr[$lp]['cpdId']);
+						}
+						else
+						{
+							$lastCount[$schFillArr[$lp]['cpdId']]++;
+						}
+						if($fullTestCount[$schFillArr[$lp]['cpdId']] > 0 && $lastCount[$schFillArr[$lp]['cpdId']] >= $fullTestCount[$schFillArr[$lp]['cpdId']])
+						{
+							$full_test_req		=	1;
+						}						
+						$sql_sub	.=	" ('".$schFillArr[$lp]['invId']."', '".$schFillArr[$lp]['invDate']."', '".$schFillArr[$lp]['cpdId']."',
+						'".$schFillArr[$lp]['batId']."', '".$schFillArr[$lp]['invQty']."', '".$schFillArr[$lp]['recvQty']."',$full_test_req) ";
+						
+						if($lp < count($schFillArr)-1){
+							$sql_sub	.=	" , ";	
+						}
+						
+						if($full_test_req	==	1)
+						{
+							$lastCount[$schFillArr[$lp]['cpdId']]	=	0;
+						}
+					}
+					
+					$insertsql	=	$insertsql.$sql_sub;
+					//echo $insertsql; exit();
+					$sql_query = @getMySQLData($insertsql);
+					
+					$output = "<cpdinvadd>
+									<sql>$insertsql</sql>
+									<status>".$sql_query['status']."</status>
+									<invid>$invId</invid>
+								</cpdinvadd>";
+						//echo $output; exit();
+					if($sql_query['status'] == "success"){
+						//print_r ($order_sch );
+						if(!rename($uploadPath . $storagename, $uploadPath.$_FILES['file']["name"]))
+						{
+							throw new RuntimeException('Warning! Failed to rename the file: '.$uploadPath . $storagename.' to :'.$uploadPath.$_FILES['file']["name"]);
+						}							
+					}
+					else{
+						throw new RuntimeException('Insertion of Compound DC/Invoice data failed due to :'.$sql_query['status']);						
+					}						
+					
+					echo $output;									
+				}	
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			if(($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+			{	
+				fclose($handle);
+				$thefile = $uploadPath . $storagename;
+				unlink($thefile);
+			}				
+			echo $e->getMessage();
+		}      
+     } 
+	 else 
+	 { 
+		switch($_REQUEST["selecttype"]){
+			case "GETBLENDS":
+				$sql	=	"SELECT cpdname from tbl_compound where status>0 and isblend = 1";
+				echo getXML($sql,false);
+				exit();	
+			break;
+			case "GETCOMPOUND":
+				$sql	=	"SELECT cpdid,cpdname, cpdpolymer from tbl_compound t1
+										inner join tbl_polymer_order t2 on t2.polyName = t1.cpdPolymer
+										where t1.status>0 order by dispOrder,cpdName asc";
+				echo getXML($sql,false);
+				exit();
+			break;
+			case "GETBATCH":
+				$cpdid			=	$_REQUEST['cpdid'];				
+				$sql_stocklevel	=	"select sno, batId, (recvQty-issuedQty) as avlQty	
+										from tbl_component_cpd_recv 
+										where cpdId='".$cpdid."' and status>0 and (recvQty-issuedQty) > 0	order by batId" ;
+				$batData	=	getXML($sql_stocklevel,false);			
+				echo $batData;
+				exit();
+			break;
+			case "ADDCOMPOUNDRETURN":
+				$sql_ins			=	"insert into tbl_component_cpd_recv(invId, invDate, cpdId, batId,recvQty) values ";
+				$retDate			=	$_REQUEST['invoicedate'];
+				if($retDate > $today)
+				{
+					echo "<mysql><status>Return Date greater than today's date</status></mysql>";
+					exit();				
+				}
+				list($y, $m, $d) 	= 	explode('-', $retDate);
+				$loc_sql			=	@getMySQLData("select value from tbl_settings where name='mixLocCode'");
+				$locCode			=	$loc_sql['data'][0]['value'];				
+				$partBatId			=	$cpdMonthCode[$m+0].$d.$locCode;
+				$financialYear		= 	$y;
+				if ( $m < 4)
+				{
+					$financialYear	= 	$y - 1;
+				}
+				$financialYear		=	(string) $financialYear;
+				$lastBatId_sql		=	@getMySQLData("SELECT count(*) as lastbatId FROM tbl_component_cpd_recv where invDate  = '$retDate' and invId = 'CPDRETURN'");
+				$codeNumber			=	0;
+				if($lastBatId_sql['count'] >0)
+				{
+					$codeNumber		=	$lastBatId_sql['data'][0]['lastbatId'];	
+				}				
+				
+				for($sq=0;$sq<count($_REQUEST['cpdcode']);$sq++){
+					$subsql[$sq]['cpdcode'] = $_REQUEST['cpdcode'][$sq];
+					$subsql[$sq]['aplqty'] =  $_REQUEST['aplqty'][$sq];					
+					$codeNumber++;
+					if($codeNumber < 10){
+						$code	=	"0".$codeNumber;
+					}
+					$subsql[$sq]['batref']		=	substr($financialYear,-2)."_".$partBatId . $code."R";						
+				}
+
+				$sql_sub	=	"";
+				for($lp=0;$lp<count($subsql);$lp++){
+					$cpdid		=	trim($subsql[$lp]['cpdcode']);
+					$batid		=	trim($subsql[$lp]['batref']);
+					$appqty		=	$subsql[$lp]['aplqty'];				
+					$sql_sub	.=	" ( 'CPDRETURN', '$retDate', '$cpdid', '$batid','$appqty' ) ";
+					if($lp < count($subsql)-1){
+						$sql_sub	.=	" , ";	
+					}
+				}
+				$sql_ins	=	$sql_ins.$sql_sub;
+				//echo $sql_ins;
+				//exit();
+				echo @getMySQLData($sql_ins, "xml");
+			break;
+			case 'BLENDISS':
+				$cpdBatches		=	$_REQUEST['cpdbatches'];
+				$blendName		=	$_REQUEST['blendname'];
+				$blendDate		=	$_REQUEST['blenddate'];
+				$batRefs		=	array();
+				$issQtys		=	array();
+				$appqty			=	0;
+				$batchCount		=	count($cpdBatches);
+				$sql_insert		=	" insert into tbl_moulding_issue (mdIssRef, issuedate,operator, batRef, qtyIss,  status,entryOn, entry_by) values  ";
+				$countBat		= 	0;
+				foreach($cpdBatches as $key => $value){
+					$cpdIDQuery			= 	@getMySQLData("select cpdId from tbl_component_cpd_recv where sno = '$key'");
+					array_push($batRefs,$key);
+					$issQtys[$key]	=	$value;
+					$appqty			+=	$value;	
+					$sql_insert		.=	" ( 'BLENDISSUE', '$blendDate', 'In-House', '$key', '$value', '1', now(), '".$_SESSION['userdetails']['userId']."') ";
+					if($countBat < ($batchCount - 1)){
+						$sql_insert		.=	" , ";
+					}
+					$countBat++;
+				}					
+				$output			=	@getMySQLData($sql_insert);
+				if($output['status'] == 'success'){	
+					foreach($batRefs  as $batRef){
+						@getMySQLData("update tbl_component_cpd_recv set issuedQty= issuedQty + ".$issQtys[$batRef]." where sno='$batRef'");
+					}
+					$sql_ins			=	"insert into tbl_component_cpd_recv(invId, invDate, cpdId, batId,recvQty) values ";
+					list($y, $m, $d) 	= 	explode('-', $blendDate);
+					$loc_sql			=	@getMySQLData("select value from tbl_settings where name='mixLocCode'");
+					$locCode			=	$loc_sql['data'][0]['value'];				
+					$partBatId			=	$cpdMonthCode[$m+0].$d.$locCode;
+					$financialYear		= 	$y;
+					if ( $m < 4)
+					{
+						$financialYear	= 	$y - 1;
+					}
+					$financialYear		=	(string) $financialYear;
+					$lastBatId_sql		=	@getMySQLData("SELECT count(*) as lastbatId FROM tbl_component_cpd_recv where invDate  = '$blendDate' and invId = 'CPDBLEND'");
+					$codeNumber			=	0;
+					if($lastBatId_sql['count'] >0)
+					{
+						$codeNumber		=	$lastBatId_sql['data'][0]['lastbatId'];	
+					}				
+					$codeNumber++;
+					if($codeNumber < 10){
+						$code	=	"0".$codeNumber;
+					}
+					$batid		=	substr($financialYear,-2)."_".$partBatId . $code."B";
+					$blendData	=	@getMySQLData("SELECT cpdId FROM tbl_compound where cpdName = '$blendName'");
+					$cpdid		=	$blendData['data'][0]['cpdId'];
+					$sql_ins	.=	" ( 'CPDBLEND', '$blendDate', '$cpdid', '$batid','$appqty' ) ";						
+					//echo $sql_ins;
+					//exit();
+					@getMySQLData($sql_ins, "xml");						
+				}else{
+					print_r($output);
+					exit();
+				}			
+				echo "success";
+			break;			
+		}
+	}
+
+?>

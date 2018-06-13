@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+	<table width="100%" border="0" id="content_stock_table" cellspacing="0" cellpadding="5">
+		<tr class="ram_rows_head"> 
+			<th width="5%" align="left">No</th> 
+			<th width="10%" align="left">Txn Date</th> 
+			<th width="18%" align="left">Txn Document</th> 
+			<th width="13%" align="left">Txn GRN</th>
+			<th width="18%" align="right">Receipt</th> 
+			<th width="18%" align="right">Issue</th> 
+			<th align="right">Stock</th> 
+		</tr> 	
+        <xsl:for-each select="rootxml/root/stock_list/data/row" >
+        <tr>
+            <xsl:if test="position() mod 2 != 0">
+                <xsl:attribute name="class">content_rows_light</xsl:attribute>
+            </xsl:if>
+            <xsl:if test="position() mod 2 != 1">
+                <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+            </xsl:if>
+            <td>
+                <xsl:value-of select="position()" />
+            </td>
+            <td>
+                <xsl:value-of select="txn_date" />
+            </td>
+            <td>
+                <xsl:value-of select="txn_doc" />
+            </td>
+            <td>
+                <xsl:value-of select="txn_grn" />
+            </td>			
+            <td align="right">
+                <xsl:value-of select="receipt" />
+            </td>
+            <td align="right">
+                <xsl:value-of select="issue" />
+            </td>
+            <td align="right">
+                <xsl:value-of select="stock" />
+            </td>
+        </tr>
+        </xsl:for-each>
+    </table>
+</xsl:template>
+</xsl:stylesheet>

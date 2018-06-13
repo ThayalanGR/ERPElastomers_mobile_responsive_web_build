@@ -1,0 +1,10 @@
+$(document).ready(function(){
+	//MonthPicker
+	$('#to_date').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	})
+	$("#button_submit").click(function(){	
+		openInvoice({operator:$("#operator").val(), invID:$("#to_date").val(),process:$("#process").val(),repType:$("#reporttype").val()});						
+	});		
+});

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+   <xsl:template match="/"> 
+		<table class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="10%">&nbsp;</th>
+					<th width="10%">Created</th> 
+					<th width="10%">Not-Feasible</th>
+					<th width="10%">Quote Submitted</th>
+					<th width="10%">Price Approved</th>
+					<th width="10%">Comm. Pending</th>
+					<th width="10%">Tool Ordered</th>    
+					<th width="10%">Tool Received</th>
+					<th width="10%">Tool Approved</th>
+					<th>Tool Pending</th>					
+				</tr>
+			</thead>
+			<tbody>	
+            <xsl:for-each select="xmldata/root/data/row">
+				<tr>
+					<xsl:if test="position() != 0">
+						<xsl:attribute name="class">content_rows_light</xsl:attribute>					
+					</xsl:if>
+					<xsl:if test="position() != 1">
+						<xsl:attribute name="class">content_rows_dark</xsl:attribute>				
+					</xsl:if>
+					<td align="left">						
+						<xsl:if test="position() = 1">
+							<span>
+								<xsl:attribute name="useperiod">yes</xsl:attribute>
+								<xsl:attribute name="class">view_button link</xsl:attribute> In this Period
+							</span>
+						</xsl:if>
+						<xsl:if test="position() = 2">
+							<span>
+								<xsl:attribute name="useperiod">no</xsl:attribute>
+								<xsl:attribute name="class">view_button link</xsl:attribute> Till Date
+							</span>
+						</xsl:if>						
+					</td>							
+					<td align="right">
+						<xsl:value-of select='format-number(newrfqraised,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(notfeasible,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(quotesubmitted,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(priceapproved,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(pendingrfqs,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(toolordered,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(toolreceived,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(devcompleted,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(pendingtools,"##,##,##0")' />
+					</td>					
+				</tr>
+            </xsl:for-each>		
+			</tbody> 
+		</table>
+    </xsl:template>		
+</xsl:stylesheet>
+		

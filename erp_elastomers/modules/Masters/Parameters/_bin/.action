@@ -1,0 +1,41 @@
+<?php
+
+	// Includes
+	session_start();
+	
+	// Do Actions
+	header('Content-Type: text/xml');
+	$output = "";
+	switch($_POST['selecttype']){
+		case "PARAMADD":
+			if($_POST['paramname'] != ""){
+				$output		=	@getMySQLData("insert into tbl_param(paramName, paramStdRef, paramUOM,paramTestMethod)
+												values('".$_POST['paramname']."', '".$_POST['stdref']."','".$_POST['uom']."', '".$_POST['testmethod']."');", "xml");
+			}
+		break;
+		case "PARAMEDIT":
+			if($_POST['sno'] != "" && $_POST['paramname'] != ""){
+				$output		=	@getMySQLData("update tbl_param set
+												paramName='".$_POST['paramname']."',
+												paramStdRef='".$_POST['stdref']."',
+												paramUOM='".$_POST['uom']."',
+												paramTestMethod='".$_POST['testmethod']."'
+												where sno='".$_POST['sno']."' and status>0;", "xml");
+			}
+		break;
+		case "PARAMDEL":
+			if($_POST['sno'] != ""){
+				$output		=	@getMySQLData("update tbl_param set status='0' where sno='".$_POST['sno']."' and status>0;", "xml");
+			}
+		break;
+	}
+	
+	// List Data
+	$list	=	@getMySQLData("SELECT *, (select uom_short_name from tbl_uom where sno = tbl_param.paramuom) as UOM  FROM tbl_param where status>0 order by sno asc;", 'xml', 'root');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

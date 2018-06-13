@@ -1,0 +1,52 @@
+<?php
+	session_start();
+	
+	header('Content-Type: text/xml');
+	
+	
+	switch($_REQUEST["selecttype"]){
+		case "FINALPLAN":
+			if( is_array($_REQUEST['batids'])  != "" && $_REQUEST['final_date'] != "" )
+			{
+				$finalDate		=	$_REQUEST['final_date'];
+				$batids			=	$_REQUEST['batids'];
+				for($batCount=0; $batCount<count($batids); $batCount++)
+				{
+					$batchID 	= $batids[$batCount];
+					$output = @getMySQLData("update tbl_mixing set batFinaldate = '$finalDate', shift = '".$_POST['shift']."'  where batid='$batchID'",xml);
+				}
+			}
+			else
+			{
+				echo "<mysql><status>Invalid Data / Data Missing</status></mysql>";
+				exit();
+			}
+		break;
+		case "UPDCUST":
+			$batid		=	$_REQUEST['batid'];
+			$customer	=	$_REQUEST['customer'];	
+			if	(($batid != "" && $batid != null) && ($customer != "" && $customer != null))
+			{
+				$output = @getMySQLData("update tbl_mixing set customer = '$customer'  where batid='$batid'",xml);
+			}
+			else
+			{
+				echo "<mysql><status>Invalid Data / Data Missing</status></mysql>";
+				exit();			
+			}
+		break;
+		
+	}
+	
+		// List Data
+	$list	=	@getMySQLData("select t1.batId,t1.cpdId, t2.cpdName,t2.cpdPolymer, t1.masterBatchWgt, sum(t3.planQty) as expBatchQty, t4.dispOrder, t1.customer
+						from tbl_mixing t1, tbl_compound t2, tbl_invoice_mixplan_items t3, tbl_polymer_order t4
+						where t1.cpdId = t2.cpdId and t1.batId=t3.batId and t4.polyName = t2.cpdPolymer and (t1.status = 1 or (t1.status = 2 and  (t1.masterBatchWgt - t1.mstrIssuedQty) > 0)) and t1.batFinalDate = '0000-00-00'  group by t1.batId order by dispOrder,cpdName,batId asc", "xml", "root", "lower");
+
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

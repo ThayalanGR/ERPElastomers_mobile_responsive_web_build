@@ -1,0 +1,558 @@
+<?php
+	session_start();
+	global	$purCutoffDate;
+	header("Content-Type: text/xml");
+	switch($_REQUEST["type"]){
+		case "RAMLIST":
+			$sql	=	"select t1.ramId, t2.ramName, t3.uom_short_name ramUnit, t1.ramGrade
+						from tbl_rawmaterial t1
+						inner join tbl_rawmaterial_base t2 on t2.sno = t1.ramNo
+						inner join tbl_uom t3 on t3.sno = t1.ramUnit
+						where t1.status > 0 and t1.ramClass < 6 order by t2.ramName, t1.ramGrade";
+			echo getMySQLData($sql, "xml", "root", "lower");
+		break;
+		case "GETDAT":
+			$one_day			=	24 * 60 * 60;
+			$issued				=	$_REQUEST['issued'];
+			$rmid				=	$_REQUEST['ramid'];
+			$fromDate			=	$_REQUEST['fromdate'];
+			$toDate				=	$_REQUEST['todate'];
+			$order				=	"/";
+			$replace			=	"-";
+			$fromDate			=	str_replace($order,$replace,$fromDate);
+			$toDate				=	str_replace($order,$replace,$toDate);
+			$fromdate			=	date("Y-m-d",strtotime($fromDate));
+			$todate				=	date("Y-m-d",strtotime($toDate));
+			//$todate				=	date("Y-m-d",strtotime($toDate) + $one_day);
+			$from_time			=	strtotime($fromdate);
+			$to_time			=	strtotime($todate);
+			$stock				=	0;
+			$tot_receipt		=	0;
+			$tot_issue			=	0;
+			$return				=	"";
+			// Get RawMaterial Opening Stock
+			$sql				=	"select t1.ramId, t1.ramName, t1.ramGrade, t1.ramApprovedRate, t1.ramClass, t2.class_name 
+										from tbl_rawmaterial t1 
+											inner join tbl_class t2 on t1.ramClass = t2.sno  
+										where t1.status > 0 and t1.ramClass < 7 ".((isset($rmid) && $rmid != "")?" and ramId = '$rmid'":"")." 
+									order by ramClass,ramName,ramGrade";
+			$ramdata			=	@getMySQLData($sql, "arr");
+			$ramClass 			=  	0;
+			$ramGrpScheduleTot	=	0;
+			$ramGrpOpnStockTot	=	0;
+			$ramGrpTodayRcptTot	=	0;
+			$ramGrpRecieptsTot	=	0;
+			$ramGrpTdyAdvIssTot	=	0;
+			$ramGrpTdyActIssTot	=	0;
+			$ramGrpIssuesTot	=	0;
+			$ramGrpClsStockTot	=	0;
+			$ramScheduleGrdTot	=	0;
+			$ramOpnStockGrdTot	=	0;
+			$ramTdyRecptGrdTot	=	0;
+			$ramRecieptsGrdTot	=	0;
+			$ramTdyAdvIssGrdTot	=	0;
+			$ramTdyActIssGrdTot	=	0;
+			$ramIssuesGrdTot	=	0;
+			$ramClsStockGrdTot	=	0;	
+			$returnAdd			=   "";
+			$className			= 	"";
+			
+			for($r=0; $r<$ramdata['count']; $r++){
+				$ramid			=	$ramdata['data'][$r]['ramId'];
+				$ramName		=	$ramdata['data'][$r]['ramName'];
+				$ramGrade		=	$ramdata['data'][$r]['ramGrade'];
+				$ramAppRate		=	$ramdata['data'][$r]['ramApprovedRate'];
+				$className		= 	$ramdata['data'][$r]['class_name'];
+				$lastRow		=	false;
+				$returnAdd 		= 	"";
+				if( $ramClass == 0)
+				{
+					$ramClass	=	$ramdata['data'][$r]['ramClass'];						
+				}
+				
+				if(($ramdata['count'] - $r) == 1)
+				{
+					$lastRow	=	true;
+				}
+				
+				if ($ramClass != $ramdata['data'][$r]['ramClass'])
+				{
+					$ramClass			=	$ramdata['data'][$r]['ramClass'];
+					$ramScheduleGrdTot	+=	$ramGrpScheduleTot;
+					$ramOpnStockGrdTot	+= 	$ramGrpOpnStockTot;
+					$ramTdyRecptGrdTot	+=	$ramGrpTodayRcptTot;
+					$ramRecieptsGrdTot	+=	$ramGrpRecieptsTot;
+					$ramTdyAdvIssGrdTot	+=	$ramGrpTdyAdvIssTot;
+					$ramTdyActIssGrdTot	+=	$ramGrpTdyActIssTot;
+					$ramIssuesGrdTot	+=	$ramGrpIssuesTot;
+					$ramClsStockGrdTot	+=	$ramGrpClsStockTot;	
+					$returnAdd			=	"</row><totSchedule>$ramGrpScheduleTot</totSchedule>
+													<totOpenStock>$ramGrpOpnStockTot</totOpenStock>
+													<totTdyRecpts>$ramGrpTodayRcptTot</totTdyRecpts>
+													<totReciepts>$ramGrpRecieptsTot</totReciepts>
+													<totTdyAdvIss>$ramGrpTdyAdvIssTot</totTdyAdvIss>
+													<totTdyActIss>$ramGrpTdyActIssTot</totTdyActIss>
+													<totIssues>$ramGrpIssuesTot</totIssues>
+													<totClsStock>$ramGrpClsStockTot</totClsStock>".
+												"</row><row><ramClass>$ramClass</ramClass><className>$className</className><row>";
+					$ramGrpScheduleTot	=	0;
+					$ramGrpOpnStockTot	=	0;
+					$ramGrpTodayRcptTot	=	0;
+					$ramGrpRecieptsTot	=	0;
+					$ramGrpTdyAdvIssTot	=	0;
+					$ramGrpTdyActIssTot	=	0;
+					$ramGrpIssuesTot	=	0;
+					$ramGrpClsStockTot	=	0;					
+				}
+				//echo $ramid;
+				//Get schedule
+				$compSch_sql			=	"SELECT t2.cpdId, sum(schQty) as schQty, ramParts, t2.ramId
+												FROM (select cusId, cpdId_cmpdId, schQty from (select * from tbl_scheduling where schOrder = 'compound'  and entry_on > '$purCutoffDate' and (STR_TO_DATE(concat('01',' ',schMonth),'%d %M %Y') between '".date("Y-m-01",strtotime("$fromdate"))."' and '".date("Y-m-t",strtotime("$todate"))."') order by entry_on desc)tsch group by cpdId_cmpdId,cusId) t1
+													INNER JOIN (select * from tbl_compound_rm group by item_no,cpdId )t2 ON t1.cpdId_cmpdId = t2.cpdId and t2.ramId = '$ramid'
+													".((isset($issued) && $issued != "")?" INNER JOIN tbl_customer t3 on t3.cusId = t1.cusId and t3.cusGroup ='$issued'":"")."
+												group by cpdId"	;
+				//echo $compSch_sql; exit();
+				$stocksched				=	@getMySQLData($compSch_sql, "arr");
+				$compound				=	$stocksched['data'];
+				$schedqty				=	0;
+				for($os=0; $os<$stocksched['count']; $os++){
+					$totRamParts_sql	=	@getMySQLData("select sum(ramParts)as totParts from (select ramParts from tbl_compound_rm where cpdId='".$compound[$os]['cpdId']."' group by item_no ) as tbl1 ");									
+					$totParts			=	$totRamParts_sql['data'][0]['totParts'];
+					$schedqty			+=	(($compound[$os]['schQty'] * $compound[$os]['ramParts'])/$totParts);
+				}				
+				$ramGrpScheduleTot 		+= 	$schedqty;
+				//added "round" for preventing "-0.000" display
+				$scedule_qty			=	"<schedule_qty>".round($schedqty,3)."</schedule_qty>";				
+				
+				
+				// Get Stock List before Start Date
+				$sql				=	"select t1.grnId, t2.invRecvQty as recvQty, t2.avlQty 
+											from tbl_rawmaterial_qan t1
+												inner join tbl_invoice_grn t2  on t2.grnId=t1.grnId ".((isset($issued) && $issued != "")?" and invIssuer='$issued'":"")."
+											where t1.ramId = '$ramid' and t2.grnDate > '$purCutoffDate' and t2.grnDate<'$fromdate' and	t1.ramStatus=1 and t1.ramApproveStatus = '1' 
+										group by qanId";
+				$stockopen			=	@getMySQLData($sql, "arr");
+				
+				// Stock Total/ GRN Details for Opening
+				$stock_list_open	=	0;
+				$grn_list_open		=	"";
+				for($os=0; $os<$stockopen['count']; $os++){
+					$stock_list_open	+=	$stockopen['data'][$os]['recvQty'];
+					if($stockopen['data'][$os]['avlQty'] > 0)
+					{
+						if($grn_list_open != "")
+						{
+							$grn_list_open	= $grn_list_open . "\n";
+						}
+						$grn_list_open	=	$grn_list_open . $stockopen['data'][$os]['grnId'] . "(" . $stockopen['data'][$os]['avlQty']. ")";
+					}					
+				}
+				
+				// Get SAN Before Start Date
+				$sql			=	"select sum(exc_shrt) as  exc_shrt
+										from tbl_purchase_san tps 
+											".((isset($issued) && $issued != "")?"  inner join tbl_invoice_grn tg on tg.grnId = tps.grnId and invIssuer='$issued'":"")." 
+										where ramId = '$ramid' and sanDate > '$purCutoffDate' and sanDate < '$fromdate' and tps.status > 0";
+				$sanopen		=	@getMySQLData($sql, "arr");
+				// Stock Total for Opening
+				for($osa=0; $osa<$sanopen['count']; $osa++){
+					$stock_list_open	+=	$sanopen['data'][$osa]['exc_shrt'];
+				}
+	
+				$issue_list_open	=	0;
+
+				// Get DC Qty Before Start Date
+				$sql			=	"select sum(dcQty) as dcQty 
+										from (select sum(dcQty) as dcQty 
+												from tbl_invoice_dc_items tidi 
+													inner join tbl_invoice_dc tid on tidi.dcId = tid.dcId and status > 0 
+													".((isset($issued) && $issued != "")?" inner join tbl_invoice_grn tg on tg.grnId = tidi.dcItemId and invIssuer='$issued'":"")." 
+												where dcCode='$ramid' and dcDate > '$purCutoffDate' and	dcDate < '$fromdate'
+												Union all
+												select  sum(t1.invQty) as dcQty
+													from tbl_invoice_sales_items t1 
+														inner join tbl_invoice_sales t2 on t1.invId = t2.invId and status > 0   
+														".((isset($issued) && $issued != "")?" inner join tbl_invoice_grn t3 on t3.grnId = t1.invPlanRef and invIssuer='$issued'":"")."
+												where  t1.invCode='$ramid'and t2.invDate > '$purCutoffDate' and t2.invDate<'$fromdate')tab1";
+				$dcopen		=	@getMySQLData($sql, "arr");
+				// Stock Total for Opening
+				for($osd=0; $osd<$dcopen['count']; $osd++){
+					$issue_list_open	+=	$dcopen['data'][$osd]['dcQty'];
+				}					
+				
+				// Get Issue List before Start Date
+				$sql				=	"select sum(mixIssuQty) as issueQty 
+											from tbl_mixing_issue_rm t1 
+												inner join tbl_mixing_issue t2  on t1.mixIssuId=t2.mixIssuId and t2.status>0
+												".((isset($issued) && $issued != "")?" inner join tbl_invoice_grn tg on tg.grnId = t1.grnId and invIssuer='$issued'":"")." 
+											where ramId = '$ramid' and t2.mixIssuDate > '$purCutoffDate' and t2.mixIssuDate < '$fromdate'";
+				$issueopen			=	@getMySQLData($sql, "arr");
+				// Issue Total for Opening
+				for($oi=0; $oi<$issueopen['count']; $oi++){
+					$issue_list_open	+=	$issueopen['data'][$oi]['issueQty'];
+				}
+				
+				// Get Opening Stock
+				$stock				=	$stock_list_open - $issue_list_open;
+				$tot_open			=	$stock;				
+				$ramGrpOpnStockTot 	+= 	$stock;
+				//added "round" for preventing "-0.000" display
+				$opening_stock		=	"<opening_stock>".round($stock,3)."</opening_stock>";
+				
+				//Get today's receipts
+				$sql				=	"select sum(recvQty) as recvQty 
+											from (select t2.invRecvQty as recvQty 
+													from tbl_rawmaterial_qan t1
+														inner join tbl_invoice_grn t2 on t2.grnId=t1.grnId ".((isset($issued) && $issued != "")?" and invIssuer='$issued'":"")."
+													where t1.ramId = '$ramid' and t2.grnDate > '$purCutoffDate' and t2.grnDate = '$todate' and t1.ramStatus=1 and t1.ramApproveStatus = '1'  
+												group by qanId )tab1"	;
+				$stockdata			=	@getMySQLData($sql, "arr");
+				$tdyrecptqty		=	0;
+				for($os=0; $os<$stockdata['count']; $os++){
+					$tdyrecptqty	+=	$stockdata['data'][$os]['recvQty'];
+				}				
+				$ramGrpTodayRcptTot += 	$tdyrecptqty;
+				//added "round" for preventing "-0.000" display
+				$todays_receipt			=	"<todays_receipt>".round($tdyrecptqty,3)."</todays_receipt>";				
+				
+				// Get Stock Information
+				$sql		=	"select t1.qanId, t1.grnId, t1.ramId, t2.grnDate, t2.invRecvQty as recvQty, t2.avlQty, t1.entry_on, t2.is_open_stock 
+									from tbl_rawmaterial_qan t1
+										inner join tbl_invoice_grn t2 on t2.grnId=t1.grnId  ".((isset($issued) && $issued != "")?" and invIssuer='$issued'":"")."
+									where t1.ramId = '$ramid' and t2.grnDate > '$purCutoffDate' and (t2.grnDate between '$fromdate' and '$todate') and	t1.ramStatus=1 and t1.ramApproveStatus = '1'  
+									group by qanId 
+								order by t2.grnDate asc";
+				//echo $sql; exit();
+				$stockdat		=	@getMySQLData($sql, "arr");
+				/*echo "<pre>";
+					print_r($stockdat);
+				echo "</pre>"; exit();*/					
+				// GRN details				
+				for($oi=0; $oi<$stockdat['count']; $oi++){
+					if($stockdat['data'][$oi]['avlQty'] > 0)
+					{
+						if($grn_list_open != "")
+						{
+							$grn_list_open	= $grn_list_open . "\n";
+						}
+						$grn_list_open	=	$grn_list_open . $stockdat['data'][$oi]['grnId'] . "(" . $stockdat['data'][$oi]['avlQty']. ")";
+					}
+					
+				}
+				
+				//Get today's advice
+				$sql				=	"select sum(planQty) as planqty 
+											from (	SELECT planqty 
+														FROM (SELECT tbc.cpdid,tbc.ramid 
+																FROM tbl_mixing tbm 
+																	INNER JOIN tbl_compound_rm tbc ON tbm.cpdid = tbc.cpdid and tbc.is_final_chemical = 1 
+																WHERE tbm.is_mill_batch = 0 AND tbm.status > 0 AND tbm.is_open_stock = 0  AND tbm.batfinaldate ='$todate'  group by cpdid, ramid) tbl1 
+															INNER JOIN (SELECT tbm.cpdid,tmp.ramid, planqty 
+																			FROM tbl_mixing tbm 
+																				INNER JOIN tbl_invoice_mixplan_items tmp  on tbm.batid = tmp.batid and tmp.ramid = '$ramid'
+																			WHERE tbm.is_mill_batch = 0 AND tbm.status > 0 and tbm.batfinaldate > '$purCutoffDate' AND tbm.batfinaldate ='$todate' ".((isset($issued) && $issued != "")?" and tbm.customer = '$issued'":"").") tbl2 on tbl1.cpdid = tbl2.cpdid and tbl1.ramid = tbl2.ramid  
+													UNION ALL
+													SELECT planqty 
+														FROM (SELECT tbm.cpdid,tmp.ramid, planqty 
+																FROM tbl_mixing tbm 
+																	INNER JOIN tbl_invoice_mixplan_items tmp on tbm.batid = tmp.batid and tmp.ramid = '$ramid'
+																WHERE tbm.is_mill_batch = 1 AND tbm.status > 0 and tbm.batfinaldate > '$purCutoffDate' AND tbm.batfinaldate ='$todate' ".((isset($issued) && $issued != "")?" and tbm.customer = '$issued'":"").") tbl1 
+													UNION ALL 
+													SELECT planqty 
+														FROM (SELECT tbc.cpdid,tbc.ramid 
+																FROM tbl_mixing tbm 
+																	INNER JOIN tbl_compound_rm tbc ON tbm.cpdid = tbc.cpdid and tbc.is_final_chemical = 0 
+																WHERE tbm.is_mill_batch = 0 AND tbm.status > 0 AND tbm.is_open_stock = 0  AND tbm.batdate ='$todate' group by cpdid, ramid) tbl1
+															INNER JOIN (SELECT tbm.cpdid,tmp.ramid, planqty 
+																			FROM tbl_mixing tbm
+																				INNER JOIN tbl_invoice_mixplan_items tmp on tbm.batid = tmp.batid and tmp.ramid = '$ramid'
+																			WHERE tbm.is_mill_batch = 0 AND tbm.status > 0 and tbm.batdate > '$purCutoffDate' AND tbm.batdate ='$todate' ".((isset($issued) && $issued != "")?" and tbm.customer = '$issued'":"").") tbl2 on tbl1.cpdid = tbl2.cpdid and tbl1.ramid = tbl2.ramid) tab1";
+				$stockdata			=	@getMySQLData($sql, "arr");
+				$tdyadvissqty		=	0;
+				for($os=0; $os<$stockdata['count']; $os++){
+					$tdyadvissqty	+=	$stockdata['data'][$os]['planqty'];
+				}				
+				$ramGrpTdyAdvIssTot += 	$tdyadvissqty;
+				//added "round" for preventing "-0.000" display
+				$advised_issue			=	"<advised_issue>".round($tdyadvissqty,3)."</advised_issue>";				
+				
+				//Get today's issues
+				$sql				=	"select sum(issueQty) as issueQty 
+											from(	select mixIssuQty as issueQty 
+														from tbl_mixing_issue_rm t1 
+															inner join tbl_mixing_issue t2  on t1.mixIssuId=t2.mixIssuId and t2.status>0
+															".((isset($issued) && $issued != "")?" inner join tbl_invoice_grn tg on tg.grnId = t1.grnId and invIssuer='$issued'":"")." 
+													where ramId = '$ramid' and t2.mixIssuDate > '$purCutoffDate' and t2.mixIssuDate = '$todate'
+													UNION ALL
+													select dcQty as issueQty
+														from tbl_invoice_dc_items tidi 
+															inner join tbl_invoice_dc tid on tidi.dcId = tid.dcId and tid.status > 0 
+															".((isset($issued) && $issued != "")?" inner join tbl_invoice_grn tg on tg.grnId = tidi.dcItemId and invIssuer='$issued'":"")." 
+													where dcCode = '$ramid' and dcDate > '$purCutoffDate' and dcDate = '$todate'
+													Union all
+													select  ta.invQty as issueQty
+														from tbl_invoice_sales_items ta 
+															inner join tbl_invoice_sales tb on ta.invId = tb.invId and status > 0   
+															".((isset($issued) && $issued != "")?" inner join tbl_invoice_grn t3 on t3.grnId = ta.invPlanRef and invIssuer='$issued'":"")."
+													where  ta.invCode='$ramid'and tb.invDate > '$purCutoffDate' and tb.invDate = '$todate') tab1"	;
+				$stockdata			=	@getMySQLData($sql, "arr");
+				$tdyactissqty		=	0;
+				for($os=0; $os<$stockdata['count']; $os++){
+					$tdyactissqty	+=	$stockdata['data'][$os]['issueQty'];
+				}				
+				$ramGrpTdyActIssTot += 	$tdyactissqty;
+				//added "round" for preventing "-0.000" display
+				$todays_issue			=	"<todays_issue>".round($tdyactissqty,3)."</todays_issue>";				
+				
+				$sql		=	"select * 
+									from (	select t1.mixIssuId, t1.ramId, t1.grnId, mixIssuQty as issueQty, t2.mixIssuDate 
+												from tbl_mixing_issue_rm t1 
+													inner join tbl_mixing_issue t2  on t1.mixIssuId=t2.mixIssuId and t2.status>0
+													".((isset($issued) && $issued != "")?" inner join tbl_invoice_grn tg on tg.grnId = t1.grnId and invIssuer='$issued'":"")." 
+											where ramId = '$ramid' and t2.mixIssuDate > '$purCutoffDate' and (t2.mixIssuDate between '$fromdate' and '$todate')
+											UNION ALL
+											select tidi.dcId, tidi.dcCode, tidi.dcItemId, dcQty, dcDate 
+												from tbl_invoice_dc_items tidi 
+													inner join tbl_invoice_dc tid on tidi.dcId = tid.dcId and tid.status > 0 
+													".((isset($issued) && $issued != "")?" inner join tbl_invoice_grn tg on tg.grnId = tidi.dcItemId and invIssuer='$issued'":"")." 
+											where dcCode = '$ramid' and dcDate > '$purCutoffDate' and (dcDate between '$fromdate' and '$todate'	)
+											Union all
+											select  ta.invId, ta.invCode, ta.invPlanRef, ta.invQty, tb.invDate
+												from tbl_invoice_sales_items ta 
+													inner join tbl_invoice_sales tb on ta.invId = tb.invId and status > 0   
+													".((isset($issued) && $issued != "")?" inner join tbl_invoice_grn t3 on t3.grnId = ta.invPlanRef and invIssuer='$issued'":"")."
+											where  ta.invCode='$ramid'and tb.invDate > '$purCutoffDate' and (tb.invDate between '$fromdate' and '$todate') )	tbl1							
+								order by tbl1.mixIssuDate asc;";
+				$issue		=	@getMySQLData($sql, "arr");
+				/*echo "<pre>";
+					print_r($issue);
+				echo "</pre>"; exit();	*/			
+				
+				$sql		=	"select sanId, sanDate, sum(exc_shrt) as exc_shrt,tps.grnId 
+									from tbl_purchase_san tps 
+										".((isset($issued) && $issued != "")?"  inner join tbl_invoice_grn tg on tg.grnId = tps.grnId and invIssuer='$issued'":"")." 
+									where tps.ramId = '$ramid' and tps.status=1 and sanDate > '$purCutoffDate' and	(sanDate between '$fromdate' and '$todate') 
+								group by sanId";
+				$san		=	@getMySQLData($sql, "arr");
+				
+				/*echo "<pre>";
+					print_r($san);
+				echo "</pre>"; exit();*/
+				
+				// Get Dates
+				$from_date	=	$from_time;
+				$to_date	=	$to_time;
+				$date_now	=	$from_date;
+				$stock_list	=	'';
+				$count		=	0;
+				
+				if($stockdat['status']=="success" && $issue['status']=="success" && $san['status']=="success"){
+				
+					while($date_now <= $to_date){
+						$slist			=	array();
+						$slist_time		=	array();
+						
+						// Get Stock Data
+						for($sd=0; $sd<$stockdat['count']; $sd++){
+							$thisdate	=	strtotime($stockdat['data'][$sd]['grnDate']);
+							if($thisdate == $date_now){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$stockdat['data'][$sd]['qanId'];
+								$slist[$nxt]['txn_grn']			=	$stockdat['data'][$sd]['grnId'].(($stockdat['data'][$sd]['is_open_stock']=='1')?" (Opening Stock)":"");
+								$slist[$nxt]['receipt']			=	$stockdat['data'][$sd]['recvQty'];
+								$slist[$nxt]['issue']			=	0;
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						// Get Issue Data
+						for($isd=0; $isd<$issue['count']; $isd++){
+							$thisdate	=	strtotime($issue['data'][$isd]['mixIssuDate']);
+							$nxtdate	=	$date_now + $one_day;
+							if($thisdate >= $date_now && $thisdate < $nxtdate){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$issue['data'][$isd]['mixIssuId'];
+								$slist[$nxt]['txn_grn']			=	$issue['data'][$isd]['grnId'];
+								$slist[$nxt]['receipt']			=	0;
+								$slist[$nxt]['issue']			=	$issue['data'][$isd]['issueQty'];
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						// Get Stock Adjustments Note
+					
+						for($stk=0; $stk<$san['count']; $stk++){
+							$thisdate	=	strtotime($san['data'][$stk]['sanDate']);
+							$nxtdate	=	$date_now + $one_day;
+							if($thisdate >= $date_now && $thisdate < $nxtdate){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$san_no	=	$san['data'][$stk]['exc_shrt'] + 0;
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$san['data'][$stk]['sanId'];
+								$slist[$nxt]['txn_grn']			=	$san['data'][$stk]['grnId'];
+								$slist[$nxt]['receipt']			=	($san_no > 0)?$san_no:0;
+								$slist[$nxt]['issue']			=	($san_no < 0)?preg_replace("/[-]/", "", $san_no):0;
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						@array_multisort($slist_time, SORT_ASC, SORT_NUMERIC);
+						
+						
+						for($sa=0; $sa<count($slist_time); $sa++){
+							for($sl=0; $sl<count($slist); $sl++){
+								if($slist[$sl]['time'] == $slist_time[$sa]){
+									$stock			=	(($stock + $slist[$sl]['receipt']) - $slist[$sl]['issue']);
+									$stock_list		.=	"<row>
+										<txn_date>".$slist[$sl]['txn_date']."</txn_date>
+										<txn_doc>".$slist[$sl]['txn_doc']."</txn_doc>
+										<txn_grn>".$slist[$sl]['txn_grn']."</txn_grn>
+										<receipt>".((is_numeric($slist[$sl]['receipt']) && $slist[$sl]['issue'] == "-")?@number_format($slist[$sl]['receipt'], 3):"-")."</receipt>
+										<issue>".(($slist[$sl]['receipt'] == "-" && is_numeric($slist[$sl]['issue']))?@number_format($slist[$sl]['issue'], 3):"-")."</issue>
+										<stock>".@number_format($stock, 3)."</stock>
+									</row>";
+									$tot_receipt	+=	$slist[$sl]['receipt'];
+									$tot_issue		+=	$slist[$sl]['issue'];
+									$count++;
+									array_splice($slist, $sl, 1);
+									break;
+								}
+							}
+						}
+						
+						$date_now	+=	$one_day;
+					}
+					$statusTab	=	"<status>success</status>";
+					$countTab	=	"<count>$count</count>";
+				}
+				else if($stockdat['status']!="success"){
+					$statusTab	=	"<error>".$stockdat['errno']."</error>";
+				}
+				else if($issue['status']!="success"){
+					$statusTab	=	"<error>".$issue['errno']."</error>";	
+				}
+				else if($san['status']!="success"){
+					$statusTab	=	"<error>".$san['errno']."</error>";
+				}
+				//to resolve "-0.000" issue
+				$schedqty			=	round($schedqty,3);
+				$tot_open			=	round($tot_open,3);
+				$tot_receipt		=	round($tot_receipt,3);
+				$tot_issue			=	round($tot_issue,3);
+				$stock				=	round($stock,3);
+				$tdyadvissqty		=	round($tdyadvissqty,3);
+				$ramGrpRecieptsTot	+=	$tot_receipt;
+				$ramGrpIssuesTot	+=	$tot_issue;
+				$ramGrpClsStockTot  +=	$stock;
+				$tot_rec			=	"<total_receipt>".$tot_receipt."</total_receipt>";
+				$tot_iss			=	"<total_issue>".$tot_issue."</total_issue>";
+				
+				if($rmid != ""){
+					$return	.=	"
+						<rootxml><root>
+						$countTab
+						$statusTab						
+						$opening_stock
+						<closing_stock>$stock</closing_stock>
+						$tot_rec
+						$tot_iss
+						<stock_list><data>
+						$stock_list
+						</data></stock_list>
+						</root></rootxml>
+					";
+				}else{
+					if($return == "")
+						$return = "<row><ramClass>$ramClass</ramClass><className>$className</className><row>";
+					
+					if($returnAdd != "")
+						$return	.= $returnAdd;
+	
+					if(!($schedqty == 0 && $tot_open == 0 && $stock == 0 && $tot_receipt == 0 && $tdyadvissqty == 0 && $tot_issue == 0 ))
+						$return	.=	"<ramData>
+										<ramid>$ramid</ramid>
+										<ramname>$ramName</ramname>
+										<ramgrade>$ramGrade</ramgrade>
+										<ramrate>$ramAppRate</ramrate>
+										$countTab
+										$statusTab
+										$scedule_qty
+										$opening_stock
+										$todays_receipt
+										$tot_rec
+										$advised_issue
+										$todays_issue
+										$tot_iss
+										<closing_stock>".$stock."</closing_stock>
+										<grndetails>".$grn_list_open."</grndetails>										
+									</ramData>";
+
+						
+					if($lastRow)
+					{
+					$ramScheduleGrdTot	+=	$ramGrpScheduleTot;
+					$ramOpnStockGrdTot	+= 	$ramGrpOpnStockTot;
+					$ramTdyRecptGrdTot	+=	$ramGrpTodayRcptTot;
+					$ramRecieptsGrdTot	+=	$ramGrpRecieptsTot;
+					$ramTdyAdvIssGrdTot	+=	$ramGrpTdyAdvIssTot;
+					$ramTdyActIssGrdTot	+=	$ramGrpTdyActIssTot;
+					$ramIssuesGrdTot	+=	$ramGrpIssuesTot;
+					$ramClsStockGrdTot	+=	$ramGrpClsStockTot;	
+				$return					.=	"</row>
+												<totSchedule>$ramGrpScheduleTot</totSchedule>
+												<totOpenStock>$ramGrpOpnStockTot</totOpenStock>
+												<totTdyRecpts>$ramGrpTodayRcptTot</totTdyRecpts>
+												<totReciepts>$ramGrpRecieptsTot</totReciepts>
+												<totTdyAdvIss>$ramGrpTdyAdvIssTot</totTdyAdvIss>
+												<totTdyActIss>$ramGrpTdyActIssTot</totTdyActIss>
+												<totIssues>$ramGrpIssuesTot</totIssues>
+												<totClsStock>$ramGrpClsStockTot</totClsStock>".
+											"</row>";
+					}
+					
+				 
+				}
+				$tot_receipt	= 0;
+				$tot_issue		= 0;
+			}
+			
+			$output = (isset($rmid) && $rmid != "")?$return:"<rootxml>
+															<root>
+																<count>".$ramdata['count']."</count>
+																<status>".$ramdata['status']."</status>
+																<data>
+																	".$return."
+																	<sceduleGrdTot>$ramScheduleGrdTot</sceduleGrdTot>
+																	<openStockGrdTot>$ramOpnStockGrdTot</openStockGrdTot>
+																	<todayRcptGrdTot>$ramTdyRecptGrdTot</todayRcptGrdTot>
+																	<recieptsGrdTot>$ramRecieptsGrdTot</recieptsGrdTot>
+																	<todayAdvIssGrdTot>$ramTdyAdvIssGrdTot</todayAdvIssGrdTot>
+																	<todayActIssGrdTot>$ramTdyActIssGrdTot</todayActIssGrdTot>
+																	<issuesGrdTot>$ramIssuesGrdTot</issuesGrdTot>
+																	<clsStockGrdTot>$ramClsStockGrdTot</clsStockGrdTot>
+																</data>
+															</root>
+														</rootxml>";
+			if($_POST["conToHTML"] == 1)
+			{
+				//convert to HTML via server side XSLT
+				$xml = new DOMDocument;
+				$xml->loadXML($output);
+				$xsl = new DOMDocument;
+				$xsl->load($_SESSION['app']['iso_dir'].$_POST["xslfile"]);
+				$proc = new XSLTProcessor;
+				$proc->importStyleSheet($xsl);
+				echo $proc->transformToXML($xml);
+			}
+			else
+				echo $output;
+			exit();
+		break;
+	}
+
+?>

@@ -1,0 +1,225 @@
+<?php
+	session_start();
+	global $mgmt_grp_email,$cpd_grp_email,$cpdMonthCode,$company_abbrv,$label_printer,$packing_label_file;
+	header("Content-Type: text/xml");
+	
+	switch($_POST["selecttype"]){
+		case "GETVAL":	
+			$sql_invoice	=	"select tic.status,tic.invid,tic.invid as dispinvid, ici.invCode,  tc.cusName, tc.cusEmail, tic.entry_by as user, tc.cusGroup, sum(ici.invqty), ici.invName, ici.invDesc, ici.invRate,ici.invtype, '".$_POST["invtype"]."' as invoicetype, DATE_FORMAT(invDate, '%d-%b-%Y') as invDate, (if(sum(ici.invqty *ici.invrate)>0,sum(ici.invqty *ici.invrate),0)) as value
+									from tbl_invoice_sales tic 
+										inner join tbl_customer tc on trim(tic.invCusId)=trim(tc.cusId) 
+										inner join tbl_invoice_sales_items ici on tic.invId=ici.invId 
+									where tic.invdate >= '".$_POST["fromdate"]."' and  tic.invdate  <= '".$_POST["todate"]."' ";
+			if ($_POST["invtype"] != "")
+			{
+				$sql_invoice	.=	" and ici.invtype = '".$_POST["invtype"]."' ";
+			}	
+			$sql_invoice	.=	" group by tic.invId,ici.invCode order by dispinvid desc";
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>
+				$list
+				$output
+			</xmldata>";
+		break;
+		case "GETPACKQTY":						
+			$sql_invoice	=	@getMySQLData("select cmpdStdPckQty from tbl_component where cmpdId = '".$_POST["cmpdid"]."'");
+			$output			=	$sql_invoice['data'][0]['cmpdStdPckQty'];
+			echo $output;
+		break;		
+		case "SENDCOVERPAGE":
+			// Fetch Record from Database
+			$output 		= 	"";
+			$sql 			= 	"SELECT cusName, sum( invTotalAmt ) AS Sales_Value, sum( invCGSTAmt ) AS CGST,   sum( invSGSTAmt ) AS SGST, sum( invIGSTAmt ) AS IGST, sum( invGrandTotal ) AS grand_total
+									FROM tbl_invoice_sales tic
+										INNER JOIN tbl_customer tc ON tic.invCusId = tc.cusId
+										LEFT JOIN tbl_invoice_component_insertval tici ON tic.invId = tici.invId
+									WHERE tic.status =1	AND invDate >= '".$_POST["fromdate"]."'	AND invDate <= '".$_POST["todate"]."'
+								GROUP BY invCusId
+								ORDER BY cusName";
+			$outSql 		=	@getMySQLData($sql);
+			$invDetails 	=   $outSql['data'];
+			
+			foreach($invDetails as $keys=>$values){
+				// Get The Field Name
+				if($keys == 0)
+				{
+					foreach($values as $keyh=>$valueh) {
+						$output .= '"'.$keyh.'",';
+					}
+					$output .="\n";
+				}
+				// Get Records from the table
+				foreach($values as $key=>$value)  {
+					$output .='"'.$value.'",';
+				}
+				$output .="\n";					
+			}
+			
+			$thefile = $_SERVER['DOCUMENT_ROOT']."/export/sales-coverpage-from-".$_POST["fromdate"]."-to-".$_POST["todate"].".csv";
+			file_put_contents($thefile, $output);
+			$output = sendEmail($mgmt_grp_email,"","Sales Report Cover Page","please find the Sales Report Cover Page from ".$_POST["fromdate"]." to ".$_POST["todate"],$thefile);
+			echo $output;
+		break;
+		case "SENDFULLDET":
+			// Fetch Record from Database
+			$output 		= "";
+			$sql 			= "select tic.invid as invId ,DATE_FORMAT(invDate, '%d-%b-%Y') as invDate, tc.cusName,tic.invSupplyPlace as placeOfSupply,ici.invName as partNumber,ici.invDesc as partDesc, tic.invBGSTN as buyerGSTN , ici.invTariff as HSN, sum(ici.invqty) as qty, ici.invRate as rate, (if(tic.status=1,invTotalAmt,0)) as invTotalAmt,(if(tic.status=1,invCGSTAmt,0)) as CGSTAmt,(if(tic.status=1,invSGSTAmt,0)) as SGSTAmt,(if(tic.status=1,invIGSTAmt,0)) as IGSTAmt,(if(tic.status=1,invGrandTotal,0)) as invGrandTotal
+									from tbl_invoice_sales tic 
+										inner join tbl_customer tc on trim(tic.invCusId)=trim(tc.cusId) 
+										inner join tbl_invoice_sales_items ici on tic.invId=ici.invId 
+										left join tbl_invoice_component_insertval tici on tic.invId=tici.invId
+									Where invDate >= '".$_POST["fromdate"]."' and  invDate <= '".$_POST["todate"]."'
+								group by tic.invId 
+								order by tic.invid desc";
+			$outSql 		=	@getMySQLData($sql);
+			$invDetails 	=   $outSql['data'];
+			
+			foreach($invDetails as $keys=>$values){
+				// Get The Field Name
+				if($keys == 0)
+				{
+					foreach($values as $keyh=>$valueh) {
+						$output .= '"'.$keyh.'",';
+					}
+					$output .="\n";
+				}
+				// Get Records from the table
+				foreach($values as $key=>$value)  {
+					$output .='"'.$value.'",';
+				}
+				$output .="\n";					
+			}
+			
+			$thefile = $_SERVER['DOCUMENT_ROOT']."/export/sales-details-from-".$_POST["fromdate"]."-to-".$_POST["todate"].".csv";
+			file_put_contents($thefile, $output);
+			$output = sendEmail($mgmt_grp_email,"","Detailed Sales Report","please find the Detailed Sales Report  from ".$_POST["fromdate"]." to ".$_POST["todate"],$thefile);
+			echo $output;
+		break;	
+		case "SENDCPDDET":
+			// Fetch Record from Database
+			$output 		= 	"";
+			$sql 			= 	"select tic.invId,invDate,tc.cusName,invName,invDesc ,invPlanRef,(select batFinalDate from tbl_mixing where batId=ici.invPlanRef)as batdate,invQty
+									from tbl_invoice_sales tic 
+										inner join tbl_customer tc on trim(tic.invCusId)=trim(tc.cusId) 
+										inner join tbl_invoice_sales_items ici on tic.invId=ici.invId 
+									Where invtype = 'cpd' and invDate >= '".$_POST["fromdate"]."' and  invDate <= '".$_POST["todate"]."'
+								order by tic.invid desc";
+			$outSql 		=	@getMySQLData($sql);
+			$invDetails 	=   $outSql['data'];
+			$output 		.= 	'"Invoice Id","Invoice Date","Customer","Compound Name","Base Polymer","Batch ID","Qty"';
+			$output 		.=	"\n";
+			
+			// Get Records from the table
+			foreach($invDetails as $keys=>$values) {
+				foreach($values as $key=>$value) {				
+					if($key == 'invPlanRef')
+					{
+						$mixDate			= 	$values['batdate'];
+						$partBatId			=	"";
+						if($mixDate != null && $mixDate != '0000-00-00' && $mixDate != '')
+						{						
+							list($y, $m, $d) 	= 	explode('-', $mixDate);
+							$partBatId			=	"/".$d . $cpdMonthCode[$m+0];
+						}
+						$batId				=	$value;
+						if(strpos($batId,"_")!== false)
+							$batId			=	substr(strrchr($batId, "_"),1);						
+						$output 			.=	'"'.$batId.$partBatId.'",';
+					}
+					else if($key != 'batdate')
+					{
+						$output .='"'.$value.'",';
+					}							
+				}
+				$output .="\n";
+			}
+			
+			$thefile = $_SERVER['DOCUMENT_ROOT']."/export/Compound-detail-from-".$_POST["fromdate"]."-to-".$_POST["todate"].".csv";
+			file_put_contents($thefile, $output);
+			$output = sendEmail($cpd_grp_email,"","Detailed Compound Report","please find the Detailed Compound Report  from ".$_POST["fromdate"]." to ".$_POST["todate"],$thefile);
+			echo $output;
+		break;	
+		case "PRINTLABEL":			
+			$invoice_id		=	$_POST["invid"];
+			$pack_qty		=	$_POST["packqty"];
+			$cmpdid			=	$_POST["cmpdid"];
+			$pack_qty		=	($pack_qty)?$pack_qty:1;
+			$sql_bill		=	"select SUBSTRING(invName,1,16) as invName,SUBSTRING(invDesc,1,32) as invDesc,tic.invid as dispinvid,DATE_FORMAT(invDate, '%d.%m.%Y') as invDate,sum(invqty) as totQty,upper(DATE_FORMAT(invDate, '%b-%Y')) as defManMonth from tbl_invoice_sales tic
+											inner join tbl_invoice_sales_items tici on tici.invId = tic.invId
+										where tic.invId='".$invoice_id."' and tici.invCode = '$cmpdid' and tic.status > 0 group by tic.invId";
+			$out_bill		=	@getMySQLData($sql_bill);
+			$data			=	$out_bill['data'][0];
+			$noofLabels		=	ceil($data['totQty']/$pack_qty);
+			$lastPackQty	=	$data['totQty'] % $pack_qty;
+			$dispinvid		=	$data['dispinvid'];
+			$sql_particulars=	"select invPlanRef from tbl_invoice_sales_items tici where tici.invId='".$invoice_id."' and tici.invCode = '$cmpdid' order by invPlanRef";
+			$out_particulars=	@getMySQLData($sql_particulars);
+			$invPlanRef		=	$out_particulars['data'][0]['invPlanRef'];
+			//get Manufacture Date
+			$manuDateData	=	@getMySQLData("select upper(DATE_FORMAT(planDate, '%b-%Y')) as manuDate from tbl_moulding_plan tmp
+																											inner join tbl_moulding_receive tmr on tmr.planRef = tmp.planid
+																										where tmr.modRecRef = '$invPlanRef'");
+			$manuDate		=	($manuDateData['data'][0]['manuDate'])?$manuDateData['data'][0]['manuDate']:$data['defManMonth'];		
+			$partNoMark		=	280;
+			$partDescMark	=	250;
+			$nosMark		=	250;
+			$handler 		= 	printer_open($label_printer);	
+			printer_set_option($handler, PRINTER_MODE, "RAW");
+			$partNo			=	$data['invName']	;
+			$partDesc		=	$data['invDesc'];
+			if(strlen($partNo) > 8)
+				$partNoMark		=	$partNoMark + ((strlen($partNo)/2) * 15);
+			if(strlen($partDesc) > 10)
+				$partDescMark	=	$partDescMark + ((strlen($partDesc)/2) * 8);	
+			$nosMark		=	$nosMark - (strlen(@number_format($pack_qty,0)) * 15);	
+			$print_data		= 	file_get_contents($_SERVER['DOCUMENT_ROOT']."/".$packing_label_file);
+			$print_data 	= 	str_replace("NOSMARK",$nosMark,$print_data);
+			$print_data 	= 	str_replace("COMPNAME",$company_abbrv." Ch-96",$print_data);	
+			$print_data 	= 	str_replace("PARTNUM",$partNo,$print_data);
+			$print_data 	= 	str_replace("PNOMARK",$partNoMark,$print_data);
+			$print_data 	= 	str_replace("PARTDESC",$partDesc,$print_data);
+			$print_data 	= 	str_replace("PDESCMARK",$partDescMark,$print_data);
+			$print_data 	= 	str_replace("INVOICEID",$dispinvid,$print_data);
+			$print_data 	= 	str_replace("INVDATE",$data['invDate'],$print_data);
+			$print_data 	= 	str_replace("MANUMONTH",$manuDate,$print_data);	
+			$numPrint		=	0;
+			if($noofLabels/2 > 1)
+			{		
+				$print_data_first 	= 	str_replace("BQTY1",$pack_qty,$print_data);
+				$print_data_first 	= 	str_replace("QTY1",@number_format($pack_qty,0),$print_data_first);
+				$print_data_first 	= 	str_replace("BQTY2",$pack_qty,$print_data_first);
+				$print_data_first 	= 	str_replace("QTY2",@number_format($pack_qty,0),$print_data_first);
+				$numPrint			=	round(($noofLabels/2) - 1,0);
+				$print_data_first 	= 	str_replace("NUMPRINT",$numPrint,$print_data_first);
+				$print_data_first 	= 	str_replace("STNUM2","2",$print_data_first);
+				$print_data_first 	= 	str_replace("STNUM1","1",$print_data_first);
+				$print_data_first 	= 	str_replace("TOTLABELS",@number_format($noofLabels,0),$print_data_first);
+				printer_write($handler, $print_data_first); 
+			}	
+			$qty1			=	($lastPackQty == 0 || ($numPrint*2)+1<$noofLabels)?$pack_qty:$lastPackQty;
+			$print_data 	= 	str_replace("BQTY1",$qty1,$print_data);
+			$print_data 	= 	str_replace("QTY1",@number_format($qty1,0),$print_data);
+			$qty2			=	(($numPrint*2)+2==$noofLabels)?(($lastPackQty > 0)?$lastPackQty:$pack_qty):0;
+			$print_data 	= 	str_replace("BQTY2",$qty2,$print_data);
+			$print_data 	= 	str_replace("QTY2",@number_format($qty2,0),$print_data);
+			$print_data 	= 	str_replace("NUMPRINT","1",$print_data);
+			if($qty2 > 0)
+			{
+				$print_data 	= 	str_replace("STNUM2",@number_format($noofLabels,0),$print_data);
+				$print_data 	= 	str_replace("STNUM1",@number_format($noofLabels - 1,0),$print_data);
+			}
+			else
+			{
+				$print_data 	= 	str_replace("STNUM2","NA",$print_data);
+				$print_data 	= 	str_replace("STNUM1",@number_format($noofLabels,0),$print_data);
+			}
+			$print_data 	= 	str_replace("TOTLABELS",@number_format($noofLabels,0),$print_data);			
+			$output			=	printer_write($handler, $print_data); 
+			printer_close($handler); 	
+			echo $output;
+		break;		
+		
+	}
+
+?>

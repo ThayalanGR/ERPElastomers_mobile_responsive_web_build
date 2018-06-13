@@ -1,0 +1,63 @@
+tableFilters.sort_config	=	{ sort_types:['us','date', 'string','string','string','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+
+$(document).ready(function(){
+	updatePageBehaviour();
+});
+
+function updatePageBehaviour(){
+	var XMLContent	=	postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST", "XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('invid');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});
+	
+	$(".submit_button").click(function(){
+		mRecId		=	$(this).attr('invid');
+		partNumber	=	$(this).attr('partnum');		
+		$("#view_dialog").css('visibility', 'visible');
+		$("#new_error").css('display','none');
+		$("#submit_type").val(0);
+		$("#submit_email").val('');					
+		$('#view_dialog').dialog({
+			width:500,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Email':function(){
+					errObj		=	$('#new_error');
+					emailObj	=	$("#submit_email");
+					if(!emailCheck(emailObj.val())){
+							displayError(errObj, "error", "<strong>Error !</strong> - Invalid Email Format.");
+							emailObj.focus();
+							return false;
+					}				
+					if(!(confirm("This will automatically send the uploaded files to customer. Do you want to continue?" )))
+					{
+						return false;
+					}
+					$('#view_dialog').dialog('close');
+					if(mRecId != null && mRecId != ""){
+						resOut	=	postback(actionFile,"selecttype=SUBMITDOCS&subtype="+$("#submit_type").val()+"&subemail="+emailObj.val()+"&invid="+mRecId+"&partnum="+partNumber,"POST","XML");
+						if(resOut == 'success')
+							alert("Email Sent Sucessfully!");
+						else
+							alert("Email Not Sent Due To Error: "+ resOut);						
+					}	
+				},
+				'Cancel':function(){
+					$('#view_dialog').dialog('close');
+				}					
+			}
+		});	
+	});		
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;			
+}

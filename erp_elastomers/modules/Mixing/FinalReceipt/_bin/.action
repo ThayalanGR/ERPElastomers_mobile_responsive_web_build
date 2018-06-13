@@ -1,0 +1,92 @@
+<?php
+	session_start();
+	
+	header('Content-Type: text/xml');	
+	
+	switch($_REQUEST["selecttype"]){
+		case "FINALUPDATE":
+			if( is_array($_REQUEST['batids'])  != "" && is_array($_REQUEST['batchFinalWgts']) != "")
+			{
+				$batids			=	$_REQUEST['batids'];
+				$batchFinalWgts	=	$_REQUEST['batchFinalWgts'];				
+				for($batCount=0; $batCount<count($batids); $batCount++)
+				{
+					$batchID 		= 	$batids[$batCount];
+					$finalBatWgt 	= 	$batchFinalWgts[$batCount];				
+					// Add Data to Mixing Issue Table
+					$sql		=	"insert into tbl_mixing_recv( batId, mixRecvDate, batRecvWgt, entry_on, entry_by) values('$batchID', now(),$finalBatWgt, now(), '".$_SESSION['userdetails']['userId']."')";
+					$output		=	@getMySQLData($sql, 'xml');
+					
+					if($output != ""){
+						$status		=	split("<status>", $output);
+						$status		=	split("</status>", $status[1]);
+						$status		=	$status[0];						
+						if($status == "success"){
+							@getMySQLData("update tbl_mixing set status=3 where batid='$batchID'");
+						}
+					}
+				}
+			}
+			else{
+				echo "<mysql><status>Invalid Data / Data Missing</status></mysql>";
+				exit();
+			}
+		break;
+		case "MIXDEL":
+			if($_REQUEST['batid'] != "" && $_REQUEST['masterbatchwgt'] != ""){				
+				$mastBatWgt = $_REQUEST['masterbatchwgt'];			
+				if ( $mastBatWgt == 0.000)
+				{			
+					$output		=	@getMySQLData("update tbl_mixing set status='0' where batId='".$_REQUEST['batid']."'", "xml");
+					$output		=	@getMySQLData("update tbl_invoice_mixplan set status='0' where batId='".$_REQUEST['batid']."'", "xml");
+				}
+				else
+				{
+					$output		=	@getMySQLData("update tbl_mixing set batFinalDate='0000-00-00' where batId='".$_REQUEST['batid']."'", "xml");
+				}
+			}
+			else{
+				echo "<mysql><status>Invalid Data / Data Missing</status></mysql>";
+				exit();
+			}			
+		break;
+	}
+	
+	// List Data
+	$list	=	@getMySQLData(
+						"select
+								tbl_mixing.batId,
+								SUBSTRING_INDEX(tbl_mixing.batId, '_',-1) as dispBatId,
+								tbl_mixing.cpdId,
+								tbl_compound.cpdName,
+								tbl_compound.cpdPolymer,
+								tbl_mixing.masterBatchWgt,
+								Sum(tbl_invoice_mixplan_items.planQty),
+								tbl_polymer_order.dispOrder
+						from
+								tbl_invoice_mixplan_items,
+								tbl_mixing,
+								tbl_compound,
+								tbl_polymer_order
+						where
+								tbl_mixing.batId = tbl_invoice_mixplan_items.batId
+									and
+								tbl_mixing.cpdId = tbl_compound.cpdId
+									and
+								tbl_polymer_order.polyName = tbl_compound.cpdPolymer
+									and									
+								tbl_mixing.status = 2	
+									and									
+								tbl_mixing.batFinalDate != '0000-00-00' 							
+						group by
+								tbl_mixing.batId
+						order by
+								tbl_mixing.batId, tbl_polymer_order.dispOrder, tbl_compound.cpdName asc;",
+						'xml', 'root','lower');						
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

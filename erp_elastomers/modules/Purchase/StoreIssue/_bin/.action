@@ -1,0 +1,159 @@
+<?php
+	session_start();
+	
+	header('Content-Type: text/xml');
+	
+	$yesterday  = mktime(0, 0, 0, date("m")  , date("d")-1, date("Y"));
+	
+	if($_REQUEST['issue_date'] != "")
+	{
+		$issueDate	=	$_REQUEST['issue_date'];
+		list($y, $m, $d) = explode('-', $issueDate);
+		$yesterday  = mktime(0, 0, 0, $m , $d, $y);
+	}
+	
+	
+	switch($_REQUEST["selecttype"]){
+		case "ADDRAMISSUE":
+			if( is_array($_REQUEST['ramids'])  != "" && is_array($_REQUEST['ramWgts']) != "" ) // && is_array($_REQUEST['grnIds'])  != "" )
+			{
+				$ramids			=	$_REQUEST['ramids'];
+				$ramWgts		=	$_REQUEST['ramWgts'];
+				//$grnids		=	$_REQUEST['grnIds'];				
+				$sqlMixIssue	=	@getMySQLData("select mixIssuId from tbl_mixing_issue where mixIssuDate= '".date('Y-m-d',$yesterday)."'", "arr");
+				$mixIssueId		=	$sqlMixIssue['data'][0]['mixIssuId'];
+				if($mixIssueId == "")
+				{
+					$mixIssueId		=	@getRegisterData("mixissucode");
+					$mixIssSQL		=	"insert into tbl_mixing_issue(mixIssuId, mixIssuDate, entry_on, entry_by) values('$mixIssueId', '".date('Y-m-d',$yesterday)."', now(), '".$_SESSION['userdetails']['userId']."')";
+					$outputVal		=	@getMySQLData($mixIssSQL,"xml");	
+					if($outputVal 	!=	""){
+						$status		=	split("<status>", $outputVal);
+						$status		=	split("</status>", $status[1]);
+						$status		=	$status[0];							
+						if($status 	==	"success"){
+							@getMySQLData("update tbl_settings set auto_inc=auto_inc+1 where name='mixissucode'");	
+						}
+						else
+						{
+							echo "<mysql><status>".$status."</status></mysql>";
+							exit();						
+						}						
+					}					
+					else
+					{
+						echo "<mysql><status>Unable to insert to Table 'tbl_mixing_issue'</status></mysql>";
+						exit();						
+					}				
+				}				
+				
+				for($ramCount=0; $ramCount<count($ramids); $ramCount++)
+				{
+					$ramID 		= 	$ramids[$ramCount];
+					$ramWgt 	= 	$ramWgts[$ramCount];
+					//$grnID		= $grnids[$ramCount];
+					$grnIDs		=	getGRNIds($ramID,$ramWgt);
+					foreach($grnIDs as $key => $value)
+					{
+						$sql		= 	"insert into tbl_mixing_issue_rm(mixIssuId, ramId, grnId, mixIssuQty) values ('$mixIssueId','$ramID','$key','$value')";
+						$output  	.= 	@getMySQLData($sql,"xml");
+						if($output != ""){
+							$status		=	split("<status>", $output);
+							$status		=	split("</status>", $status[1]);
+							$status		=	$status[0];						
+							if($status == "success"){					
+								@getMySQLData("update tbl_invoice_grn set avlQty = avlQty - ".$value." where grnId = '$key'");									
+							}
+						}
+					}
+				}
+				if($status == "success")
+				{
+					@getMySQLData("update tbl_mixing_issue set status = 2 where mixIssuId='".$mixIssueId."'");
+				}
+				echo $output;
+				exit();
+			}
+			else{
+				echo "<mysql><status>Invalid Data / Data Missing</status></mysql>";
+				exit();
+			}
+		break;
+		case "GETRAMLIST":
+				$sql_ramlist	=	"SELECT tr.ramid,concat(ramname,'-',ramgrade) as ramname, ramclass, sum(avlQty) as avlQty from tbl_rawmaterial tr
+										inner join tbl_invoice_grn tig on tig.invRamId = tr.ramId and tig.avlQty > 0 
+									where tr.status>0 group by tr.ramId order by ramclass";
+				$ramData	=	getXML($sql_ramlist,false);			
+				echo $ramData;
+				exit();
+		break;
+	}
+	
+	$sqlMixIssue	=	@getMySQLData("select mixIssuId from tbl_mixing_issue where mixIssuDate= '".date('Y-m-d',$yesterday)."' and status = 2", "arr");
+	$mixIssueId		=	$sqlMixIssue['data'][0]['mixIssuId'];
+	$list			= '';
+	if( $mixIssueId == '' )
+	{
+		$sql_RAMInfo		=	"select ftable.ramid,ramname, sum(planqty) as planqty, ramclass,avlQty from 
+									(SELECT ramid,ramname, sum(planqty) as planqty, ramclass from 
+										(SELECT trm.ramid,concat(ramname,'-',ramgrade) as ramname, planqty , ramclass FROM 
+											(SELECT tbc.cpdid,tbc.ramid FROM tbl_mixing tbm JOIN tbl_compound_rm tbc ON tbm.cpdid = tbc.cpdid and tbc.is_final_chemical = 1 WHERE tbm.is_mill_batch = 0 AND tbm.status > 0 AND tbm.batfinaldate ='".date('Y-m-d',$yesterday)."' group by cpdid, ramid) tbl1 
+												INNER JOIN (SELECT tbm.cpdid,tmp.ramid, planqty FROM tbl_mixing tbm, tbl_invoice_mixplan_items tmp WHERE tbm.is_mill_batch =0 AND tbm.status >0 AND tbm.batid = tmp.batid AND tbm.batfinaldate ='".date('Y-m-d',$yesterday)."') tbl2 on tbl1.cpdid = tbl2.cpdid and tbl1.ramid = tbl2.ramid  
+												INNER JOIN tbl_rawmaterial trm on tbl1.ramid = trm.ramid							 
+											UNION ALL
+											SELECT trm.ramid,concat(ramname,'-',ramgrade) as ramname, planqty , ramclass FROM 
+												(SELECT tbm.cpdid,tmp.ramid, planqty FROM tbl_mixing tbm, tbl_invoice_mixplan_items tmp WHERE tbm.is_mill_batch =1 AND tbm.status >0 AND tbm.batid = tmp.batid AND tbm.batfinaldate ='".date('Y-m-d',$yesterday)."') tbl1 
+													INNER JOIN tbl_rawmaterial trm on tbl1.ramid = trm.ramid
+										) as K2	GROUP BY ramid 
+										UNION ALL 
+										SELECT trm.ramid,concat(ramname,'-',ramgrade) as ramname, sum(planqty) as planqty , ramclass FROM 
+											(SELECT tbc.cpdid,tbc.ramid FROM tbl_mixing tbm INNER JOIN tbl_compound_rm tbc ON tbm.cpdid = tbc.cpdid and tbc.is_final_chemical = 0 WHERE tbm.is_mill_batch = 0 AND tbm.status > 0 AND tbm.batdate ='".date('Y-m-d',$yesterday)."' group by cpdid, ramid) tbl1
+												INNER JOIN (SELECT tbm.cpdid,tmp.ramid, planqty FROM tbl_mixing tbm, tbl_invoice_mixplan_items tmp WHERE tbm.is_mill_batch =0 AND tbm.status >0 AND tbm.batid = tmp.batid AND tbm.batdate ='".date('Y-m-d',$yesterday)."') tbl2 on tbl1.cpdid = tbl2.cpdid and tbl1.ramid = tbl2.ramid											
+												INNER JOIN tbl_rawmaterial trm on tbl1.ramid = trm.ramid 
+											GROUP BY ramid 
+									) ftable
+									INNER JOIN (select invRamId, sum(avlQty) as avlQty from tbl_invoice_grn where avlQty > 0 group by invRamId )tig on tig.invRamId=ftable.ramId
+								GROUP BY ramid	ORDER BY ramclass";		
+		
+		$list	=	@getMySQLData($sql_RAMInfo, "xml", "root", "lower");
+	}	
+	else
+	{
+		$list = "<root><count>0</count><status>success</status></root> ";	
+	}
+	
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);	
+		
+	echo "<xmldata>
+		$list		
+	</xmldata>";
+	
+	function getGRNIds($rmId,$rmWeight)
+	{ 
+		$grnIds		=	array();
+		$sql_grn 	= 	@getMySQLData("select grnId, avlQty from tbl_invoice_grn where invRamId='$rmId' and avlQty > 0 order by grnDate asc");			
+		if($sql_grn['count'] != null && $sql_grn['count'] != "" && $sql_grn['count'] > 0 )
+		{							
+			$contNext		=	true;
+			$countRm		=	0;
+			$operRmQty		=	$rmWeight;
+			while ($contNext && $countRm < $sql_grn['count']){
+				$issQty		=	$sql_grn['data'][$countRm]['avlQty'];
+				$grnId		=	$sql_grn['data'][$countRm]['grnId'];
+				if(round($issQty,3) >= round($operRmQty,3))
+				{
+					$contNext	=	false;
+					$issQty		=	$operRmQty;	
+				}
+				else
+				{
+					$operRmQty	=	$operRmQty - $issQty;
+				}									
+				$grnIds[$grnId]	=	$issQty;									
+				$countRm++;
+			} 
+		}
+		return $grnIds;
+	}	
+	
+?>

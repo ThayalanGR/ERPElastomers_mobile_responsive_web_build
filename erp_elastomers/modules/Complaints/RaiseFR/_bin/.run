@@ -1,0 +1,188 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+errMsg						=	null;
+tableFilters.sort_config	=	{ sort_types:['string','date','string','string','string','string','date','date','date','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+function updatePageBehaviour(){
+	
+	objCompList	=	postback(actionFile, "selecttype=GETCOMPLIST", "POST","XML");
+	//alert(objCompList); //return false;
+	listPageData($("#content_body"), objCompList, XSLFile);
+	$(".view_button").click(function(e) {
+		mRecId	=	$(this).attr('compid') ;
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});	
+	if($("#content_body").html() != null && $("#content_body").html() != "")
+	{
+		TF_01	=	setFilterGrid("resultTable",tableFilters);
+		if(needRefresh)
+			TF_01.RefreshGrid();
+		else
+			needRefresh	=	true;
+	}
+}
+
+function handleFormSubmit(){
+	compDesc 		=	$("#new_Desc");
+	newError		=	$("#error_msg");
+	
+	if(errMsg != null)
+	clearTimeout(errMsg);
+	errMsg			=	setTimeout(function(){
+							newError.css("display", "none");
+						}, 2500);
+	
+	if(compDesc.val() == "" || compDesc.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Complaint Description Missing.");
+		compDesc.focus();
+		return false;
+	}
+
+	formdata 		= 	new FormData();
+	prodDrawingFile = 	document.getElementById("new_Sketch");	
+    file 			= 	prodDrawingFile.files[0];
+	if(file)
+	{
+		if (formdata) {
+			formdata.append("file", file,file.name);
+			formdata.append("compdesc",compDesc.val());
+		}	
+		$("#button_add").attr("value","Loading, Please Wait...");
+		$("#button_add").attr("disabled","true");
+		// Set up the request.
+		var xhr = new XMLHttpRequest();
+
+		// Open the connection.
+		xhr.open('POST', actionFile, true);
+
+		// Set up a handler for when the request finishes.
+		xhr.onload = function () {
+			if (xhr.status === 200) {
+				// File(s) uploaded.
+				var printObj	=	xhr.response;
+				printData		=	$(printObj);
+				error			=	printData.find("status").html();
+				compid			=	printData.find("compid").html();
+				
+				if(error == "success"){
+					alert("Flash Report :" + compid + " has been created sucessfully");					
+					window.location.reload();
+				}
+				else{
+					displayError(newError, "error", printObj);
+					$("#button_add").attr("value","Create");
+					$("#button_add").removeAttr("disabled");					
+				}			
+			} 
+			else {
+				displayError(newError, "error", "Unable to upload the file, Please retry again");
+				$("#button_add").attr("value","Create");
+				$("#button_add").removeAttr("disabled");				
+			}
+		};
+		
+		// Send the Data.
+		xhr.send(formdata);
+	}
+	else
+	{
+		param	=	"selecttype=COMPINS&compdesc=" + compDesc.val();
+		//alert(param); //return false;
+		XMLContent			=	postback(actionFile, param, "POST", "XML");
+		alert(XMLContent);
+		xmlData				=	parseXMLdoc(XMLContent);
+		error				=	$(xmlData).find("status").text();
+		compid				=	$(xmlData).find("compid").text();
+		if(error == "success"){																
+			alert("Flash Report :" + compid + " has been created sucessfully");					
+			window.location.reload();
+		}
+		else{
+			displayError(newError, "error", printObj);
+			return false;															
+		}
+	}		
+}
+
+function handleFormCancel(){
+	$("#new_Desc").val('');
+	$('#new_Sketch').val('');
+}
+
+$(document).ready(function(){
+
+	updatePageBehaviour();
+	
+	$("#new_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		draggable: true,
+		resizable: false,
+		width: 800,
+		height:'auto',
+		buttons: [
+			{
+				text: "Create",
+				id:"button_new",
+				tabindex:"16",
+				click: function(){
+					//Nothing
+				}
+			},
+			{
+				text: "Clear",
+				id:"button_cancel",
+				tabindex:"17",
+				click: function(){
+					handleFormCancel();
+				}
+			}
+		],
+		close: function(event, ui) {
+			$("#new_item_form form")[0].reset();	
+			$("#error_msg").html("");
+			$("#error_msg").css("display", "none");
+		} 
+	});	
+	
+	$("#button_add").button().click(function(){
+		$("#new_item_form").css('visibility', 'visible');
+		$("#new_item_form").dialog("open");
+	});	
+	
+	$("#button_new").button().click(function(){
+		createCont   =   '<table width="100%" >' +
+						'<tr><td><b>Are you Sure to Create this Flash Report ?</b></td></tr>' +
+						'</table>';
+		$('#create_dialog').html(createCont).dialog({
+			title:'Create New Flash Report',
+			width:300,
+			height:125,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'YES':function(){
+					$(this).dialog('close');
+					handleFormSubmit();
+				},
+				'NO':function(){
+				   $(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	
+		
+	});
+	
+	$("#button_cancel").button().click(function(){
+		handleFormCancel();
+	});	
+
+});

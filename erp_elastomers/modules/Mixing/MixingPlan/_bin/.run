@@ -1,0 +1,216 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+var TF_01			=	null;
+tableFilters.default_date_type 	= 	'YMD';
+tableFilters.sort_config	=	{ sort_types:['string', 'us','us','us','us','us','us','us','us','us','us','us','us','us','us','us','us','none','none','none','none','none'] };
+tableFilters.col_operation	=	{ 
+								   id: ["val_total1","val_total2","val_total3","val_total4","val_total5","val_total6","val_total7","val_total8","val_total9","val_total10","val_total11","val_total12","val_total13","val_total14"], 
+								   col: [1,2,3,4,5,6,7,8,9,10,11,12,13,14],
+								   operation: ["sum","sum","sum","sum","sum","sum","sum","sum","sum","sum","sum","sum","sum","sum"],
+								   decimal_precision: [0,3,0,3,0,3,0,3,0,3,0,3,0,3]
+								};
+tableFilters.on_after_operation	=	formatTotals;								
+function formatTotals()
+{
+	for( var count=1; count < 15; count++)
+	{
+		tf_Id('val_total' + count).innerHTML 	= 	tf_Id('val_total' + count).innerHTML.toCurrency();			
+	}
+}
+
+<?php
+	global $grn_customers,$grn_role;
+	$custlist	=	"";
+	$noofitems	=	0;
+	$options	=	"";	
+	for($ct=0;$ct<count($grn_customers);$ct++){
+		$customer	=	$grn_customers[$ct];
+		if($grn_role[$customer] != 'vendor')
+		{
+			$noofitems++;
+			$options	.=	"<option>".$customer."</option>";
+		}
+	}
+	if($noofitems > 1)
+		$custlist	=	"<option selected></option>";
+	$custlist	.=	$options;		
+?>
+
+function formatSelect()
+{
+	cpdList			=	$('#content_body table tbody tr');
+	for(rc=0; rc<cpdList.length; rc++){
+		cpdId		=	$("#"+cpdList[rc].id).attr("id");
+		$("#sel_" + cpdId).html("<?php echo $custlist ?>");
+	}
+}
+
+function getPageData(){
+	var objCompList=postback(actionFile,"selecttype=MIXLIST&type=select&outtype=xml","POST","XML");
+	//alert(objCompList);
+	listPageData($("#content_body"), objCompList, XSLFile);
+	updatePageBehaviour();
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	formatSelect();
+	calculateTotbatches();
+	
+}
+
+function updatePageBehaviour(){
+
+	$('#input_select_all').click();
+	$('.checkbox1').each(function() { 
+		this.checked = true;                
+	});		
+
+	$('#input_select_all').click(function(event) {  
+		if(this.checked) { 
+			$('.checkbox1').each(function() { 
+				this.checked = true;                
+			});
+		}else{
+			$('.checkbox1').each(function() { 
+				this.checked = false;                        
+			});         
+		}
+	});		
+}
+
+
+
+
+function calculateBatchWeight(cpdId){
+	polyWeight		=	$("#txtpolywgt_"+cpdId);
+	batWeight		=	$("#batwgt_"+cpdId);	
+	// Get Polymer Data
+	polymerKg		=	(isNaN(Number(polyWeight.val())))?0:Number(polyWeight.val());
+	polymerTot		=	$("#txtpolywgt_"+cpdId).attr("polywgt");
+	batchTot		=	$("#txtpolywgt_"+cpdId).attr("batchtotwgt");
+	basePolyRatio	=	$("#txtpolywgt_"+cpdId).attr("basepolyratio");
+	batWeight.html(getCurrency((batchTot * polymerKg * basePolyRatio)/polymerTot,3));
+}
+
+function calculateTotbatches() {
+	totqty 		= 	0;
+	cpdList		=	$('#content_body table tbody tr');
+	for(rc=0; rc<cpdList.length; rc++){
+		cpdId	=	$("#"+cpdList[rc].id).attr("id");
+		totqty 	= 	Number(totqty)+Number($("#txtbat_"+cpdId).val());
+	}
+	$("#val_total15").html(getCurrency(Number(totqty), 0));	
+}
+
+function addItemFunc(){	
+	newError		=	$('#new_item_error');
+	totalCount		=	0;
+	cpdList			=	$('#content_body table tbody tr');
+	param 			= 	"";
+	for(rc=0; rc<cpdList.length; rc++){
+		cpdId			=	$("#"+cpdList[rc].id).attr("id");
+		newCustomer		=	$("#sel_" + cpdId);
+		newBatchWeight	=	$("#txtpolywgt_"+cpdId);
+		newBatchNo		=	$("#txtbat_"+cpdId);
+		polymerTot		=	newBatchWeight.attr("polywgt");
+		basePolyRatio	=	newBatchWeight.attr("basepolyratio");			
+
+		if(newBatchNo.val() == null || newBatchNo.val() == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - No. of Batch Missing.");
+			newBatchNo.focus();
+			return false;
+		}
+		else if(isNaN(Number(newBatchNo.val())) || Number(newBatchNo.val()) < 0){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid No. of Batch Weight.");
+			newBatchNo.focus();
+			return false;
+		}
+		else if(Number(newBatchNo.val()) > 0 && (isNaN(Number(newBatchWeight.val())) || Number(newBatchWeight.val()) <= 0)){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid Polymer Weight.");
+			newBatchWeight.focus();
+			return false;
+		}
+		else if(Number(newBatchNo.val()) > 0 && (newCustomer.val() == null || newCustomer.val() == "")){
+			displayError(newError, "error", "<strong>Error !</strong> - Customer Missing.");
+			newCustomer.focus();
+			return false;		
+		}
+		isMillbatch = 0;
+		if($("#chk_"+cpdId).attr("checked"))
+		{
+			isMillbatch = 1;
+		}
+		if(newBatchNo.val() > 0)
+		{
+			param			+=	"&mixcpdids[]=" + cpdId +
+								"&mixcust["+cpdId+"]=" + newCustomer.val() +
+								"&mixbatwgt["+cpdId+"]=" + newBatchWeight.val() +
+								"&mixbatno["+cpdId+"]=" + newBatchNo.val() +
+								"&mixpolytot["+cpdId+"]=" + polymerTot +
+								"&mixpolyratio["+cpdId+"]=" + basePolyRatio +
+								"&ismillbatch["+cpdId+"]=" + isMillbatch ;
+		}
+	}
+	if(param == "")
+	{
+		displayError(newError, "error", "<strong>No Batches To Add</strong>");
+		return false;
+	}
+	param			=	"selecttype=" + "MIXADD&mixdate=" + $('#planDate').val() + "&shift=" + $('#shift').val() + param;
+	//alert(param) ; return false;
+	displayError(newError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");
+	//$("#new_item_form").dialog("close");
+	XMLContent		=	postback(actionFile, param, "POST", "XML");
+	//alert(XMLContent); return false;
+	//$("#cont_body").html(XMLContent); 	
+	xmlData				=	$(XMLContent);
+	error				=	xmlData.find("mixtable status").html();
+	if(error == "success"){
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		updatePageBehaviour();
+		TF_01		=	setFilterGrid("resultTable",tableFilters);
+		TF_01.RefreshGrid();
+		formatSelect();
+		calculateTotbatches();		
+		openInvoice({invID:$('#planDate').val()});
+	}
+	else{
+		alert("Unable to create the mixing plan due to :" + error);
+	}
+}
+
+
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+
+	$("#submitData").click(function(e){
+	
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Create the Plan?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+ 														title:'Master Plan',
+														width:450,
+														height:'auto',
+														resizable:false,
+														modal:true,
+														buttons:{
+															'Ok':function(){
+																$(this).dialog('close');
+																addItemFunc();
+																//e.stopImmediatePropagation();										
+															},
+															'Cancel':function(){
+																$(this).dialog('close');
+															}
+														},
+														close:function(){
+															$(this).html('').dialog('destroy');
+														}
+													});		
+
+	});	
+
+	getPageData();
+	
+});

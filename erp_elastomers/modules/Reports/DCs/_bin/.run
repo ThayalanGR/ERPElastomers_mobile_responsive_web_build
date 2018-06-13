@@ -1,0 +1,100 @@
+isSelectable				=	true;
+tableFilters.col_0			=	"none";
+tableFilters.col_9			=	"none";
+tableFilters.sort_config	=	{ sort_types:['none','string', 'ddmmmyyyydate','string','string', 'string', 'string','us','string','none'],sort_col: [1,true] };
+tableFilters.col_operation	=	{ 
+								   id: ["val_total1"], 
+								   col: [7],
+								   operation: ["sum"],
+								   decimal_precision: [3]
+								};
+var TF_01					=	null;
+var needTFRefresh			=	false;
+var objCompList 			= 	null;
+
+function updateData(){
+
+	$('#input_select_all').click(function(event) {  
+		if(this.checked) { 
+			$('.checkbox1').each(function() { 
+				this.checked = true;                
+			});
+		}else{
+			$('.checkbox1').each(function() { 
+				this.checked = false;                        
+			});         
+		}
+	});
+	
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('dcid');
+		dctype	=	$(this).attr('dctype');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({mod:dctype, invID:mRecId});
+		}
+	});
+	
+	$(".email_button").click(function(){
+		mRecId		=	$(this).attr('dcid');
+		mCusEmail	=	$(this).attr('cusemail');
+		dctype		=	$(this).attr('dctype');
+		if(mCusEmail != null && mCusEmail != "" ){
+			openInvoice({mod:dctype, invID:mRecId,cusEmail:mCusEmail});
+		}
+		else{
+			alert("No email address available for Customer. Please update the same in the Customer Master!");
+		}
+	});		
+	
+	if(objCompList != null)
+	{
+		xmlData				=	parseXMLdoc(objCompList);
+		error				=	$(xmlData).find("count:first").text();
+		if(error > 0 ){
+			TF_01			=	setFilterGrid("resultTable",tableFilters);
+			if(needTFRefresh)
+				TF_01.RefreshGrid();
+			needTFRefresh 	=	true;
+		}	
+	}	
+}
+
+
+$(document).ready(function(){
+	
+	updatePageBehaviour();
+	$(".email_cpddetails_button").click(function(){
+			var resOut = postback(actionFile, "selecttype=SENDCPDDET&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST","XML");
+			if(resOut == 'success')
+				alert("Compound Report Sent Sucessfully!");
+			else
+				alert("Compound Report Not sent due to error: " + resOut);
+	});			     
+});
+
+function updatePageBehaviour(){
+	objCompList 	= postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&dctype="+$("#dctype").val(), "POST","XML");
+	listPageData($("#content_body"), objCompList, XSLFile);	
+	updateData();	
+}
+
+function submitPrint(){
+	dctype = $("#dctype").val();
+	dcIds 		= 	new Array();
+	$('.checkbox1').each(function() { 
+		if(this.checked == true)
+		{
+			dcIds.push(this.id);				
+		}
+	});		
+	
+	if(dcIds == null || dcIds.length <= 0 )
+	{
+		alert("Please select atleast one DC for Printing");
+		return false;
+	}
+	else
+	{
+		openInvoice({mod:dctype, invID:dcIds});
+	}
+}

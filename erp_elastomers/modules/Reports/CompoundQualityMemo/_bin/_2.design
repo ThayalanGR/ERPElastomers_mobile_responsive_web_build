@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+        <table class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="5%">SNo</th>
+					<th width="15%">Batch ID</th> 
+					<th width="20%">Hardness</th>
+					<th width="20%">Specific Gravity</th>
+					<th width="20%">TS2 <sup>Sec</sup></th>
+					<th>T90 <sup>Sec</sup></th>
+				</tr>
+			</thead>
+			<tbody>			
+				<xsl:for-each select="xmldata/root/data/row">
+					<tr style="font-size:10px;">   
+						<xsl:if test="position() mod 2 != 0">
+							<xsl:attribute name="class">content_rows_light</xsl:attribute>
+						</xsl:if>
+						<xsl:if test="position() mod 2 != 1">
+						  <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+						</xsl:if>
+						<td align="left">
+							<xsl:value-of select="position()"/>
+						</td>					
+						<td align="left">
+							<xsl:value-of select="dispbatid"/>
+						</td>
+						<td align="right">
+							<xsl:value-of select="format-number(hdata,'##,##,##0')"/>
+						</td>
+						<td align="right">
+							<xsl:value-of select="format-number(sgdata,'##,##,##0.00')"/>
+						</td>
+						<td align="right">
+							<xsl:value-of select="format-number(ts2data,'##,##,##0')"/>
+						</td>
+						<td align="right">
+							<xsl:value-of select="format-number(t90data,'##,##,##0')"/>
+						</td>
+					</tr>
+				</xsl:for-each>
+			</tbody> 
+		</table>				
+   </xsl:template>
+</xsl:stylesheet>

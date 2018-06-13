@@ -1,0 +1,276 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"","POST","XML");
+	alert(XMLContent);
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	$(".editBtn").click(function(e) {
+		$idno	=	$(this).attr("idno");
+		editForm($idno);
+    });
+	
+	$(".delBtn").click(function(e) {
+		$idno	=	$(this).attr("idno");
+		deleteForm($idno);
+    });
+	
+	updateHeader();updateContent();
+}
+
+function getSubmitButton(fid){
+	if(fid != null){
+		fid			=	(typeof fid == "object")?fid:document.getElementById(fid);
+		if(fid){
+			nsib		=	fid.nextSibling;
+			if(nsib){
+				buttons		=	nsib.getElementsByTagName("button");
+				if(buttons.length > 0){
+					buttons[0].click();
+				}
+			}
+		}
+	}
+}
+
+function editForm(no){
+	$("#edit_item_form").css('visibility', 'visible');
+	$("#edit_item_form").dialog("open");
+	EditNo		=	(no)?no:null;
+	
+	if(typeof setEditFunc == "function")
+	setEditFunc();
+}
+
+function deleteForm(no){
+	$("#del_item_form").css('visibility', 'visible');
+	$("#del_item_form").dialog("open");
+	DeleteNo	=	(no)?no:null;
+}
+
+function addItemFunc(){
+	newClassName	=	$('#new_className');
+	newShortName	=	$('#new_ShortName');
+	newError		=	$('#new_item_error');
+	
+	if(newClassName.val() != "" && newShortName.val() != ""){
+		displayError(newError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");
+		param				=	"selecttype=" + "CLASSADD" +
+								"&classtype=" + newClassName.val() +
+								"&classsname=" + newShortName.val();
+		XMLContent			=	postback(actionFile, param, "POST", "XML");
+		xmlData				=	parseXMLdoc(XMLContent);
+		error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			listPageData($("#content_body"), XMLContent, XSLFile);
+			updatePageBehaviour();
+			newClassName.val('');
+			newShortName.val('');
+			$("#new_item_form").dialog("close");
+		}
+		else{
+			displayError(newError, "error", xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("errtxt")[0].firstChild.nodeValue);
+		}
+	}
+	else{
+		if(newClassName.val() == null || newClassName.val() == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - Class Name Missing.");
+			newClassName.focus();
+		}
+		else if(newShortName.val() == null || newShortName.val() == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - Short Name Missing.");
+			newShortName.focus();
+		}
+	}
+}
+
+function setEditFunc(){
+	editClassName	=	$('#edit_className');
+	editShortName	=	$('#edit_ShortName');
+	editError		=	$('#edit_item_error');
+	
+	if(EditNo != null && EditNo > 0){
+		xmlData		=	parseXMLdoc(XMLContent);
+		Rows		=	xmlData.getElementsByTagName("row");
+		EditData	=	new Array();
+		if(Rows.length > 0){
+			for(R=0; R<Rows.length; R++){
+				Obj		=	Rows[R];
+				Sno		=	Obj.childNodes[0].firstChild.nodeValue;
+				if(Sno == EditNo){
+					for(ER=0; ER<Obj.childNodes.length; ER++){
+						EditData[Obj.childNodes[ER].tagName]	=	Obj.childNodes[ER].firstChild.nodeValue;
+					}
+					break;
+				}
+			}
+			
+			editClassName.val(EditData['class_name']);
+			editShortName.val(EditData['class_short_name']);
+		}
+	}
+}
+
+function editItemFunc(){
+	editClassName	=	$('#edit_className');
+	editShortName	=	$('#edit_ShortName');
+	editError		=	$('#edit_item_error');
+	
+	if(editClassName.val() != "" && editShortName.val() != ""){
+		displayError(editError, "highlight", "<img src='"+scriptPath+"/images/loader_16.gif' align='absmiddle' /> <strong>Updating Data to Server . . .</strong>");
+		param				=	"selecttype=" + "CLASSEDIT" +
+								"&sno=" + EditNo +
+								"&classtype=" + editClassName.val() +
+								"&classsname=" + editShortName.val() ;
+		XMLContent			=	postback(actionFile, param, "POST", "XML");
+		xmlData				=	parseXMLdoc(XMLContent);
+		error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			listPageData($("#content_body"), XMLContent, XSLFile);
+			$("#edit_item_form").dialog("close");
+			updatePageBehaviour();
+		}
+		else{
+			displayError(editError, "error", xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("errtxt")[0].firstChild.nodeValue);
+		}
+	}
+	else{
+		if(editClassName.val() == null || editClassName.val() == ""){
+			displayError(editError, "error", "<strong>Error !</strong> - Class Name Missing.");
+			editClassName.focus();
+		}
+		else if(editShortName.val() == null || editShortName.val() == ""){
+			displayError(editError, "error", "<strong>Error !</strong> - Short Name Missing.");
+			editShortName.focus();
+		}
+	}
+}
+
+function delItemFunc(){
+	delError		=	$('#del_item_error');
+	if(DeleteNo != null && DeleteNo > 0){
+		displayError(delError, "highlight", "<img src='"+scriptPath+"/images/loader_16.gif' align='absmiddle' /> <strong>Removing Data From Server . . .</strong>");
+		param			=	"selecttype=CLASSDEL" + "&sno=" + DeleteNo;
+		XMLContent		=	postback(actionFile, param, "POST", "XML");
+		xmlData			=	parseXMLdoc(XMLContent);
+		error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			listPageData($("#content_body"), XMLContent, XSLFile);
+			$("#del_item_form").dialog("close");
+			updatePageBehaviour();
+		}
+		else{
+			displayError(delError, "error", error);
+			setTimeout(function(){
+				$("#del_item_form").dialog("close");
+			}, 2000);
+		}
+	}
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+	// Add Item Dialog
+	$("#new_item_form").dialog({ autoOpen: false ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 400,
+									height:'auto',
+									buttons: [
+										{
+											text: "Add",
+											click: function(){
+												if(typeof addItemFunc == "function"){
+													addItemFunc();
+												}else{
+													$(this).dialog("close"); 
+												}
+											}
+										},
+										{
+											text: "Close",
+											click: function(){
+												$(this).dialog("close");
+											}
+										}
+									],
+									open: function(event, ui) {
+									},
+									close: function(event, ui) {
+											$("#new_item_error").html("");
+											$("#new_item_error").css("display", "none");
+										} 
+									});
+	
+	// Edit Item Dialog
+	$("#edit_item_form").dialog({ autoOpen: false ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 400,
+									height:'auto',
+									buttons: {
+										Update:function(){
+											$(this).css("default");
+											if(typeof editItemFunc == "function"){
+												editItemFunc();
+											}else{
+												$(this).dialog("close");
+											}
+										},
+										Close:function(){
+											$(this).dialog("close");
+										}
+									},
+									open: function(event, ui) {
+									},
+									close: function(event, ui) {
+											$("#edit_item_error").html("");
+											$("#edit_item_error").css("display", "none");
+										} 
+									});
+	
+	// Delete Item Dialog
+	$("#del_item_form").dialog({ autoOpen: false ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 400,
+									buttons: [
+										{
+											text: "Yes",
+											click: function(){
+												if(typeof delItemFunc == "function"){
+													delItemFunc();
+												}else{
+													$(this).dialog("close");
+												}
+											}
+										},
+										{
+											text: "No",
+											click: function() { $(this).dialog("close"); }
+										}
+									],
+									close: function(event, ui) {
+											$("#del_item_error").html("");
+											$("#del_item_error").css("display", "none");
+										} 
+									});
+	
+	$("#button_add").button().click(function(){
+		$("#new_item_form").css('visibility','visible');
+		$("#new_item_form").dialog("open");
+	});
+	
+	getPageData();
+});

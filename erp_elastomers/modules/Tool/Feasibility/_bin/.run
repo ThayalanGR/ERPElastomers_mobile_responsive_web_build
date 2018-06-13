@@ -1,0 +1,603 @@
+tableFilters.sort_config	=	{ sort_types:['string','string', 'string','string','us','us','date','string','string','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+var	toolList				=	new Array();
+var	toolIDs					=	new Array();
+var cpdList					=	new Array();
+var	cpdIDs					=	new Array();
+
+$(document).ready(function(){
+	$(".tl_option").change(function(){
+		if($(this).val()=='1'){
+			$(".tool_yes").show();
+		}else{
+			$(".tool_yes").hide();
+			$("#tl_toolref").val("");
+			$("#tool_cavs").val(0);
+			$("#tool_cavs").removeAttr("readonly");
+			$("#tool_prodwgt").val(0);
+			$("#tool_prodwgt").removeAttr("readonly");
+			$("#tool_blankwgt").val(0);
+			$("#tool_blankwgt").removeAttr("readonly");				
+		}								 
+	});
+	
+	$(".cpd_option").change(function(){
+		if($(this).val()=='1'){
+			$(".cpd_yes").show();
+		}else{
+			$(".cpd_yes").hide();
+			$("#cpd_yes").removeAttr("disabled");
+			$("#cpd_no").removeAttr("disabled");		
+			$("#cpd_cpdref").val("");
+			$("#cpd_cpdref").removeAttr("readonly");
+			$("#cpd_polymer").val("");
+			$("#cpd_polymer").removeAttr("disabled");
+			$("#cpd_cure_temp").val("160");
+			$("#cpd_cure_temp").removeAttr("readonly");
+			$("#cpd_cure_time").val("150");
+			$("#cpd_cure_time").removeAttr("readonly");
+			$("#cpd_cure_press").val("200");
+			$("#cpd_cure_press").removeAttr("readonly");			
+		}								 
+	});	
+
+	$("#raise_toolsize").change(function(){
+		if($(this).val()=='Non-Standard'){
+			$("#raise_tool_size").show();
+		}else{
+			$("#raise_tool_size").hide();
+		}								 
+	});		
+	
+	$("#tl_popup").dialog({
+		autoOpen:false, 
+		width:700,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Feasible",
+				tabindex:14,
+				click: function(){
+					if(typeof updateFeasibilityCheck == 'function')
+					updateFeasibilityCheck(true,"tl");
+				}
+			},
+			{ 
+				text: "Not Feasible",
+				tabindex:15,
+				click: function(){
+					if(typeof updateFeasibilityCheck == 'function')
+					updateFeasibilityCheck(false,"tl");
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error_tl").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});
+	
+	$("#cpd_popup").dialog({
+		autoOpen:false, 
+		width:700,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Feasible",
+				tabindex:11,
+				click: function(){
+					if(typeof updateFeasibilityCheck == 'function')
+					updateFeasibilityCheck(true,"cpd");
+				}
+			},
+			{ 
+				text: "Not Feasible",
+				tabindex:12,
+				click: function(){
+					if(typeof updateFeasibilityCheck == 'function')
+					updateFeasibilityCheck(false,"cpd");				}
+			}
+		],
+		close:function(){
+			$("#raise_error_cpd").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});	
+	
+	$("#prod_popup").dialog({
+		autoOpen:false, 
+		width:700,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Feasible",
+				tabindex:6,
+				click: function(){
+					if(typeof updateFeasibilityCheck == 'function')
+					updateFeasibilityCheck(true,"prod");
+				}
+			},
+			{ 
+				text: "Not Feasible",
+				tabindex:7,
+				click: function(){
+					if(typeof updateFeasibilityCheck == 'function')
+					updateFeasibilityCheck(false,"prod");				}
+			}
+		],
+		close:function(){
+			$("#raise_error_prod").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});
+	
+	$("#final_popup").dialog({
+		autoOpen:false, 
+		width:700,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Approve",
+				tabindex:2,
+				click: function(){
+					if(typeof updateFeasibilityCheck == 'function')
+					updateFeasibilityCheck(true,"final");
+				}
+			},
+			{ 
+				text: "Reject",
+				tabindex:3,
+				click: function(){
+					if(typeof updateFeasibilityCheck == 'function')
+					updateFeasibilityCheck(false,"final");				}
+			}
+		],
+		close:function(){
+			$("#raise_error_final").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});	
+
+	// Set AutoComplete Text Box
+	var objToolList	=	postback(actionFile,"type=TOOLLIST&outtype=xml","POST","XML");
+	toolXML			=	parseXMLdoc(objToolList);
+	toolList		=	new Array();
+	toolIDs			=	new Array();
+	$(toolXML).find('row').each(function(index, element) {
+        toolList.push($(this).find('toolname').text());
+		toolIDs.push($(this).find('tool_ref').text());
+    });	
+	
+	var objCpdList	=	postback(actionFile,"type=CPDLIST&outtype=xml","POST","XML");
+	cpdXML			=	parseXMLdoc(objCpdList);
+	cpdList			=	new Array();
+	cpdIDs			=	new Array();
+	$(cpdXML).find('row').each(function(index, element) {
+        cpdList.push($(this).find('cpdname').text());
+		cpdIDs.push($(this).find('cpdid').text());
+    });
+	
+	$("#cpd_cpdref").autocomplete({
+		source:cpdList,
+		close:function(event, ui){
+			setCpdDetails();
+		}
+	});		
+	
+	getPageData();
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=NEWPRODLIST","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+	TF_01	=	setFilterGrid("resultTable",tableFilters);
+    if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+}
+
+function updatePageBehaviour(){
+	
+	$(".tl_button").click(function(e) {
+		cmpdId	=	$(this).attr('cmpdid');
+		$(".tool_yes").show();
+		if(cmpdId != null && cmpdId != "")
+		{
+			var objNewToolList	=	postback(actionFile,"type=TOOLLIST&cmpdid="+cmpdId+"&outtype=xml","POST","XML");
+			newToolXML			=	parseXMLdoc(objNewToolList);
+			newToolList			=	new Array();
+			$(newToolXML).find('row').each(function(index, element) {
+				newToolList.push($(this).find('toolname').text());
+			});			
+			
+			$("#tl_toolref").autocomplete({
+				source:newToolList,
+				close:function(event, ui){
+					setToolDetails();
+				}
+			});			
+		}
+		else
+		{
+			$("#tl_toolref").autocomplete({
+				source:toolList,
+				close:function(event, ui){
+					setToolDetails();
+				}
+			});	
+		}
+        openForm("tl",$(this).attr('prodref'),$(this).attr('isnew'),cmpdId);		
+    });
+	
+	$(".cpd_button").click(function(e) {
+		cmpdId	=	$(this).attr('cmpdid');
+		openForm("cpd",$(this).attr('prodref'),$(this).attr('isnew'),cmpdId);		
+		$(".cpd_yes").show();
+		if(cmpdId != null && cmpdId != "")
+		{
+			cpdName	=	$(this).attr('cpdname');
+			$("#cpd_cpdref").val(cpdName);
+			setCpdDetails();
+		}		
+    });
+	
+	$(".prod_button").click(function(e) {
+		openForm("prod",$(this).attr('prodref'),null,null);		
+		$("#prod_lift_rate").val($(this).attr('liftrate'));
+		$("#prod_trim_rate").val($(this).attr('trimrate'));
+		$("#prod_insp_rate").val($(this).attr('insprate'));
+		$("#prod_rej_rate").val($(this).attr('rejrate'));
+				
+    });
+	
+	$(".final_button").click(function(e) {
+		openForm("final",$(this).attr('prodref'),null,null);
+		$("#final_popup").attr("comment_req",(($(this).attr('tl_status') == 0 || $(this).attr('cpd_status') == 0 || $(this).attr('prod_status') == 0)?1:0));
+    });	
+
+	$(".view_button").click(function(e) {
+		mRecId	=	$(this).attr('reqid') ;
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});
+}
+
+function openForm(type,objId,isNew,cmpdId){	
+	$("#"+type+"_popup").attr("rfqid",objId);
+	$("#"+type+"_popup").attr("cmpdid",cmpdId);    	
+	if(isNew == 1 && type=="tl")
+	{
+		$("#tool_label").html("Tool Available?");
+		$("#lbl_tool_yes").html("Yes");
+		$("#lbl_tool_no").html("No");
+	}
+	else if(isNew == 0 && type=="tl")
+	{
+		$("#tool_label").html("Development For");
+		$("#lbl_tool_yes").html("Rework Tool");
+		$("#lbl_tool_no").html("New Tool");	
+	}
+	$("#"+type+"_popup").dialog('open');
+}
+
+function setToolDetails(){
+	toolref		=	$("#tl_toolref").val();
+	toolIndex	=	toolList.indexOf(toolref);
+	if(toolIndex >= 0){
+		var objToolList	=	postback(actionFile,"type=TOOLDETAILS&toolid="+toolIDs[toolIndex]+"&outtype=xml","POST","XML");
+		toolXML			=	parseXMLdoc(objToolList);
+		rowXML			=	toolXML.getElementsByTagName("row");	
+		row				=	rowXML[0].childNodes;
+		data			=	new Array();
+		for(cx=0; cx<row.length; cx++){
+			data[row[cx].nodeName]	=	(row[cx].firstChild)?row[cx].firstChild.nodeValue:'';
+		}			
+		$("#tool_cavs").val(data['no_of_active_cavities']);
+		$("#tool_prodwgt").val(data['cmpdprodwgt']);
+		$("#tool_blankwgt").val(data['cmpdblankwgt']);		
+		if($("#lbl_tool_yes").html() != "Rework Tool")
+		{
+			$("#tool_cavs").attr("readonly",true);
+			$("#tool_prodwgt").attr("readonly",true);
+			$("#tool_blankwgt").attr("readonly",true);
+		}
+	}
+	else{
+		$("#tl_toolref").val("");
+		$("#tool_cavs").val(0);
+		$("#tool_cavs").removeAttr("readonly");
+		$("#tool_prodwgt").val(0);
+		$("#tool_prodwgt").removeAttr("readonly");
+		$("#tool_blankwgt").val(0);
+		$("#tool_blankwgt").removeAttr("readonly");		
+	}
+}
+
+function setCpdDetails(){
+	cpdref		=	$("#cpd_cpdref").val();
+	cmpdId		=	$("#cpd_popup").attr("cmpdid"); 
+	cpdIndex	=	cpdList.indexOf(cpdref);
+	if(cpdIndex >= 0){
+		var objCpdList	=	postback(actionFile,"type=CPDDETAILS&cpdid="+cpdIDs[cpdIndex]+"&cmpdid="+ cmpdId + "&outtype=xml","POST","XML");
+		cpdXML			=	parseXMLdoc(objCpdList);
+		rowXML			=	cpdXML.getElementsByTagName("row");	
+		row				=	rowXML[0].childNodes;
+		data			=	new Array();
+		for(cx=0; cx<row.length; cx++){
+			data[row[cx].nodeName]	=	(row[cx].firstChild)?row[cx].firstChild.nodeValue:'';
+		}
+		if(row.length > 1)
+		{
+			$("#cpd_yes").attr("disabled",true);
+			$("#cpd_no").attr("disabled",true);
+			$("#cpd_cpdref").attr("readonly",true);
+			$("#cpd_polymer").val(data['cpdpolymer']);
+			$("#cpd_polymer").attr("disabled",true);
+			$("#cpd_cure_temp").val(data['cmpdtemperature']);
+			$("#cpd_cure_temp").attr("readonly",true);
+			$("#cpd_cure_time").val(data['cmpdcurtime']);
+			$("#cpd_cure_time").attr("readonly",true);
+			$("#cpd_cure_press").val(data['cmpdpressure']);
+			$("#cpd_cure_press").attr("readonly",true);
+		}
+		else
+		{
+			$("#cpd_polymer").val(data['cpdpolymer']);
+			$("#cpd_polymer").attr("disabled",true);
+		}
+	}
+	else{		
+		$("#cpd_yes").removeAttr("disabled");
+		$("#cpd_no").removeAttr("disabled");		
+		$("#cpd_cpdref").val("");
+		$("#cpd_cpdref").removeAttr("readonly");
+		$("#cpd_polymer").val("");
+		$("#cpd_polymer").removeAttr("disabled");	
+		$("#cpd_cure_temp").val("160");
+		$("#cpd_cure_temp").removeAttr("readonly");
+		$("#cpd_cure_time").val("150");
+		$("#cpd_cure_time").removeAttr("readonly");
+		$("#cpd_cure_press").val("200");
+		$("#cpd_cure_press").removeAttr("readonly");		
+	}
+}
+
+
+
+function updateFeasibilityCheck(approval,type){
+	
+	feasError	=	$("#raise_error_"+type);
+	rfqId		=	$("#"+type+"_popup").attr('rfqid');
+	param		=	"type=" + "FEASINS&updatetype=" + type +"&approval=" + ((approval)?1:0) + "&rfqid=" + rfqId  ;
+	if(type == "tl"){		
+		toolAvail		=	$("#tool_yes");
+		toolRef			=	$("#tl_toolref");
+		platAvail		=	$("#platten_yes");
+		insUsed			=	$("#insert_yes");
+		toolSizeCntl	=	$("#raise_toolsize");
+		toolSize		=	((toolSizeCntl.val() == "Non-Standard")?$("#raise_tool_size").val():toolSizeCntl.val())
+		toolCavs		=	$("#tool_cavs");
+		toolProdWgt		=	$("#tool_prodwgt");
+		toolBlankWgt	=	$("#tool_blankwgt");
+		toolMoldProc	=	$("#tool_mouldproc");
+		toolMoldType	=	$("#tool_mouldtype");		
+		toolRemarks		=	$("#tool_remarks");
+		if(approval == true)
+		{
+			if((toolAvail.attr("checked") == true) && (toolRef.val() == null || toolRef.val().trim() == '' || toolList.indexOf(toolRef.val()) < 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Please enter the Tool Details");
+				toolRef.focus();
+				return false;
+			}
+			else if(toolSize == null || toolSize == ""){
+				displayError(feasError, "error", "<strong>Error !</strong> - Invalid Tool Size.");
+				toolSizeCntl.focus();
+				return false;
+			}
+			else if(!(toolCavs.val().toNumber() > 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Invalid Tool Cavities.");
+				toolCavs.focus();
+				return false;
+			}
+			else if(!(toolProdWgt.val().toNumber() > 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Invalid Product Weight.");
+				toolProdWgt.focus();
+				return false;
+			}
+			else if(!(toolBlankWgt.val().toNumber() > 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Invalid Blank Weight.");
+				toolBlankWgt.focus();
+				return false;
+			}
+			else if(toolMoldProc.val() == null || toolMoldProc.val() == ""){
+				displayError(feasError, "error", "<strong>Error !</strong> - Invalid Molding Process.");
+				toolMoldProc.focus();
+				return false;
+			}
+			else if(toolMoldType.val() == null || toolMoldType.val() == ""){
+				displayError(feasError, "error", "<strong>Error !</strong> - Invalid Mold Type.");
+				toolMoldType.focus();
+				return false;
+			}	
+		}
+		else if(approval == false && (toolRemarks.val() == null || toolRemarks.val().trim() == '')){
+			displayError(feasError, "error", "<strong>Error !</strong> - Please enter remarks for non-feasibility!!!");
+			toolRemarks.focus();
+			return false;
+		}			
+		
+		 param	+=	"&toolref=" + ((toolRef.val())?toolIDs[toolList.indexOf(toolRef.val())]:"NA" )+
+					"&platavail=" + ((platAvail.attr("checked") == true)?1:0) +
+					"&insused=" + ((insUsed.attr("checked") == true)?1:0) +
+					"&toolsize=" + toolSize +
+					"&toolcavs=" + toolCavs.val() +
+					"&prodwgt=" + toolProdWgt.val() +
+					"&blankwgt=" + toolBlankWgt.val() +					
+					"&toolmouldproc=" + toolMoldProc.val() +
+					"&toolmouldtype=" + toolMoldType.val() +					
+					"&toolremarks=" + toolRemarks.val() ;
+	}
+	else if(type == "cpd"){
+		cpdAvail	=	$("#cpd_yes");
+		cpdRef		=	$("#cpd_cpdref");
+		cpdPolymer	=	$("#cpd_polymer");		
+		inHouseTest	=	$("#test_yes");
+		cpdCurTime	=	$("#cpd_cure_time");
+		cpdCurTemp	=	$("#cpd_cure_temp");
+		cpdCurPress	=	$("#cpd_cure_press");
+		cpdRemarks	=	$("#cpd_remarks");
+		
+		if(approval == true)
+		{		
+			if((cpdAvail.attr("checked") == true) && (cpdRef.val() == null || cpdRef.val().trim() == '' || cpdList.indexOf(cpdRef.val()) < 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Please enter the Compound Details");
+				cpdRef.focus();
+				return false;
+			}
+			else if(cpdPolymer.val() == null || cpdPolymer.val() == ''){
+				displayError(feasError, "error", "<strong>Error !</strong> - Select Suggested Base Polymer.");
+				cpdPolymer.focus();
+				return false;
+			}
+			else if(!(cpdCurTime.val() > 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Please enter Suggested Curing Time.");
+				cpdCurTime.focus();
+				return false;
+			}
+			else if(!(cpdCurTemp.val() > 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Please enter Suggested Curing Temperature.");
+				cpdCurTemp.focus();
+				return false;
+			}
+			else if(!(cpdCurPress.val() > 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Please enter Suggested Curing Pressure.");
+				cpdCurPress.focus();
+				return false;
+			}			
+		}
+		else if(approval == false && (cpdRemarks.val() == null || cpdRemarks.val().trim() == '')){
+			displayError(feasError, "error", "<strong>Error !</strong> - Please enter remarks for non-feasibility!!!");
+			cpdRemarks.focus();
+			return false;
+		}			
+		
+		 param	+=	"&cpdref=" + ((cpdRef.val())?cpdIDs[cpdList.indexOf(cpdRef.val())]:"NA" )+
+					"&inhousetest=" + ((inHouseTest.attr("checked") == true)?1:0) +
+					"&cpdpolymer=" + cpdPolymer.val() +
+					"&curetime=" + cpdCurTime.val() +
+					"&curetemp=" + cpdCurTemp.val() +
+					"&curepress=" + cpdCurPress.val() +
+					"&cpdremarks=" + cpdRemarks.val() ;
+	}
+	else if(type == "prod"){
+		liftRate	=	$("#prod_lift_rate");
+		trimRate	=	$("#prod_trim_rate");
+		inspRate	=	$("#prod_insp_rate");		
+		rejPer		=	$("#prod_rej_rate");
+		prodRemarks	=	$("#prod_remarks");
+		
+		if(approval == true)
+		{		
+			if(!(liftRate.val() > 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Please enter Suggested Lift Rate.");
+				liftRate.focus();
+				return false;
+			}
+			else if(!(trimRate.val() >= 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Please enter Suggested Trimming Rate.");
+				trimRate.focus();
+				return false;
+			}
+			else if(!(inspRate.val() > 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Please enter Suggested Inspection Rate.");
+				inspRate.focus();
+				return false;
+			}	
+			else if(!(rejPer.val() > 0)){
+				displayError(feasError, "error", "<strong>Error !</strong> - Please enter Suggested Rejection Percent.");
+				rejPer.focus();
+				return false;
+			}			
+		}
+		else if(approval == false && (prodRemarks.val() == null || prodRemarks.val().trim() == '')){
+			displayError(feasError, "error", "<strong>Error !</strong> - Please enter remarks for non-feasibility!!!");
+			prodRemarks.focus();
+			return false;
+		}			
+		
+		 param	+=	"&liftrate=" + liftRate.val() +
+					"&trimrate=" + trimRate.val() +
+					"&insprate=" + inspRate.val() +
+					"&rejper=" + rejPer.val() +
+					"&prodremarks=" + prodRemarks.val() ;
+	}
+	else if(type == "final"){
+		commRequired	=	$("#"+type+"_popup").attr('comment_req');
+		finalRemarks	=	$("#final_remarks");
+		
+		if(approval == true && commRequired == true && (finalRemarks.val() == null || finalRemarks.val().trim() == ''))
+		{		
+			displayError(feasError, "error", "<strong>Error !</strong> - Please enter remarks for Approval for Non-feasible Item!!!");
+			finalRemarks.focus();
+			return false;
+		}
+		else if(approval == false && (finalRemarks.val() == null || finalRemarks.val().trim() == '')){
+			displayError(feasError, "error", "<strong>Error !</strong> - Please enter remarks for Rejection!!!");
+			finalRemarks.focus();
+			return false;
+		}			
+		
+		param	+=	"&appremarks=" + finalRemarks.val() ;
+	}
+	
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Create the Feasibility Check Record?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Update Feasibility Check',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															//alert(param); return false;
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															//alert(XMLContent);
+															xmlData				=	parseXMLdoc(XMLContent);
+															error				=	$(xmlData).find("mysql:first status:first").text();
+															if(error == "success"){																
+																alert("Feasibility Check record created Sucessfully");
+																$("#"+type+"_popup").dialog("close");
+																getPageData();
+															}
+															else{
+																displayError(feasError, "error", "<strong>Error !</strong> - Feasibility Check Record Creation failed due to : "+ error);
+																return false;															
+															}
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+}
+
+
+
+

@@ -1,0 +1,21 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$sql_qan	=	"select DATE_FORMAT(tdr.entry_on,'%d-%b-%Y') as recvDate,tsld.rfqid, part_number,part_description,cusName
+						from tbl_sample_layout_dim tsld
+						inner join tbl_trn tt on tt.rfqId=tsld.rfqid
+						inner join tbl_develop_request tdr on tt.rfqid=tdr.sno
+						inner join tbl_customer tc on tc.cusid=tdr.cusid
+					where tdr.status>0 and tdr.entry_on >= '".$_POST["fromdate"]."' and  tdr.entry_on  <= '".$_POST["todate"]."' 
+					group by tsld.rfqid order by tsld.rfqid desc";
+					
+	$list		=	getMySQLData($sql_qan,'xml','root','lower');
+	$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

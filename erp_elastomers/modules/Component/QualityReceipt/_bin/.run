@@ -1,0 +1,201 @@
+tableFilters.default_date_type 	= 	'DDMMMYYYY';
+tableFilters.col_5				=	"none";
+tableFilters.sort_config		=	{ sort_types:['string', 'ddmmmyyyydate', 'string','string', 'us', 'None'] };	
+tableFilters.col_operation		=	{ 
+									   id: ["val_total1"], 
+									   col: [4],
+									   operation: ["sum"],
+									   decimal_precision: [0]
+									};
+var TF_01						=	null;
+var rejarr						=	new Array();
+
+$(document).ready(function(){
+	createAutoComplete();
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	$("#button_view").button().click(function(){
+		openMvmt({});
+	});	
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function createAutoComplete(){
+	var mouldList       =	postback(actionFile,"type=GETDEFREC","POST","XML");
+	listPageData($("#content_body"), mouldList, XSLFile);
+	$('a').click(function(){
+		job         =   $(this).attr('job');
+		if(job == 'issue'){
+			componentid =   $(this).attr('cmpdid');
+			keyid       =   $(this).attr('planid');
+			operator    =   $(this).attr('operator');
+			mdlrref		=	$(this).attr('mdlrref');
+			isexternal	=	$(this).attr('isexternal');
+			currrec		=	$(this).attr('currrec');
+			
+			userList		=	"";
+			userData       	=   postback(actionFile,"type=GETUSERS","POST","XML");
+			username		=	[];
+			$(userData).find('row').each(function(){
+				username.push($(this).find('fullname').text());
+			});
+			userList	=	username.toSelectWithValue(username, "userlist", "userlist", null, "width:75%;");				
+
+			var rejection	=	postback(actionFile,"type=GETREJ&cmpdid="+componentid,"POST","XML");
+			issueCont   	=   '<div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="new_item_error"></div>'+
+								'<form action="" onsubmit="return false;">' +
+									'<table width="100%" id="titleBatch" cellpadding=0 >' +
+										'<tr><td width="" height="25px" >Plan Reference</td><td colspan="2" >'+keyid+'</td></tr>' +
+										'<tr><td height="25px">Inpector</td><td td colspan="2">'+userList+'</td></tr>' +
+										'<tr><td height="25px">Inspection Date</td><td td colspan="2"><input type="date" name="inspDate" id="inspDate" onChange="closeDate(this);" value="<?php echo date("Y-m-d",mktime(0, 0, 0, date("m")  , date("d"), date("Y"))); ?>" /></td></tr>'  + 								
+										'<tr><td height="25px" >Receipt Quantity</td><td colspan="2" id=\"receiptqty\" >'+getCurrency(currrec, 0)+'</td></tr>' +
+										'<tr><td>Inspected Qty</td><td ><input type=text id="inspqty" onkeyup=calcApproved() style="width:50%;text-align:right;" value='+getCurrency(currrec, 0)+' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td></tr>';							
+			rejarr			=	[];
+			$(rejection).find('row').each(function(index, element) {
+				issueCont	+=			'<tr>'+
+											'<td >'+$(this).find('rej_type').text()+' ('+$(this).find('rej_short_name').text()+')</td>'+
+											'<td ><input type=text id="rj_'+$(this).find('rej_short_name').text()+'"" onkeyup=calcApproved() style="width:50%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+										'</tr>';
+				rejarr.push($(this).find('rej_short_name').text());
+			});
+			issueCont	+=			'<tr>'+
+										'<td >Shortage (SHORT)</td>'+
+										'<td ><input type=text id="rj_SHORT" onkeyup=calcApproved() style="width:50%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+									'</tr>';
+			rejarr.push('SHORT');						
+			issueCont	+=			'<tr>'+
+										'<td > Deflashing - Rework (REWORK)</td>'+
+										'<td ><input type=text id="rj_REWORK" onkeyup=calcApproved() style="width:50%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+									'</tr>';
+			rejarr.push('REWORK');				
+			issueCont	+=				'<tr><td height="20px" >Approved Quantity</td><td colspan="2" id="appqty" >'+getCurrency(currrec, 0)+'</td></tr>' +
+									'</table>' +
+									'<input type="submit" onclick="getSubmitButton(\'issue_dialog\');" style="visibility: hidden; width: 1px; height: 1px; "/>'+
+								'</form>';
+			$('#issue_dialog').html(issueCont).dialog({
+				title:'Quality Receipt',
+				width:500,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'Generate':function(){
+						confirmCont = '<table width="100%" >' +
+									'<tr><td><b>Are you Sure to Update the Quality Receipt?</b></td></tr>' +
+									'</table>'
+						$('#confirm_dialog').html(confirmCont).dialog({
+							title:'Quality Receipt',
+							width:450,
+							height:'auto',
+							resizable:false,
+							modal:true,
+							buttons:{
+								'Ok':function(){
+									$(this).dialog('close');									
+									receiveQuality(keyid,mdlrref,componentid);
+								},
+								'Cancel':function(){
+									$(this).dialog('close');
+								}
+							},
+							close:function(){
+								$(this).html('').dialog('destroy');
+							}
+						});	                            
+					},
+					'Cancel':function(){
+						$(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+			});
+			if(rejarr.length == 0)
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Rejection List Not Available.");
+		}
+	});
+}
+
+function calcApproved(){
+	total		=	0;	
+	inspqty		=	$("#inspqty").val().toNumber();
+	if(!isNaN(Number(inspqty))){
+		$(rejarr).each(function(index, element) {
+			vvl		=	$("#rj_"+element).val();
+			total	=	total	+	Number(vvl);
+		});
+		total		=	inspqty - total;	
+		if(isNaN(Number(total))){
+			total	=	0;
+		}
+		$("#appqty").html(getCurrency(total, 0));
+		$("#appqty").css('color', (total>0)?'#000000':'#ff0000');
+	}
+	
+}
+
+function receiveQuality(keyid,mdlrref,cmpdid){
+    var	submitval	=	true;
+	var receiptQty	=	$("#receiptqty").html();
+	var inspQty		=	$("#inspqty").val().toNumber();
+	var appQty		=	$("#issue_dialog #appqty").html();
+	var	inspector	=	$("#userlist").val();
+
+	$("#issue_dialog input:text").each(function(index, element){
+		if(index > 0)
+		{
+			val = $(element).val();
+			if(val == null || val == "" || isNaN(val) == true || Number(val) <0){
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Rejection Quantity ! ! !");
+				$(element).focus();
+				submitval	=	false;
+				return false;
+			}
+		}
+    });
+	if(inspQty < 0 || inspQty > receiptQty.toNumber()){
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Inspected Quantity ! ! !");
+		submitval	=	false;
+		return false;
+	}	
+	else if(appQty.toNumber() < 0){
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Approved Quantity cannot be Negative ! ! !");
+		submitval	=	false;
+		return false;
+	}
+	else if(inspector == null || inspector == ""){
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Please select the Inspector ! ! !");
+		submitval	=	false;
+		return false;
+	}	
+	if(submitval == true){
+		inspdate	=	$("#inspDate").val();
+		appqty		=	appQty.toNumber();		
+		
+		getString	=	"type=INSQUALITY" +
+						"&cmpdid=" + cmpdid +
+						"&mdlrref=" + mdlrref +
+						"&isexternal=" + isexternal +
+						"&inspdate=" + inspdate +
+						"&recqty=" + inspQty +
+						"&appqty=" + appqty +
+						"&inspector=" + inspector +
+						"&planid=" + keyid;
+		$(rejarr).each(function(index, element) {
+            vvl	=	$("#rj_"+element).val();
+			if(vvl.toNumber() > 0)
+				getString	+=	"&rejname[]="+element+"&rejval[]="+vvl;
+        });
+		//alert(getString); return false;
+		$("#issue_dialog").dialog('close');
+		var mouldquality	=	postback(actionFile,getString,"POST","XML");
+		if(mouldquality == 'fail'){
+			alert('Component Quality Entry Failed!');
+		}			
+		createAutoComplete();
+		TF_01		=	setFilterGrid("resultTable",tableFilters);
+		TF_01.RefreshGrid();		
+	}
+}
+
+

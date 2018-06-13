@@ -1,0 +1,229 @@
+tableFilters.col_0			=	"none";
+tableFilters.sort_config	=	{ sort_types:['none','string', 'string','us','us','us','us','us','us'] };
+tableFilters.col_operation	=	{ 
+								   id: ["val_total1","val_total2","val_total4","val_total5","val_total6"], 
+								   col: [3,4,6,7,8],
+								   operation: ["sum","sum","sum","sum","sum"],
+								   decimal_precision: [0,0,0,3,3]
+								};
+tableFilters.on_after_operation	=	formatTotals;
+var TF_01					=	null;
+var needRefresh				=	false;
+var	objCompList				=	null;
+var XSLFile					=	[XSLPath + "_1.design", XSLPath + "_2.design"];
+
+function formatTotals()
+{
+	for( var count=1; count < 7; count++)
+		if(count < 3 || count == 4)
+			tf_Id('val_total' + count).innerHTML = tf_Id('val_total' + count).innerHTML.toCurrency();
+		else if(count == 3)
+		{
+			percentComp	=	(tf_Id('val_total2').innerHTML.toNumber()/tf_Id('val_total1').innerHTML.toNumber()) * 100;
+			tf_Id('val_total' + count).innerHTML = percentComp.toCurrency();
+		}
+		else
+			tf_Id('val_total' + count).innerHTML = tf_Id('val_total' + count).innerHTML.toCurrency(3);
+
+}
+
+$(document).ready(function(){
+	$("#submitPrint").click(function(e){
+		submitPrint('',XSLFile[0]);
+		e.stopImmediatePropagation();
+	});	
+	
+	$(function() {
+
+		var options = { autoOpen: false ,
+						modal: true ,
+						position: ['center','center'],
+						draggable: true,
+						resizable: true,
+						width: 750,
+						height:600,
+						buttons: [
+							{
+								text: "Print",
+								click: function(){
+									submitPrint(this.id,XSLFile[1]);
+								}
+							},
+							{
+								text: "Close",
+								click: function(){
+									$(this).dialog("close");
+								}
+							}
+						],
+						close: function(event, ui) {
+							$(this).css("display", "none");
+						}, 									
+						open: function(event, ui) {
+							$(this).css('visibility','visible');
+						}
+					};
+	    $([1, 2]).each(function() {
+			var num = this;
+			var dlg = $('#show_plan_form' + num)
+			  .dialog(options);
+	    });
+	});	
+	updatePageBehaviour();
+});
+
+function updatePageBehaviour(){
+	objCompList 	= postback(actionFile, "selecttype=GETTOP&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&showdiff="+$("#showdiff").val(), "POST","XML");
+	//alert(objCompList);
+	//$("#content_body").html(objCompList); return false;
+	listPageData($("#content_body"), objCompList, XSLFile[0]);	
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;
+		
+	$(".view_button").click(function(e){
+		cpdid		=	$(this).attr('cpdid');
+		cpdname	=	$(this).attr('cpdname');
+		if(cpdid != null && cpdid != ""){
+			getDetailList(cpdid,cpdname,null,null,1);
+			e.stopImmediatePropagation();
+		}
+	});	
+}
+
+function getDetailList(cpdid,cpdname,cmpdid,cmpdname,step){
+	$("#show_plan_form"+step).css('visibility', 'visible');
+	$("#show_plan_form"+step).dialog("open");
+	$("#show_plan_form"+step).attr("cpdid",cpdid);
+	$("#show_plan_form"+step).attr("cmpdid",cmpdid);
+	$("#show_plan_form"+step).attr("step",step);
+	$("#show_plan_form"+step).attr("cpdname",cpdname);
+	$("#show_plan_form"+step).attr("cmpdname",cmpdname);
+	objSchList	=	postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&cpdid="+cpdid+"&cmpdid="+cmpdid+"&showdiff="+$("#showdiff").val()+"&step="+step, "POST","XML");
+	//alert(objSchList); return false;
+	listPageData($("#detail_body"+step), objSchList, XSLFile[1]);
+	
+	planLiftsTot	=	0;
+	actLiftsTot		=	0;
+	percentComp		=	0;
+	shortLiftsTot	=	0;	
+	shortCpdQtyTot	=	0;
+	$("#detail_body"+step+" table tr").each(function(index, element) {
+        plTot			=	($(this).find("td:eq(4)").html())?Number($(this).find("td:eq(4)").html().split(",").join("")):0;
+		alTot			=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+		slTot			=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+		scTot			=	($(this).find("td:eq(8)").html())?Number($(this).find("td:eq(8)").html().split(",").join("")):0;
+		planLiftsTot	=	planLiftsTot + (isNaN(plTot) ?0 :plTot);
+		actLiftsTot		=	actLiftsTot + (isNaN(alTot) ?0 :alTot);
+		shortLiftsTot	=	shortLiftsTot + (isNaN(slTot) ?0 :slTot);
+		shortCpdQtyTot	=	shortCpdQtyTot + (isNaN(scTot) ?0 :scTot);
+	}); 
+	
+	percentComp		=	(actLiftsTot / planLiftsTot) * 100;
+	
+	tabData			=	"<tr style='font-weight:bold'>" +
+						"<td colspan='4' align='center'>"+((step == 1)?"<span cpdid='"+cpdid+"' cpdname='"+cpdname+"' cmpdname='ALL' cmpdid='ALL' step="+step+" class='view_button link'>Total</span>":"Total")+"</td>" +
+						"<td align='right'>"+planLiftsTot.toCurrency()+"</td>" +
+						"<td align='right'>"+actLiftsTot.toCurrency()+"</td>" +
+						"<td align='right'>"+percentComp.toCurrency()+"</td>" +								
+						"<td align='right'>"+shortLiftsTot.toCurrency()+"</td>" +								
+						"<td align='right'>"+shortCpdQtyTot.toCurrency(3)+"</td>" +
+					"</tr>";	
+	$("#detail_body"+step+" table tr:last").after(tabData);	
+	
+	$(".view_button").click(function(e){
+		cpdid		=	$(this).attr('cpdid');
+		cmpdid		=	$(this).attr('cmpdid');
+		cpdname		=	$(this).attr('cpdname');
+		cmpdname	=	$(this).attr('cmpdname');
+		if(cpdid != null && cpdid != ""){
+			getDetailList(cpdid,cpdname,cmpdid,cmpdname,step+1);
+			e.stopImmediatePropagation();
+		}
+	});		
+}
+
+function submitPrint(dlgId,desFile){
+	$("#print_item_form").css('visibility', 'visible');	
+	prnTitle	=	'';
+	if(dlgId != '')
+	{
+		cpdid		=	$("#"+dlgId).attr('cpdid');
+		cmpdid		=	$("#"+dlgId).attr('cmpdid');
+		step		=	$("#"+dlgId).attr('step');
+		cpdname		=	$("#"+dlgId).attr('cpdname');
+		cmpdname	=	$("#"+dlgId).attr('cmpdname');
+		cpdname		=	(cpdname != "" && cpdname != null && cpdname != 'ALL')?"For " + cpdname + " Compound": "";
+		cmpdname	=	(cmpdname != "" && cmpdname != null && cmpdname != 'ALL')?((step != 1)? " and " + cmpdname + " Part Number":""): "";
+		prnTitle	=	cpdname + cmpdname;
+		objList		=	postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&cpdid="+cpdid+"&cmpdid="+cmpdid+"&showdiff="+$("#showdiff").val()+"&step="+step, "POST","XML");
+	}
+	else
+		objList	=	objCompList;
+	
+	$("#print_item_form").dialog({
+									modal:true,
+									minWidth:'1200',
+									resizable:false,									
+									open: function(event, ui) {
+										listPageData($("#print_body"), objList, desFile);
+										var today = new Date();											
+										$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+										$("#hdr_title").html( prnTitle + " From: " + $("#from_date").val() + " To: " + $("#to_date").val() );
+										$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");
+									}									
+								});	
+	planLiftsTot	=	0;
+	actLiftsTot		=	0;
+	percentComp		=	0;
+	shortLiftsTot	=	0;
+	shrtCpdTot		=	0;
+	actRetCpdTot	=	0;
+	$("#print_body table tr").each(function(index, element) {
+		plTot			=	($(this).find("td:eq(3)").html())?Number($(this).find("td:eq(3)").html().split(",").join("")):0;
+		alTot			=	($(this).find("td:eq(4)").html())?Number($(this).find("td:eq(4)").html().split(",").join("")):0;
+		pcTot			=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+		slTot			=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().split(",").join("")):0;
+        scTot			=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+		rcTot			=	($(this).find("td:eq(8)").html())?Number($(this).find("td:eq(8)").html().split(",").join("")):0;
+		planLiftsTot	=	planLiftsTot + (isNaN(plTot) ?0 :plTot);
+		actLiftsTot		=	actLiftsTot + (isNaN(alTot) ?0 :alTot);	
+		percentComp		=	percentComp + (isNaN(pcTot) ?0 :pcTot);	
+		shortLiftsTot	=	shortLiftsTot + (isNaN(slTot) ?0 :slTot);
+		shrtCpdTot		=	shrtCpdTot + (isNaN(scTot) ?0 :scTot);
+		actRetCpdTot	=	actRetCpdTot + (isNaN(rcTot) ?0 :rcTot);
+	}); 
+	if(dlgId != ''){
+		$("#val_total11").html("&nbsp;");		
+		$("#val_total12").html(actLiftsTot.toCurrency());
+		$("#val_total13").html(percentComp.toCurrency());
+		percentComp		=	(percentComp / actLiftsTot) * 100;
+		$("#val_total14").html(percentComp.toCurrency());
+		$("#val_total15").html(shrtCpdTot.toCurrency());
+		$("#val_total16").html(actRetCpdTot.toCurrency(3));
+		
+	}
+	else{
+		$("#val_total11").html(planLiftsTot.toCurrency());
+		percentComp		=	(actLiftsTot / planLiftsTot) * 100;
+		$("#val_total12").html(actLiftsTot.toCurrency());
+		$("#val_total13").html(percentComp.toCurrency());
+		$("#val_total14").html(shortLiftsTot.toCurrency());
+		$("#val_total15").html(shrtCpdTot.toCurrency(3));
+		$("#val_total16").html(actRetCpdTot.toCurrency(3));		
+	}	
+	
+
+	var DocumentContainer = document.getElementById('print_item_form');
+	$("#print_item_form").dialog('close');
+	var WindowObject = window.open("","PrintWindow");
+	WindowObject.document.writeln(DocumentContainer.innerHTML);	
+	loader = document.createElement('link');
+	loader.href = "/style/printTable.css";
+	loader.rel = "stylesheet";
+	WindowObject.document.head.appendChild(loader);	
+	WindowObject.document.close();
+	WindowObject.focus();
+}

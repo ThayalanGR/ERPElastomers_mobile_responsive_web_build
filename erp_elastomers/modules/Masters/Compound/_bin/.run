@@ -1,0 +1,1370 @@
+XSLFile_Detail		=	XSLPath + "d1.design";
+ramClassList		=	new Array();
+ramData				=	new Array();
+classIds			=	new Array();
+classList			=	new Array();
+ramList				=	new Array();
+paramNo				=	0;
+specNo				=	0;
+qanParamIds			=	new Array();
+qanParamList		=	new Array();
+custList			=	new Array();
+
+function getParamDataAndValidate(type)
+{
+	objData			=	[
+		// Object ID's
+		[
+			['CompoundName', 'IsBlend', 'ShelfLife', 'Units', 'IsColor','RackNo', 'Polymer', 'StdPckQty', 'Shrinkage', 'MinStock','HSNCode', 'FullTestCount'],
+			['FormulationDetails'],
+			['MastTime', 'MastTimeMin', 'MastTimeMax', 
+			 'MastTemp', 'MastTempMin', 'MastTempMax', 
+			 'MastPres', 'MastPresMin', 'MastPresMax', 
+			 'BlendTime', 'BlendTimeMin', 'BlendTimeMax', 
+			 'BlendTemp', 'BlendTempMin', 'BlendTempMax', 
+			 'BlendPres', 'BlendPresMin', 'BlendPresMax', 
+			 'CBlendTime', 'CBlendTimeMin', 'CBlendTimeMax', 
+			 'CBlendTemp', 'CBlendTempMin', 'CBlendTempMax', 
+			 'CBlendPres', 'CBlendPresMin', 'CBlendPresMax', 			 
+			 'KneadTime', 'KneadTimeMin', 'KneadTimeMax',
+			 'KneadTemp', 'KneadTempMin', 'KneadTempMax', 
+			 'KneadPres', 'KneadPresMin', 'KneadPresMax'],
+			['MillRollTime', 'MillRollTimeMin', 'MillRollTimeMax',
+			 'MillRollTemp', 'MillRollTempMin', 'MillRollTempMax',
+			 'MixFinalTime', 'MixFinalTimeMin', 'MixFinalTimeMax',
+			 'MixFinalTemp', 'MixFinalTempMin', 'MixFinalTempMax',
+			 'MixSheetTime', 'MixSheetTimeMin', 'MixSheetTimeMax',
+			 'MixSheetTemp', 'MixSheetTempMin', 'MixSheetTempMax'
+			 ],
+			['ParameterList'],
+			['SpecList'],			
+			['AppUser', 'AppDate', 'Remarks']
+		],
+		// Object Default Values
+		[
+			['', '', '0', '', '', '', '','0.000', '0.00', '0', '','0'],
+			[''],
+			['0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 			 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000'],
+			['0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000', 
+			 '0.000', '0.000', '0.000'],
+			[''],
+			[''],			
+			['', 'DD/MM/YYYY', '']
+		],
+		// Object POST Variable
+		[
+			['cpdname', 'isblend', 'shelflife', 'cpdunits', 'iscolorcpd','rackno', 'cpdpolymer', 'stdpckqty', 'shrinkage', 'cpdminstock', 'hsncode', 'fulltestcount'],
+			['cpdformdtls'],
+			['mastTime', 'mastTimeMin', 'mastTimeMax',
+			 'mastTemp', 'mastTempMin', 'mastTempMax', 
+			 'mastPres', 'mastPresMin', 'mastPresMax', 
+			 'blendTime', 'blendTimeMin', 'blendTimeMax', 
+			 'blendTemp', 'blendTempMin', 'blendTempMax', 
+			 'blendPres', 'blendPresMin', 'blendPresMax', 
+			 'cblendTime', 'cblendTimeMin', 'cblendTimeMax', 
+			 'cblendTemp', 'cblendTempMin', 'cblendTempMax', 
+			 'cblendPres', 'cblendPresMin', 'cblendPresMax', 
+			 'kneadTime', 'kneadTimeMin', 'kneadTimeMax', 
+			 'kneadTemp', 'kneadTempMin', 'kneadTempMax', 
+			 'kneadPres', 'kneadPresMin', 'kneadPresMax'],
+			['millRollTime', 'millRollTimeMin', 'millRollTimeMax',
+			 'millRollTemp', 'millRollTempMin', 'millRollTempMax',
+			 'mixFinalTime', 'mixFinalTimeMin', 'mixFinalTimeMax',
+			 'mixFinalTemp', 'mixFinalTempMin', 'mixFinalTempMax',
+			 'mixSheetTime', 'mixSheetTimeMin', 'mixSheetTimeMax',
+			 'mixSheetTemp', 'mixSheetTempMin', 'mixSheetTempMax'
+			 ],
+			['cpdparamdtls'],
+			['cpdspecdtls'],			
+			['cusappuser', 'cusappdate', 'cusremarks']
+		],
+		// Object Error Name
+		[
+			['Compound Name', 'Is Blend', 'Shelf Life', 'Units', 'Is Color','Rack No', 'Polymer', 'Standard Packing Qty', 'Shrinkage', 'Standard Batch', 'HSN Code', 'Batches for Full Test'],
+			['Formulation Details'],
+			['Mastication Time', 'Mastication Time Min', 'Mastication Time Max', 
+			 'Mastication Temp', 'Mastication Temp Min', 'Mastication Temp Max', 
+			 'Mastication Pres', 'Mastication Pres Min', 'Mastication Pres',
+			 'Chemical Blending Time', 'Chemical Blending Time Min', 'Chemical Blending Time Max', 
+			 'Chemical Blending Temp', 'Chemical Blending Temp Min', 'Chemical Blending Temp Max', 
+			 'Chemical Blending Pres', 'Chemical Blending Pres Min', 'Chemical Blending Pres Max',
+			 'Carbon Blending Time', 'Carbon Blending Time Min', 'Carbon Blending Time Max', 
+			 'Carbon Blending Temp', 'Carbon Blending Temp Min', 'Carbon Blending Temp Max', 
+			 'Carbon Blending Pres', 'Carbon Blending Pres Min', 'Carbon Blending Pres Max',
+			 'Kneading Time', 'Kneading Time Min', 'Kneading Time Max', 
+			 'Kneading Temp', 'Kneading Temp Min', 'Kneading Temp Max', 
+			 'Kneading Pres', 'Kneading Pres Min', 'Kneading Pres Max'],
+			['Mill Rolling Time', 'Mill Rolling Time Min', 'Mill Rolling Time Max',
+			 'Mill Rolling Temp', 'Mill Rolling Temp Min', 'Mill Rolling Temp Max',
+			 'Mix Finaling Time', 'Mix Finaling Time Min', 'Mix Finaling Time Max',
+			 'Mix Finaling Temp', 'Mix Finaling Temp Min', 'Mix Finaling Temp Max',
+			 'Mix Sheeting Time', 'Mix Sheeting Time Min', 'Mix Sheeting Time Max',
+			 'Mix Sheeting Temp', 'Mix Sheeting Temp Min', 'Mix Sheeting Temp Max'
+			 ],
+			['Parameter Lists'],
+			['Spec Lists'],			
+			['Approved User', 'Approved Date', 'Remarks']
+		],
+		// Object Mandatory
+		[
+			[true, false, false, true, false, false, true, false, false, false, false, false],
+			[true],
+			[false, false, false,
+			 false, false, false,
+			 false, false, false,
+			 false, false, false,
+			 false, false, false,
+			 false, false, false,
+			 false, false, false,
+			 false, false, false,
+			 false, false, false,			 
+			 false, false, false,
+			 false, false, false,
+			 false, false, false],
+			[false, false, false,
+			 false, false, false,
+			 false, false, false,
+			 false, false, false,
+			 false, false, false,
+			 false, false, false],
+			[true],
+			[true],
+			[false, false, false]
+		]
+	];
+	
+	paramVal = "";
+	errObj		=	$('#'+type+'_item_error');
+	accordionObj	=	$("#"+type+"_item_accord");
+	
+	if(objData.length > 0 && objData[0].length > 0){
+		for(o=0; o<objData[0].length; o++){
+			for(j=0; j<objData[0][o].length; j++){
+				object	=	$("#" + type + "_" + objData[0][o][j]);
+				switch(objData[0][o][j]){
+					case 'FormulationDetails':
+						formulaList			=	'';
+						$("#"+type+"_ItemList table tr:gt(0)").each(function(index, element) {
+							rmMaterial		=	$(element).find("td:eq(1) select");
+							rmParts			=	$(element).find("td:eq(4) input:text");
+							rmGradeBtn		=	$(element).find("td:eq(3) input:button");
+							rmFChems		=	$(element).find("td:eq(5) input:checkbox");
+							rmGrade			=	$(element).find("td:eq(6) input:hidden");
+							rmGradeList		=	(rmGrade.val() != null && rmGrade.val() != "")?rmGrade.val().split(","):new Array();
+							
+							if(rmMaterial.val() == null || rmMaterial.val() == ""){
+								displayError(errObj, "error", "<strong>Error !</strong> - Raw Material Missing at Row " + (index+1) + " under Formulation Details.");
+								if(accordionObj.accordion("option", "active") != o)
+									accordionObj.accordion("option", "active", o );								
+								throw rmMaterial;
+							}
+							else if(rmGradeList == null || rmGradeList.length <= 0){
+								displayError(errObj, "error", "<strong>Error !</strong> - Grade Missing at Row " + (index+1) + " under Formulation Details.");
+								if(accordionObj.accordion("option", "active") != o)
+									accordionObj.accordion("option", "active", o );								
+								throw rmGradeBtn;								
+							}
+							else if(rmParts.val() == null || rmParts.val() == ""){
+								displayError(errObj, "error", "<strong>Error !</strong> - Parts Missing at Row " + (index+1) + " under Formulation Details.");
+								if(accordionObj.accordion("option", "active") != o)
+									accordionObj.accordion("option", "active", o );								
+								throw rmParts;								
+							}
+							else if(isNaN(Number(rmParts.val())) || Number(rmParts.val()) == 0){
+								displayError(errObj, "error", "<strong>Error !</strong> - Invalid Minimum Stock at Row " + (index+1) + " under Formulation Details.");
+								if(accordionObj.accordion("option", "active") != o)
+									accordionObj.accordion("option", "active", o );								
+								rmParts.val("");
+								throw rmParts;
+							}						
+							
+							formulaList		+=	"&formula[" + index + "][cpdrmper]=" + rmParts.val();
+							formulaList		+=	"&formula[" + index + "][cpdisfinal]=" + rmFChems.attr('checked');
+							for(rml=0; rml<rmGradeList.length; rml++){
+								formulaList	+=	"&formula[" + index + "][cpdrmcode][]=" + rmGradeList[rml];
+							}
+						});
+						paramVal			+=	formulaList;
+					break;
+					case 'ParameterList':
+						paramTR			=	$("#"+type+"_ParameterList table tr:gt(0)");
+						paramList		=	'';						
+						for(ptr=0; ptr<paramTR.length; ptr++){
+							parameter = $(paramTR[ptr]).find("td:eq(0) select");
+							if(parameter.val() != null && parameter.val() != ""){
+								spec	=	$(paramTR[ptr]).find("td:eq(4) input[type=text]");
+								ulimit	=	$(paramTR[ptr]).find("td:eq(6) input[type=text]");
+								llimit	=	$(paramTR[ptr]).find("td:eq(5) input[type=text]");
+								if(spec.val().toNumber() >= llimit.val().toNumber() && spec.val().toNumber() <= ulimit.val().toNumber()) {
+									paramList	+=	"&param["+ptr+"][pname]=" + parameter.val() +
+												"&param["+ptr+"][pspec]=" + spec.val() +
+												"&param["+ptr+"][pul]=" + ulimit.val() +
+												"&param["+ptr+"][pll]=" + llimit.val() +
+												"&param["+ptr+"][psp]=" + $(paramTR[ptr]).find("td:eq(7) input[type=text]").val();
+								}
+								else
+								{			
+									displayError(errObj, "error", "<strong>Error !</strong> - Please check the values provided for the Parameter.");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);					
+									throw spec;
+								}
+							}
+							else
+							{		
+								displayError(errObj, "error", "<strong>Error !</strong> - Please select a Parameter.");
+								if(accordionObj.accordion("option", "active") != o)
+									accordionObj.accordion("option", "active", o);			
+								throw parameter;
+							}
+						}							
+						paramVal		+=	paramList;
+					break;
+					case 'SpecList':
+						specTR			=	$("#"+type+"_SpecList table tr:gt(0)");
+						specList		=	'';						
+						for(ptr=0; ptr<specTR.length; ptr++){
+							spec = $(specTR[ptr]).find("td:eq(0) input[type=text]");
+							if(spec.val() != null && spec.val() != ""){
+								cust	=	$(specTR[ptr]).find("td:eq(1) select");
+								remark	=	$(specTR[ptr]).find("td:eq(2) input[type=text]");
+								specList+=	"&spec["+ptr+"][ref]=" + spec.val() +
+											"&spec["+ptr+"][cust]=" + cust.val() +
+											"&spec["+ptr+"][remarks]=" + remark.val();
+							}
+							else
+							{		
+								displayError(errObj, "error", "<strong>Error !</strong> - Please specify a Customer Specification!.");
+								if(accordionObj.accordion("option", "active") != o)
+									accordionObj.accordion("option", "active", o);			
+								throw spec;
+							}
+						}							
+						paramVal		+=	specList;
+					break;					
+					default:	
+						if(objData[4][o][j] && (object.val() == null || object.val() == "" || object.val() == objData[1][o][j]))
+						{	
+							displayError(errObj, "error", "<strong>Error !</strong> - " + objData[3][o][j] + " Missing.");
+							if(accordionObj.accordion("option", "active") != o)
+								accordionObj.accordion("option", "active", o );
+							throw object;
+						}
+						else
+						{
+							if(objData[0][o][j]	==	'IsBlend')
+							{
+								value		=	((object.attr('checked'))?1:0);
+								paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+							}	
+							else if(objData[0][o][j]	==	'IsColor')
+							{
+								value		=	((object.attr('checked'))?1:0);
+								paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+							}						
+							else if(object.val() != "" && object.val() != objData[1][o][j]){
+								value	=	object.val();
+								switch(objData[0][o][j]){
+									case 'StdPckQty':
+									case 'ShelfLife':
+									case 'MinStock':
+									case 'MastTime':
+									case 'MastTimeMin':
+									case 'MastTimeMax':
+									case 'MastTemp':
+									case 'MastTempMin':
+									case 'MastTempMax':
+									case 'MastPres':
+									case 'MastPresMin':
+									case 'MastPresMax':
+									case 'BlendTime':
+									case 'BlendTimeMin':
+									case 'BlendTimeMax':
+									case 'BlendTemp':
+									case 'BlendTempMin':
+									case 'BlendTempMax':
+									case 'BlendPres':
+									case 'BlendPresMin':
+									case 'BlendPresMax':
+									case 'CBlendTime':
+									case 'CBlendTimeMin':
+									case 'CBlendTimeMax':
+									case 'CBlendTemp':
+									case 'CBlendTempMin':
+									case 'CBlendTempMax':
+									case 'CBlendPres':
+									case 'CBlendPresMin':
+									case 'CBlendPresMax':
+									case 'KneadTime':
+									case 'KneadTimeMin':
+									case 'KneadTimeMax':
+									case 'KneadTemp':
+									case 'KneadTempMin':
+									case 'KneadTempMax':
+									case 'KneadPres':
+									case 'KneadPresMin':
+									case 'KneadPresMax':
+									case 'MillRollTime':
+									case 'MillRollTimeMin':
+									case 'MillRollTimeMax':
+									case 'MillRollTemp':
+									case 'MillRollTempMin':
+									case 'MillRollTempMax':
+									case 'MixFinalTime':
+									case 'MixFinalTimeMin':
+									case 'MixFinalTimeMax':
+									case 'MixFinalTemp':
+									case 'MixFinalTempMin':
+									case 'MixFinalTempMax':
+									case 'MixSheetTime':
+									case 'MixSheetTimeMin':
+									case 'MixSheetTimeMax':
+									case 'MixSheetTemp':
+									case 'MixSheetTempMin':
+									case 'MixSheetTempMax':
+										if(isNaN(Number(value)) || Number(value) <= 0){
+											displayError(errObj, "error", "<strong>Error !</strong> - Invalid " + objData[3][o][j] + ".");
+											if(accordionObj.accordion("option", "active") != o)
+											accordionObj.accordion("option", "active", o);
+											object.val('0.000');
+											throw object;
+										}
+									break;
+									case 'Shrinkage':
+									case 'FullTestCount':
+										if(isNaN(Number(value)) || Number(value) <= 0){
+											displayError(errObj, "error", "<strong>Error !</strong> - Invalid " + objData[3][o][j] + ".");
+											if(accordionObj.accordion("option", "active") != o)
+											accordionObj.accordion("option", "active", o);
+											object.val(0);
+											throw object;
+										}
+									break;														
+								}
+								paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+							}
+							else{
+								value		=	object.val();
+								paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+							}					
+						}
+					break;
+				}
+			}
+		}
+	}
+	return paramVal;
+}
+
+function openAccordion(obj, ev, type, no){
+	ev = ev || window.event;			// gets the event in ie or ns
+	kCode = ev.keyCode || ev.which;		// gets the keycode in ie or ns
+	if(ev != null && no != null && no > 0){
+		if(!ev.shiftKey && kCode == 9){
+			switch(type){
+				case 'new':
+					$("#new_item_accord").accordion("option", "active", no);
+				break;
+				case 'edit':
+					$("#edit_item_accord").accordion("option", "active", no);
+				break;
+			}
+		}
+	}
+}
+
+function submitPrint(){
+	invIds 		= 	new Array();
+	$('.checkbox1').each(function() { 
+		if(this.checked == true)
+		{
+			invIds.push(this.id);				
+		}
+	});		
+	
+	if(invIds == null || invIds.length <= 0 )
+	{
+		alert("Please select atleast one Compound for Printing");
+		return false;
+	}
+	openInvoice({invID:invIds});
+}
+
+function combineRawMaterialsData(obj1, obj2, jp){
+	nrm		=	new Array();
+	if(typeof obj1 == "object" && obj1.length > 0 && obj2 != null && obj2 != ""){
+		for(crm=0; crm<obj1.length; crm++){
+			nrm.push(
+				obj1[crm] +
+				' ' +((jp)?jp:'') + ' ' +
+				((typeof obj2 == 'object')?obj2[crm]:obj2)
+			);
+		}
+	}
+	return nrm;
+}
+
+function getParamList(){
+	var objParamList=postback(actionFile, "selecttype=CPDPARAMATLIST&outtype=xml", "POST", "XML");
+	paramXML			=	parseXMLdoc(objParamList);
+	qanParamIds			=	new Array();
+	qanParamList		=	new Array();
+	$(paramXML).find("row").each(function(index, element) {
+        qanParamIds.push(element.childNodes[0].firstChild.nodeValue);
+        qanParamList.push(element.childNodes[1].firstChild.nodeValue);
+    });
+}
+
+function getParamDetail(obj){
+	paramid			=	$(obj).val();
+	rowNo			= 	$(obj).attr('id').substring(6);
+	var objParList	=	postback(actionFile, "selecttype=PARAMDETAIL&paramid="+paramid+"&outtype=xml", "POST", "XML");
+	paramXML		=	parseXMLdoc(objParList);
+	rowXML			=	paramXML.getElementsByTagName("row");	
+	$("#sr_"+rowNo).html($(rowXML).find("paramStdRef").text());
+	$("#uom_"+rowNo).html($(rowXML).find("paramUOM").text());
+	$("#tm_"+rowNo).html($(rowXML).find("paramTestMethod").text());
+}
+
+function getClassList(){
+	objClassList	=	postback(actionFile, "selecttype=CLASSATLIST&outtype=xml", "POST", "XML");
+	classXML		=	parseXMLdoc(objClassList);
+	classIds		=	new Array();
+	classList		=	new Array();
+	$(classXML).find("row").each(function(index, element) {
+		classIds.push(element.childNodes[0].firstChild.nodeValue);
+		classList.push(element.childNodes[1].firstChild.nodeValue);
+    });
+}
+
+function getBaseRMList(){
+	objClassList	=	postback(actionFile, "selecttype=BRMATLIST&outtype=xml", "POST", "XML");
+	classXML		=	parseXMLdoc(objClassList);
+	ramList			=	new Array();
+	ramData			=	new Array();
+	$(classXML).find("row").each(function(index, element) {
+		rmNo		=	$.trim(element.childNodes[0].firstChild.nodeValue);
+		rmName		=	$.trim(element.childNodes[1].firstChild.nodeValue);
+		rmUoM		=	$.trim(element.childNodes[2].firstChild.nodeValue);
+		rmClass		=	$.trim(element.childNodes[3].firstChild.nodeValue);
+		ramList.push(rmName);
+		ramData[rmName]	=	{
+			id:rmNo,
+			uom:rmUoM,
+			cls:rmClass
+		}
+    });
+}
+
+function getCustList(){
+	var objCustList	=	postback(actionFile, "selecttype=CUSTATLIST&outtype=xml", "POST", "XML");
+	custXML			=	parseXMLdoc(objCustList);
+	custList		=	new Array();
+	$(custXML).find("row").each(function(index, element) {
+        custList.push(element.childNodes[0].firstChild.nodeValue);
+    });
+}
+
+function getPageData(){
+	XMLContent	=	postback(actionFile, "selecttype=CPDLIST&type=select&outtype=xml", "POST", "XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+	getParamList();
+	getBaseRMList();
+	getClassList();
+	getCustList();
+}
+
+function updatePageBehaviour(chk){
+	chk	=	(chk)?chk:false;
+	setAccordion(chk);
+	updateHeader();updateContent();
+	
+	$('#input_select_all').click(function(event) {  
+		if(this.checked) { 
+			$('.checkbox1').each(function() { 
+				this.checked = true;                
+			});
+		}else{
+			$('.checkbox1').each(function() { 
+				this.checked = false;                        
+			});         
+		}
+	});	
+	
+	$(".checkbox1").click(function(e){
+		if(this.checked) {
+				this.checked = true;                
+		}else{
+				this.checked = false;                        
+		}
+		e.stopImmediatePropagation();
+	});	
+	
+	$(".edit_button").click(function(e){
+		cpdId		=	$(this).attr('cpdid');
+		if(cpdId != null && cpdId != ""){
+			editForm(cpdId);
+		}
+		e.stopImmediatePropagation();
+	});
+	
+	$(".delete_button").click(function(e){
+		cpdId	=	$(this).attr('cpdid');
+		if(cpdId != null && cpdId != ""){
+			deleteForm(cpdId);
+		}
+		e.stopImmediatePropagation();
+	});
+}
+
+function getNewItem(type){
+	if(type != null && type != null){
+		objList			=	(type == 'edit')?'edit_ItemList':'new_ItemList';
+		ndate			=	new Date();
+		timenow			=	ndate.getTime();
+		rmList			=	ramList;
+		ol				=	$("#" + objList + " table tr").length;
+		defaultClass	=	"1";
+
+		
+		if(ol == 1){
+			// Get Default Class
+			defClassName = "";
+			for(cl=0; cl<classIds.length; cl++){
+				if(classIds[cl] == defaultClass){
+					defClassName = classList[cl];
+				}
+			}
+			
+			rmList	=	new Array();
+			for(rl=0; rl<ramList.length; rl++){
+				if(ramData[ramList[rl]].cls == defaultClass){
+					rmList.push(ramList[rl]);
+				}
+			}
+		}
+		
+		$("#" + objList + " table tr:last").after(
+			"<tr class='" + ((ol%2)?'content_rows_dark':'content_rows_light') + "' id='"+type+"_list_" + timenow + "'>" +
+				"<td align='center'>" + (ol) + ".</td>" +
+				"<td>" + rmList.toSelectWithEmpty(type + '_mat_' + timenow, type + '_mat_' + timenow, null, 'width:90%;', 'tabindex="11" onchange="setClass(\'' + type + '\', ' + timenow + ')" onkeyup="setClass(\'' + type + '\', ' + timenow + ')"', '', true) + "</td>" +
+				"<td id='" + type + "_class_" + timenow + "'>" + ((ol == 1)?defClassName:"&nbsp;") + "</td>" +
+				"<td align='center'><input type='button' id='" + type + "_btn_" + timenow + "' value='...' title='Select Grade' tabindex='11' onclick='showGradeList(\"" + type + "\", "+timenow+")' /></td>" +
+				"<td align='right'><input type='text' id='"+type+"_val_" + timenow + "' value='" + ((ol == 1)?1000:0) + "' style='width:100%;text-align:right;' tabindex='11' /></td>" +
+				"<td align='center'><input type='checkbox' id='"+type+"_check_" + timenow + "' tabindex='6' /></td>" +
+				"<td align='center'>" +
+					((ol > 1)?"<div class='removebtn' id='delrm_" + timenow + "' target='absmiddle' />":'&mdash;') +
+					"<input type='hidden' id='" + type + "_grade_" + timenow + "' val='' />" +
+				"</td>" +
+			"</tr>"
+		);
+		if(ol > 0)
+		$("#delrm_" + timenow).click(new Function("$(\"#"+type+"_list_"+timenow+"\").remove(); updateAllItems('"+type+"');"));
+	}
+	
+}
+
+function setClass(type, no){
+	if(no != null && no != ""){
+		rmClassObj	=	$("#" + type + "_class_" + no);
+		rmName		=	$("#" + type + "_mat_" + no).val();
+		rmGrade		=	$("#" + type + "_grade_" + no);
+		
+		rmClassObj.text("");
+		if(rmName != null && rmName != ""){
+			// Get Class
+			if(ramData.inArrayKey(rmName)){
+				rmClass	=	ramData[rmName].cls;
+				for(cid=0; cid<classIds.length; cid++){
+					if(classIds[cid] == rmClass){
+						rmClassObj.text(classList[cid]);
+						break;
+					}
+				}
+			}
+			
+			// Get Grade
+			rmGradeList		=	postback(actionFile, "selecttype=RMGRADELIST&rmname="+rmName+"&outtype=xml", "POST", "XML");
+			gradeXML		=	parseXMLdoc(rmGradeList);
+			rowLen			=	$(gradeXML).find("row").length;
+			if(rowLen == 1)
+			gradeName		=	$(gradeXML).find("row")[0].childNodes[0].firstChild.nodeValue
+			rmGrade.val((rowLen == 1)?gradeName:"");
+		}
+	}
+}
+
+function getClass(rm){
+	if(rm != null && rm != ""){
+		// Get Class
+		if(ramData.inArrayKey(rm)){
+			rmClass	=	ramData[rm].cls;
+			for(cid=0; cid<classIds.length; cid++){
+				if(classIds[cid] == rmClass){
+					return classList[cid];
+					break;
+				}
+			}
+		}
+	}
+	return "";
+}
+
+function showGradeList(type, no){
+	if(no != null && no != ""){
+		gradeTot	=	0;
+		chkTot		=	0;
+		rmName		=	$("#" + type + "_mat_" + no).val();
+		gradeList	=	$("#" + type + "_grade_" + no).val();
+		gradeList	=	(gradeList != null && gradeList != "")?gradeList.split(","):new Array();
+		if(rmName != null && rmName != ""){
+			$("#grade_list").dialog("option", "title", "Grade List for " + rmName);
+			$("#mat_id").val(no);
+			$("#mat_type").val(type);
+			
+			rmGradeList		=	postback(actionFile, "selecttype=RMGRADELIST&rmname="+rmName+"&outtype=xml", "POST", "XML");
+			gradeXML		=	parseXMLdoc(rmGradeList);
+			$(gradeXML).find("row").each(function(index, element) {
+				if(gradeList.inArray(element.childNodes[0].firstChild.nodeValue))
+				chkTot++;
+				
+				$("#GradeList table tr:last").after(
+					"<tr class='" + ((index%2)?'content_rows_light':'content_rows_dark') + "'>" +
+						"<td>" +
+							"<input type='checkbox' id='rmGradeList_" + index + "' "+
+								"value='" + $.trim(element.childNodes[0].firstChild.nodeValue) + "' "+
+								((gradeList.inArray(element.childNodes[0].firstChild.nodeValue))?"checked ":'') +
+							"/>" +
+						"</td>" +
+						"<td onclick='CheckBox(\"rmGradeList_" + index + "\", checkAllGradeSelect)'>" +
+							$.trim(element.childNodes[1].firstChild.nodeValue) +
+						"<td>" +
+					"</tr>"
+				);
+				gradeTot++;
+            });
+			
+			$("#select_all_grade").attr("checked", (gradeTot == chkTot));
+			if(gradeTot == 0)
+				alert("No Grade found for " + rmName);
+			else
+				$("#grade_list").dialog("open");
+		}
+	}
+}
+
+function checkAllGradeSelect(){
+	totChkBox	=	0;
+	totChked	=	0;
+	$("#GradeList input:checkbox").each(function(index, element) {
+		if($(element).attr("checked"))
+			totChked++;
+		
+        totChkBox++;
+    });
+	
+	$("#select_all_grade").attr("checked", (totChkBox == totChked));
+}
+
+function selectAllGrades(){
+	isChecked	=	$("#select_all_grade").attr("checked");
+	$("#GradeList input:checkbox").attr("checked", isChecked);
+}
+
+function updateGradeList(){
+	type		=	$("#mat_type").val();
+	no			=	$("#mat_id").val();
+	checkedList	=	new Array();
+	$("#GradeList input:checkbox:checked").each(function(index, element) {
+        checkedList.push($(element).val());
+    });
+	
+	if(checkedList.length > 0){
+		$("#" + type + "_grade_" + no).val(checkedList.join(","));
+		$("#grade_list").dialog("close");
+	}
+	else{
+		displayError($("#gradelist_error"), "error", "Invalid Selection / No Grade Selected . . .");
+	}
+}
+
+function updateAllItems(type){
+	objList		=	(type == 'edit')?'edit_ItemList':'new_ItemList';
+	$("#" + objList + " table tr:gt(0)").each(function(index, element) {
+		$(element).removeClass((index%2)?'content_rows_dark':'content_rows_light');
+        $(element).addClass((index%2)?'content_rows_light':'content_rows_dark');
+		$(element).find("td:first").text((index+1) + ".");
+    });
+}
+
+function getEditRawMaterialsList(no){
+	ndate			=	new Date();
+	timenow			=	ndate.getTime();
+	type			=	'edit';
+	objList			=	"edit_ItemList";
+	var objSupList	=	postback(actionFile, "selecttype=CPDDETAIL&CPDID="+no+"&outtype=xml", "POST", "XML");
+	
+	
+	rmName		=	new Array();
+	rmParts		=	new Array();
+	rmGrade		=	new Array();
+	rmFChems	= 	new Array();
+	$(objSupList).find("row").each(function(index, element) {
+        rId			=	$(element).find("ramid").text();
+		rNme		=	$(element).find("ramname").text();
+		rGrade		=	$(element).find("ramgrade").text();
+		rUnit		=	$(element).find("ramunit").text();
+		rClass		=	$(element).find("ramclass").text();
+		rMStock		=	$(element).find("ramminstock").text();
+		rParts		=	$(element).find("ramparts").text();
+		rFChems		=   $(element).find("is_final_chemical").text();
+		rItem		=	Number($(element).find("item_no").text());
+		
+		if(!isNaN(rItem) && rItem > 0){
+			rItem--;
+			rmName[rItem]	=	rNme;
+			rmParts[rItem]	=	rParts;
+			rmFChems[rItem] = 	rFChems;
+			if(rmGrade[rItem] == null)
+			rmGrade[rItem]	=	new Array();
+			rmGrade[rItem].push(rId);			
+		}
+    });
+	for(eol=0; eol<rmName.length;eol++){
+		$("#edit_RMButton").button().click();
+		$("#edit_ItemList table tr:last td:eq(1) select").val(rmName[eol]);
+		$("#edit_ItemList table tr:last td:eq(2)").text(getClass(rmName[eol]));
+		$("#edit_ItemList table tr:last td:eq(4) input:text").val(rmParts[eol]);
+		$("#edit_ItemList table tr:last td:eq(6) input:hidden").val(rmGrade[eol].join(",").toString());
+		checkVal = false;
+		if(rmFChems[eol] == 1)
+		{
+			checkVal = true;
+		}
+		$("#edit_ItemList table tr:last td:eq(5) input:checkbox").attr("checked", checkVal);		
+	}
+}
+
+function removeAllList(type){
+	type	=	(type)?type:'add';
+	$("#" + type + "_ItemList tr:gt(0)").remove();
+}
+
+function getSubmitButton(fid){
+	if(fid != null){
+		fid			=	(typeof fid == "object")?fid:document.getElementById(fid);
+		if(fid){
+			nsib		=	fid.nextSibling;
+			if(nsib){
+				buttons		=	nsib.getElementsByTagName("button");
+				if(buttons.length > 0){
+					buttons[0].click();
+				}
+			}
+		}
+	}
+}
+
+function editForm(no){
+	$("#edit_item_form").css('visibility', 'visible');
+	$("#edit_item_form").dialog("open");
+	EditNo		=	(no)?no:null;	
+	if(typeof setEditFunc == "function")
+	setEditFunc();
+}
+
+function deleteForm(no){
+	$("#del_item_form").css('visibility', 'visible');
+	$("#del_item_form").dialog("open");
+	DeleteNo	=	(no)?no:null;
+}
+
+function listAllParameters(no){
+	paramList		=	$("#edit_ParameterList");
+	param			=	"selecttype=CPDPARAMLIST&rmid=" + no;
+	paramData		=	postback(actionFile, param, "POST", "XML");
+	paramXML		=	parseXMLdoc(paramData);
+	rowXML			=	paramXML.getElementsByTagName("row");
+	
+	for(rx=0; rx<rowXML.length; rx++){
+		row			=	rowXML[rx].childNodes;
+		paramArray	=	new Array();
+		for(rxa=0; rxa<row.length; rxa++){
+			paramArray[row[rxa].nodeName]	=	(row[rxa].firstChild)?row[rxa].firstChild.nodeValue:"";
+		}
+		
+		tabClass	=	(rx%2)?'content_rows_light':'content_rows_dark';
+		tableRow	=	"<tr class='"+tabClass+"' id='ecpdparam_"+paramNo+"'>" +
+							'<td>' + qanParamList.toSelectWithValue(qanParamIds, "param_"+paramNo, "param_"+paramNo, paramArray['cpdQanParamRef'], "width:100%", "", "onchange='getParamDetail(this);'", true) + '</td>' +							
+							'<td id="sr_'+paramNo+'">'+paramArray['paramStdRef']+'</td>' +
+							'<td id="uom_'+paramNo+'">'+paramArray['uom_short_name']+'</td>' +
+							'<td id="tm_'+paramNo+'">'+paramArray['paramTestMethod']+'</td>' +
+							'<td><input type="text" id="spec_'+paramNo+'" value="' + paramArray['cpdQanSpec'] + '" class="' + ((paramArray['cpdQanSpec']=='0.000')?"invisible_text":"normal_text") + '" style="width:100%;text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" /></td>' +
+							'<td><input type="text" id="ll_'+paramNo+'" value="' + paramArray['cpdQanLLimit'] + '" class="' + ((paramArray['cpdQanLLimit']=='0.000')?"invisible_text":"normal_text") + '" style="width:100%;text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" /></td>' +
+							'<td><input type="text" id="ul_'+paramNo+'" value="' + paramArray['cpdQanULimit'] + '" class="' + ((paramArray['cpdQanULimit']=='0.000')?"invisible_text":"normal_text") + '" style="width:100%;text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" /></td>' +
+							'<td><input type="text" id="sp_'+paramNo+'" value="' + paramArray['cpdSamPlan'] + '" class="' + ((paramArray['cpdSamPlan']=='0.000')?"invisible_text":"normal_text") + '" style="width:100%;text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" /></td>' +
+							"<td align='center'><div class='removebtn' id='drmparam_"+paramNo+"' target='absmiddle' /></td>" +
+						"</tr>";
+		paramList.find("table tr:last").after(tableRow);
+		eval("$(\"#drmparam_"+paramNo+"\").click(function(){ $(\"#ecpdparam_"+paramNo+"\").remove(); updateParamTable('edit') });");
+		paramNo++;
+	}
+	updateParamTable('edit');
+}
+
+function listAllSpecs(no){
+	specList		=	$("#edit_SpecList");
+	spec			=	"selecttype=CPDSPECLIST&rmid=" + no;
+	specData		=	postback(actionFile, spec, "POST", "XML");
+	specXML			=	parseXMLdoc(specData);
+	rowXML			=	specXML.getElementsByTagName("row");
+	
+	for(rx=0; rx<rowXML.length; rx++){
+		row			=	rowXML[rx].childNodes;
+		specArray	=	new Array();
+		for(rxa=0; rxa<row.length; rxa++){
+			specArray[row[rxa].nodeName]	=	(row[rxa].firstChild)?row[rxa].firstChild.nodeValue:"";
+		}
+		
+		tabClass	=	(rx%2)?'content_rows_light':'content_rows_dark';
+		tableRow	=	"<tr class='"+tabClass+"' id='ecpdspec_"+specNo+"'>" +
+							'<td><input type="text" id="spec_'+specNo+'" value="' + specArray['cpdSpecRef'] + '" /></td>' +		
+							'<td>' + custList.toSelectWithValue(custList, "cust_"+specNo, "cust_"+specNo, specArray['cpdCust'], "width:100%", "", "", false) + '</td>' +							
+							'<td><input type="text" id="remark_'+specNo+'" value="' + specArray['remarks'] + '" /></td>' +
+							"<td align='center'><div class='removebtn' id='drmspec_"+specNo+"' target='absmiddle' /></td>" +
+						"</tr>";
+		specList.find("table tr:last").after(tableRow);
+		eval("$(\"#drmspec_"+specNo+"\").click(function(){ $(\"#ecpdspec_"+specNo+"\").remove(); updateSpecTable('edit') });");
+		specNo++;
+	}
+	updateSpecTable('edit');
+}
+
+function addParameter(t){
+	paramList	=	$("#" + t +"_ParameterList");
+	tableRow	=	"<tr id='ecpdparam_"+paramNo+"'>" +
+						'<td>' + qanParamList.toSelectWithValue(qanParamIds, "param_"+paramNo, "param_"+paramNo, "", "width:100%", "", "onchange='getParamDetail(this);'", true) + '</td>' +
+						'<td id="sr_'+paramNo+'"></td>' +
+						'<td id="uom_'+paramNo+'"></td>' +
+						'<td id="tm_'+paramNo+'"></td>' +
+						'<td><input type="text" id="spec_'+paramNo+'" value="0.000" class="invisible_text" style="text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" /></td>' +
+						'<td><input type="text" id="ll_'+paramNo+'" value="0.000" class="invisible_text" style="text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" /></td>' +
+						'<td><input type="text" id="ul_'+paramNo+'" value="0.000" class="invisible_text" style="text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" /></td>' +
+						'<td><input type="text" id="sp_'+paramNo+'" class="invisible_text" value="0.000" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" style="text-align:right;" /></td>' +
+						"<td align='center'><div class='removebtn' id='drmparam_"+paramNo+"' target='absmiddle' /></td>" +
+					"</tr>";
+	paramList.find("table tr:last").after(tableRow);
+	eval("$(\"#drmparam_"+paramNo+"\").click(function(){ $(\"#ecpdparam_"+paramNo+"\").remove(); updateParamTable('"+t+"') });");
+	updateParamTable(t);
+	paramNo++;
+}
+function updateParamTable(t){
+	paramTR	=	$("#" + t + "_ParameterList table tr");
+	for(ptr=1; ptr<paramTR.length; ptr++){
+		tabClass	=	(ptr%2)?'content_rows_light':'content_rows_dark';
+		//$("#"+paramTR[ptr].id).removeClass().addClass(tabClass);
+		$(paramTR[ptr]).removeClass().addClass(tabClass);
+
+	}
+}
+
+function addSpec(t){
+	specList	=	$("#" + t +"_SpecList");
+	tableRow	=	"<tr id='ecpdspec_"+specNo+"'>" +
+						'<td><input type="text" id="specCust_'+specNo+'" /></td>' +
+						'<td>' + custList.toSelectWithValue(custList, "spec_"+specNo, "spec_"+specNo, "", "width:100%", "", "", false) + '</td>' +
+						'<td><input type="text" id="specRemarks_'+specNo+'" /></td>' +
+						"<td align='center'><div class='removebtn' id='drmspec_"+specNo+"' target='absmiddle' /></td>" +
+					"</tr>";
+	specList.find("table tr:last").after(tableRow);
+	eval("$(\"#drmspec_"+specNo+"\").click(function(){ $(\"#ecpdspec_"+specNo+"\").remove(); updateSpecTable('"+t+"') });");
+	updateSpecTable(t);
+	specNo++;
+}
+
+function updateSpecTable(t){
+	specTR	=	$("#" + t + "_SpecList table tr");
+	for(ptr=1; ptr<specTR.length; ptr++){
+		tabClass	=	(ptr%2)?'content_rows_light':'content_rows_dark';
+		$(specTR[ptr]).removeClass().addClass(tabClass);
+	}
+}
+
+function addItemFunc(){
+	newError		=	$('#new_item_error');
+	newAccordion	=	$("#new_item_accord");
+	
+	displayError(newError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");
+	param				=	"selecttype=" + "CPDADD";
+	try{
+		param		+=	getParamDataAndValidate("new");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}	
+	//alert(param); //return false;	
+	XMLContent	=	postback(actionFile, param, "POST", "XML");
+	xmlData		=	$(XMLContent);
+	error		=	xmlData.find("mysql:eq(0) status:eq(0)").text();
+	cpdId		=	xmlData.find("root data row:eq(0) cpdid").text();
+	if(error == "success"){
+		alert("Compound "+ cpdId +" has been created...");
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		updatePageBehaviour(true);
+		$("#new_item_form").dialog("close");
+	}
+	else{
+		displayError(newError, "error", error);
+	}
+}
+
+function setEditFunc(){
+	editCompID			=	$('#edit_CompoundId');
+	editCompName		=	$('#edit_CompoundName');
+	editIsBlend			=	$('#edit_IsBlend');
+	editMinStock		=	$('#edit_MinStock');
+	editUnits			=	$('#edit_Units');
+	editIsColour		=	$('#edit_IsColor');
+	editPolymer			=	$('#edit_Polymer');
+	editRawMaterial		=	$('#edit_RawMaterial');
+	editShelfLife		=	$('#edit_ShelfLife');
+	editRackNo			=	$('#edit_RackNo');
+	editStdPckQty		=	$('#edit_StdPckQty');
+	editShrinkage		=	$('#edit_Shrinkage');
+	editFullTestCount	=	$('#edit_FullTestCount');
+	editHSNCode			=	$('#edit_HSNCode');
+	editAppUser			=	$('#edit_AppUser');
+	editAppDate			=	$('#edit_AppDate');
+	editRemarks			=	$('#edit_Remarks');	
+	editError			=	$('#edit_item_error');
+	
+	if(EditNo != null && EditNo != ""){
+		xmlData		=	parseXMLdoc(XMLContent);		
+		Rows		=	xmlData.getElementsByTagName("row");
+		EditData	=	new Array();
+		if(Rows.length > 0){
+			for(R=0; R<Rows.length; R++){
+				Obj		=	Rows[R];
+				Sno		=	Obj.childNodes[0].firstChild.nodeValue;
+				if(Sno == EditNo){
+					for(ER=0; ER<Obj.childNodes.length; ER++){
+						EditData[Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+					}
+					break;
+				}
+			}
+			editCompID.val(EditNo);
+			editCompName.val(EditData['cpdname']);
+			if(EditData['isblend'] == 1)
+				editIsBlend.attr('checked',true);	
+			else
+				editIsBlend.attr('checked',false);			
+			editUnits.val(EditData['cpduom']);
+			if(EditData['iscolorcpd'] == 1)
+				editIsColour.attr('checked',true);	
+			else
+				editIsColour.attr('checked',false);
+			editPolymer.val(EditData['cpdpolymer']);
+			editMinStock.val(EditData['cpdminstock']);
+			editShelfLife.val(EditData['shelflife'].toNumber());
+			editRackNo.val(EditData['rackno']);
+			editStdPckQty.val(EditData['stdpckqty']);
+			editShrinkage.val(EditData['shrinkage'].toNumber());
+			editFullTestCount.val(EditData['batcountfulltest'].toNumber());
+			editHSNCode.val(EditData['hsncode'].toNumber());
+			editAppUser.val(EditData['entry_by']);
+			editAppDate.val(EditData['entry_on']);
+			editRemarks.val(EditData['remarks']);
+			
+			//Mastication
+			$('#edit_MastTime').val(EditData['masttime']);
+			$('#edit_MastTimeMin').val(EditData['masttimemin']);
+			$('#edit_MastTimeMax').val(EditData['masttimemax']);
+			$('#edit_MastTemp').val(EditData['masttemp']);
+			$('#edit_MastTempMin').val(EditData['masttempmin']);
+			$('#edit_MastTempMax').val(EditData['masttempmax']);
+			$('#edit_MastPres').val(EditData['mastpres']);
+			$('#edit_MastPresMin').val(EditData['mastpresmin']);
+			$('#edit_MastPresMax').val(EditData['mastpresmax']);
+			//Blending
+			$('#edit_BlendTime').val(EditData['blendtime']);
+			$('#edit_BlendTimeMin').val(EditData['blendtimemin']);
+			$('#edit_BlendTimeMax').val(EditData['blendtimemax']);
+			$('#edit_BlendTemp').val(EditData['blendtemp']);
+			$('#edit_BlendTempMin').val(EditData['blendtempmin']);
+			$('#edit_BlendTempMax').val(EditData['blendtempmax']);
+			$('#edit_BlendPres').val(EditData['blendpres']);
+			$('#edit_BlendPresMin').val(EditData['blendpresmin']);
+			$('#edit_BlendPresMax').val(EditData['blendpresmax']);
+			$('#edit_CBlendTime').val(EditData['cblendtime']);
+			$('#edit_CBlendTimeMin').val(EditData['cblendtimemin']);
+			$('#edit_CBlendTimeMax').val(EditData['cblendtimemax']);
+			$('#edit_CBlendTemp').val(EditData['cblendtemp']);
+			$('#edit_CBlendTempMin').val(EditData['cblendtempmin']);
+			$('#edit_CBlendTempMax').val(EditData['cblendtempmax']);
+			$('#edit_CBlendPres').val(EditData['cblendpres']);
+			$('#edit_CBlendPresMin').val(EditData['cblendpresmin']);
+			$('#edit_CBlendPresMax').val(EditData['cblendpresmax']);			
+			//Kneading
+			$('#edit_KneadTime').val(EditData['kneadtime']);
+			$('#edit_KneadTimeMin').val(EditData['kneadtimemin']);
+			$('#edit_KneadTimeMax').val(EditData['kneadtimemax']);
+			$('#edit_KneadTemp').val(EditData['kneadtemp']);
+			$('#edit_KneadTempMin').val(EditData['kneadtempmin']);
+			$('#edit_KneadTempMax').val(EditData['kneadtempmax']);
+			$('#edit_KneadPres').val(EditData['kneadpres']);
+			$('#edit_KneadPresMin').val(EditData['kneadpresmin']);
+			$('#edit_KneadPresMax').val(EditData['kneadpresmax']);
+			
+			//Mixing
+			$('#edit_MillRollTime').val(EditData['millrolltime']);
+			$('#edit_MillRollTimeMin').val(EditData['millrolltimemin']);
+			$('#edit_MillRollTimeMax').val(EditData['millrolltimemax']);
+			$('#edit_MillRollTemp').val(EditData['millrolltemp']);
+			$('#edit_MillRollTempMin').val(EditData['millrolltempmin']);
+			$('#edit_MillRollTempMax').val(EditData['millrolltempmax']);
+			
+			$('#edit_MixFinalTime').val(EditData['mixfinaltime']);
+			$('#edit_MixFinalTimeMin').val(EditData['mixfinaltimemin']);
+			$('#edit_MixFinalTimeMax').val(EditData['mixfinaltimemax']);
+			$('#edit_MixFinalTemp').val(EditData['mixfinaltemp']);
+			$('#edit_MixFinalTempMin').val(EditData['mixfinaltempmin']);
+			$('#edit_MixFinalTempMax').val(EditData['mixfinaltempmax']);
+			
+			$('#edit_MixSheetTime').val(EditData['mixsheettime']);
+			$('#edit_MixSheetTimeMin').val(EditData['mixsheettimemin']);
+			$('#edit_MixSheetTimeMax').val(EditData['mixsheettimemax']);
+			$('#edit_MixSheetTemp').val(EditData['mixsheettemp']);
+			$('#edit_MixSheetTempMin').val(EditData['mixsheettempmin']);
+			$('#edit_MixSheetTempMax').val(EditData['mixsheettempmax']);
+
+			if(EditData['cpdminstock'] == "0.000")
+				editMinStock.addClass("invisible_text").removeClass("normal_text");
+			else
+				editMinStock.addClass("normal_text").removeClass("invisible_text");
+			
+			if(EditData['shelflife'] == "0.000")
+				editShelfLife.addClass("invisible_text").removeClass("normal_text");
+			else
+				editShelfLife.addClass("normal_text").removeClass("invisible_text");
+			
+			if(EditData['stdpckqty'] == "0.000")
+				editStdPckQty.addClass("invisible_text").removeClass("normal_text");
+			else
+				editStdPckQty.addClass("normal_text").removeClass("invisible_text");
+			
+			if(EditData['shrinkage'] == "0.000")
+				editShrinkage.addClass("invisible_text").removeClass("normal_text");
+			else
+				editShrinkage.addClass("normal_text").removeClass("invisible_text");
+	
+			if(EditData['batcountfulltest'] == "0")
+				editFullTestCount.addClass("invisible_text").removeClass("normal_text");
+			else
+				editFullTestCount.addClass("normal_text").removeClass("invisible_text");
+				
+			//kneading
+			$('#kneading table input[type=text]').each(function(index,element){
+			if($(element).val() == "0.000")
+				$(this).addClass("invisible_text").removeClass("normal_text");
+			else
+				$(this).addClass("normal_text").removeClass("invisible_text");
+			});
+			
+			//mixing
+			$('#mixing table input[type=text]').each(function(index,element){
+			if($(element).val() == "0.000")
+				$(this).addClass("invisible_text").removeClass("normal_text");
+			else
+				$(this).addClass("normal_text").removeClass("invisible_text");
+			});
+			
+			listAllParameters(EditNo);
+			getEditRawMaterialsList(EditNo);
+			listAllSpecs(EditNo);
+		}
+	}
+}
+
+function editItemFunc(){
+	editError		=	$('#edit_item_error');
+	editAccordion	=	$("#edit_item_accord");
+	
+	displayError(editError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");	
+	param				=	"selecttype=CPDEDIT&cpdid="+ $("#edit_CompoundId").val();
+	try{
+		param		+=	getParamDataAndValidate("edit");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}	
+	//alert(param); return false;	
+	XMLContent	=	postback(actionFile, param, "POST", "XML");
+	//alert(XMLContent);
+	xmlData		=	parseXMLdoc(XMLContent);
+	error		=	$(xmlData).find("mysql:eq(0) status:eq(0)").text();
+	cpdId		=	EditNo;
+	if(error == "success"){
+		alert("Compound " + cpdId + " updated successfully...");
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		updatePageBehaviour(true);
+		$("#edit_item_form").dialog("close");
+	}
+	else{
+		displayError(editError, "error", error);
+	}
+	
+}
+
+function delItemFunc(){
+	delError		=	$('#del_item_error');
+	if(DeleteNo != null && DeleteNo != ""){
+		displayError(delError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Removing Data From Server . . .</strong>");
+		param			=	"selecttype=CPDDEL" + "&cpdid=" + DeleteNo;
+		XMLContent		=	postback(actionFile, param, "POST", "XML");
+		xmlData			=	parseXMLdoc(XMLContent);
+		error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			listPageData($("#content_body"), XMLContent, XSLFile);
+			$("#del_item_form").dialog("close");
+			updatePageBehaviour(true);
+		}
+		else{
+			displayError(delError, "error", error);
+			setTimeout(function(){
+				$("#del_item_form").dialog("close");
+			}, 2000);
+		}
+	}
+}
+
+function setAccordion(pRebind){
+	if(pRebind==true){
+		$("#content_body").accordion( "destroy" );
+	}
+	$("#content_body").accordion({
+		active:false,
+		collapsible: true, 
+		autoHeight: false,
+		change:function(event, ui){
+			cpdObj		=	ui.newContent;
+			cpdId		=	cpdObj.attr("id");
+			contList	=	$("#cont_" + cpdId);
+			if(cpdObj.hasClass("ui-accordion-content-active") && ($.trim(contList.html()) == "" || $.trim(contList.html()) == "Loading...")){
+				var expandData = postback(actionFile,"selecttype=CPDDETAILLIST&CPDID="+cpdId+"&type=select&outtype=xml","POST","XML");
+				contList.html(xslTranform(String(expandData.split("&lt;br/&gt;").join(unescape("<br />"))), XSLFile_Detail));
+			}
+		}
+	});
+}
+
+function setObjFocus(ui)
+{
+	if ($(document.activeElement).attr("type") != "text" && $(document.activeElement).attr("type") != "select-one" && $(document.activeElement).attr("type") != "textarea"){
+		if($('input', ui.newContent.html()).length > 0)
+			$('#' + $('input', ui.newContent.html())[0].id).focus();
+		else if ($('textarea', ui.newContent.html()).length > 0)
+			$('#' + $('textarea', ui.newContent.html())[0].id).focus();
+		else if ($('select', ui.newContent.html()).length > 0)
+			$('#' + $('select', ui.newContent.html())[0].id).focus();
+	}  
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+	// Add Item Dialog
+	$("#new_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 850,
+		height:'auto',
+		buttons: [
+			{
+				text: "Create",
+				click: function(){
+					if(typeof addItemFunc == "function"){
+						addItemFunc();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Close",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		open: function(event, ui) {
+			$("#new_RMButton").button().click();
+			$("#new_item_accord").accordion("option", "active", 0);
+			$('#new_CompoundName').focus();			
+		},
+		close: function(event, ui) {
+			$("#new_item_form form")[0].reset();
+			$("#new_item_error").html("");
+			$("#new_item_error").css("display", "none");
+			$("#new_ParameterList table tr:gt(0)").remove();
+			$("#new_SpecList table tr:gt(0)").remove();
+			removeAllList('new');
+		} 
+	});
+	
+	// Add Accordion
+	$("#new_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui);
+			$("#new_item_form").dialog({position:['center','center']});
+		}
+	});
+	
+	// Edit Item Dialog
+	$("#edit_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 850,
+		height:'auto',
+		buttons: {
+			Update:function(){
+				$(this).css("default");
+				if(typeof editItemFunc == "function"){
+					editItemFunc();
+				}else{
+					$(this).dialog("close");
+				}
+			},
+			Close:function(){
+				$(this).dialog("close");
+			}
+		},
+		open: function(event, ui) {
+			$("#edit_item_accord").accordion("option", "active", 0);
+			$('#edit_CompoundName').focus();			
+		},		
+		close: function(event, ui) {
+			$("#edit_item_error").html("");
+			$("#edit_item_error").css("display", "none");
+			$("#edit_ParameterList table tr:gt(0)").remove();
+			$("#edit_SpecList table tr:gt(0)").remove();
+			removeAllList('edit');
+		} 
+	});
+	
+	// Edit Accordion
+	$("#edit_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui);
+			$("#edit_item_form").dialog({position:['center','center']});
+		}
+	});
+	
+	// Delete Item Dialog
+	$("#del_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 400,
+		buttons: [
+			{
+				text: "Yes",
+				click: function(){
+					if(typeof delItemFunc == "function"){
+						delItemFunc();
+					}else{
+						$(this).dialog("close");
+					}
+				}
+			},
+			{
+				text: "No",
+				click: function() { $(this).dialog("close"); }
+			}
+		],
+		close: function(event, ui) {
+			$("#del_item_error").html("");
+			$("#del_item_error").css("display", "none");
+		} 
+	});
+	
+	$("#grade_list").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 400,
+		height:'auto',
+		buttons: [
+			{
+				text: "Update",
+				click: function(){
+					if(typeof updateGradeList == "function"){
+						updateGradeList();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Close",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close: function(event, ui) {
+			$("#GradeList table tr:gt(0)").remove();
+			$("#gradelist_error").css('display', 'none');
+		} 
+	});
+	
+	$("#button_add").button().click(function(){
+		$("#new_item_form").css('visibility','visible');
+		$("#new_item_form").dialog("open");
+	});
+	$("#new_RMButton").button().click(function(){getNewItem('new');});
+	$("#add_Param").button().click(	function(){addParameter('new');});
+	$("#add_Spec").button().click(function(){addSpec('new');});	
+	$("#edit_RMButton").button().click(function(){getNewItem('edit');});
+	$("#edit_Param").button().click(function(){addParameter('edit');});
+	$("#edit_Spec").button().click(function(){addSpec('edit');});	
+	
+	getPageData();	
+});

@@ -1,0 +1,69 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	switch($_REQUEST["type"]){
+           case 'DELPLAN':
+				$keyid	=	$_REQUEST['keyid'];				
+				$res	=	@getMySQLData ("update tbl_moulding_receive SET status = 0 WHERE modRecRef='$keyid'");
+				if($res['status'] == 'success')
+				{
+					$sql_planid	=	@getMySQLData ("select planRef from tbl_moulding_receive where modRecRef='$keyid'","arr");
+					$planid		=	$sql_planid['data'][0]['planRef'];
+					$planCount	=	@getMySQLData ("select * from tbl_moulding_receive where planRef='$planid' and status > 0","arr");
+					if($planCount['count'] == 0)
+						$res			=	@getMySQLData ("update tbl_moulding_plan SET status = 0 WHERE planid='$planid'");
+				}
+               echo $res['status'];
+			   exit();
+            break;
+			case 'INSRECEIPT':
+				foreach( $_REQUEST['planref'] as $key=>$val)
+				{
+					$actlifts		=	$_REQUEST['actlifts'][$key];
+					$mouldQty		=	$_REQUEST['mouldqty'][$key];
+					$sql_planid		=	@getMySQLData ("select planRef from tbl_moulding_receive where modRecRef='$val'","arr");
+					$planid			=	$sql_planid['data'][0]['planRef'];					
+					$plan_sql		=	@getMySQLData("select * from tbl_invoice_mould_plan where planid = '$planid'");
+					$tool_data		=	$plan_sql['data'][0];					
+					$cpdQty			=	($tool_data['no_of_active_cavities'] * $tool_data['cmpdBlankWgt'] * $actlifts)/1000;					
+					$sql			=	"update tbl_moulding_receive set actualLifts = '$actlifts', mouldQty = '$mouldQty', cpdQtyUsed = '$cpdQty' , 
+											entry_on = now() , entry_by = '".$_SESSION['userdetails']['userId']."', status = 3 where modRecRef = '$val'";
+					/*echo $sql;
+					exit();*/
+					$res			=   @getMySQLData($sql);
+					
+					if($res['status'] == 'success'){
+						$planCount			=	@getMySQLData ("select * from tbl_moulding_receive where planRef='$planid' and status = 2","arr");
+						if($planCount['count'] == 0)
+							@getMySQLData("update tbl_moulding_plan set status='3' where planid ='$planid'");
+					}else{
+						echo $res['status'];
+						exit();
+					}
+				}
+				echo 'success';
+				exit();
+			break;	
+	}
+						
+	$sql_plan	="	select * from (select tmp.no_of_active_cavities,tmr.operator,tmp.cmpdId,
+						tmr.modRecRef as planid,tmp.cmpdName , (tmr.plannedLifts * 1) as liftplanned, (select distinct status from tbl_moulding_issue where mdIssRef = tp.mdIssRef) as issStatus,
+						(if((select((tmr.plannedLifts * 1) * tmp.no_of_active_cavities))>0,(select((tmr.plannedLifts * 1) * tmp.no_of_active_cavities)),0)) as plannedQty						
+					from tbl_moulding_receive tmr
+						inner join tbl_invoice_mould_plan tmp on tmr.planRef = tmp.planid
+						inner join tbl_moulding_plan tp on tp.planid = tmr.planRef
+					where tmr.status = 2 and  tmp.invdate = '".$_REQUEST['prodDate']."' ";
+	if($_REQUEST['operator'] == 'In-House')
+		$sql_plan	.=	" and tmr.operator = 'In-House' ";
+	else if($_REQUEST['operator'] == 'Others') 
+		$sql_plan	.=	" and tmr.operator != 'In-House' ";	
+	$sql_plan	.=	" ) tbl1 where issStatus > 0  order by planid asc";
+	$list		=	@getMySQLData($sql_plan,"xml","root","lower");
+	$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+?>

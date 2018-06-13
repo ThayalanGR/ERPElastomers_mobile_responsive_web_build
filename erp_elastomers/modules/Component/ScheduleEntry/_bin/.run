@@ -1,0 +1,481 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+window2Fit		=	true;
+custId			=	"";
+errMsg			=	null;
+var monthNames = [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+var files;
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+$(document).ready(function(){
+
+	$('#schMonth').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	})
+
+	$('#to_date').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	}).bind('monthpicker-click-month', function (e, month) {
+		getCustomerDetails();
+	})
+	
+	// Set AutoComplete Text Box
+	var objCusList	=	postback(actionFile,"selecttype=CSTATLIST&outtype=xml","POST","XML");
+	cusXML			=	parseXMLdoc(objCusList); 
+	custList		=	new Array();
+	custId			=	new Array();
+	$(cusXML).find('row').each(function(index, element) {
+        custId.push($(this).find('cusid').text());
+		custList.push($(this).find('cusname').text() );
+    });
+	
+	$("#new_CustID").autocomplete({
+		source:custList,
+		close:function(event, ui){
+			getCustomerDetails();
+		}
+	});
+	
+	
+	$("#sch_submit").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Upload the Schedule?</b></td></tr>' +
+					'</table>'
+		$('#confirm_dialog').html(confirmCont).dialog({
+			title:'Customer Schedule',
+			width:450,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					handleSchSubmit();					
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	 		
+	});	
+	
+	$("#button_add").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Update the Schedule?</b></td></tr>' +
+					'</table>'
+		$('#confirm_dialog').html(confirmCont).dialog({
+			title:'Customer Schedule',
+			width:450,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					handleFormSubmit();					
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	 		
+	});
+	
+	$("#button_cancel").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Clear the Schedule? All details will be cleared</b></td></tr>' +
+					'</table>'
+		$('#confirm_dialog').html(confirmCont).dialog({
+			title:'Customer Schedule',
+			width:450,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					handleFormCancel();					
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});			
+	});	
+	
+ucCustFunc	=	function(){
+		partList	=	$("#new_Particulars1");
+		partList.height(10);
+		
+		winList		=	$('#window_list');
+		winHgt		=	winList.height();
+		winSHgt		=	winList.attr("scrollHeight");
+		winTop		=	(winList.position()).top;
+		
+		partHgt		=	partList.height();
+		partTop		=	(partList.position()).top;
+		
+		diffHgt		=	winSHgt - winList.height();
+		extTop		=	partTop - winTop + 30;
+		
+		partHgt		=	(diffHgt > 10)
+							?extTop + diffHgt
+							:winList.height() - extTop;
+		
+		partList.height(partHgt);	
+	}
+
+});
+
+function getCustomerDetails(){
+	if($("#new_CustID").val() != null && $("#new_CustID").val() != "")
+	{
+		
+		cusid	=	$("#new_CustID").val();
+		
+		if(cusid != null && cusid != "")
+		{
+			var val		=	$("#to_date").val(); 			
+			space_pos 	= 	val.indexOf(' ');
+			month 		= 	val.substring(0,space_pos);
+			cur_year 	= 	val.substring(space_pos+1,val.length);
+			cur_month 	= 	monthNames.indexOf(month);
+			
+			month 		=	Number(cur_month)+1;
+			last_day 	= 	new Date(cur_year,cur_month+1,0);
+			last_date 	= 	last_day.getDate();
+			month 		= 	(month>9)?month:'0'+month;
+			
+			var LastDatePrevMonth	=	new Date(cur_year, cur_month, 0);
+			preMonth_lastDay 		= 	LastDatePrevMonth.getDate();
+			preMonth 				= 	Number(LastDatePrevMonth.getMonth())+1;
+			preMonthName 			= 	monthNames[Number(preMonth)-1];
+			Year					= 	LastDatePrevMonth.getFullYear();
+			preMonth 				= 	(preMonth>9)?preMonth:'0'+preMonth;
+			param					= "selecttype=CSTDTLLIST&cusid="+cusid+"&year="+cur_year+"&month="+month+"&day="+last_date+"&preMonth_lastDay="+preMonth_lastDay+"&preMonth="+preMonthName+"&Year="+Year+"&selMonth="+val+"&outtype=xml";				
+			var objCusList			=	postback(actionFile,param,"POST","XML");
+			cusXML		=	parseXMLdoc(objCusList); 
+			valId		=	new Array();
+			valDesc 	=	new Array();
+			rate		=	new Array();
+			preMonthQty = 	new Array();
+			valName 	= 	new Array();
+			schno		= 	new Array();
+			schdate		= 	new Array();
+			schqty		= 	new Array();
+			
+			$(cusXML).find('row').each(function(index, element) 
+			{ 
+				valId.push($(this).find('dataid').text());
+				valName.push($(this).find('dataname').text());
+				valDesc.push($(this).find('datadesc').text());
+				preMonthQty.push($(this).find('preMonthQty').text());
+				rate.push($(this).find('rate').text());
+				schno.push($(this).find('schNo').text());
+				schdate.push($(this).find('schDate').text());
+				schqty.push($(this).find('schQty').text());
+			});
+			
+			$("#new_Particulars1 table tr").each(function(index, element) {
+				if(index > 0)
+				$(element).remove();
+			});			
+			
+			tot_schQty 	= 0;
+			tot_val 	= 0;
+			
+			for(c=0; c<valId.length; c++)
+			{
+				date		=	new Date();
+				today		=	(((date.getDate() > 9)?'':'0') + date.getDate()) + '-' +
+								((((date.getMonth()+1) > 9)?'':'0') + (date.getMonth()+1)) + '-' +
+								(date.getFullYear());
+				idNum		=	date.getTime(); 				
+				schNo 		= 	(schno[c])?schno[c]:'';
+				if(schdate[c]){
+					schDate = 	schdate[c];
+				}else{
+					schDate = 	today; 
+				}
+				schQty		=	(schqty[c])?schqty[c]:'0';
+				
+				dateClass 	= 	'invisible_text schdate_' + idNum;
+				qtyClass 	= 	(schQty!='0')?'sch_qty_' + idNum:'invisible_text sch_qty_' + idNum;
+				
+				tot_schQty 	= 	Number(tot_schQty) + Number(schQty);
+				value 		= 	Number(schQty) * Number(rate[c]);
+				tot_val 	= 	Number(tot_val) + Number(value);
+				totLen		=	$("#new_Particulars1 table tr").length; 
+				tabClass	=	(totLen%2)?'content_rows_light':'content_rows_dark';				
+				tabData		=	"<tr class='"+tabClass+"' id='addbat_" + idNum + "'>" +
+										"<td>"+valName[c]+"<input type='hidden' id='cpdid_" + idNum +"' value='"+ valId[c] +"' /></td>" +
+										"<td>"+valDesc[c]+"</td>" +
+										"<td align='right'>"+getCurrency(Number(preMonthQty[c]),0)+"</td>" +
+										"<td><input type='text' id=schNo_"+ idNum +" idtxt='"+idNum+"' value='" + schNo + "' style='width:90%' onkeyup=\"if(this.value!=''){enableFeilds(this)}\" /></td>" +
+										"<td><input type='text' tabindex='5' id='schdate_" + idNum + "' idtxt='"+idNum+"' style='width:90%' value='"+schDate+"'  class='"+dateClass+"' /></td>" +
+										"<td align='right'><input type='text' tabindex='5' id='sch_qty_" + c + "' idtxt='" + idNum + "' value='"+ getCurrency(Number(schQty),0) +"' class='"+ qtyClass +"' style='text-align:right;width:90%'  onfocus=\"FieldHiddenValue(this, 'in', '0')\" onblur=\"FieldHiddenValue(this, 'out', '0')\" /></td>" +
+										"<td align='right' id='rate_" + idNum + "'>"+getCurrency(Number(rate[c]),2)+"</td>" +
+										"<td id='val_" + idNum + "' class='val_"+ c +"' align='right'>"+getCurrency(Number(value),2)+"</td>" +
+									"</tr>";
+				$("#new_Particulars1 table tr:last").after(tabData);
+
+				$("#new_Particulars1 table tr").each(function(index, element) 
+				{
+					$(this).find("td:eq(4) input:text").datepicker({
+						dateFormat:'dd/mm/yy',
+						onClose:function(){
+							$(this).removeClass("invisible_text");
+						}
+					});
+					
+					$(this).find("td:eq(5) input:text").keyup(function(){
+						id			=	$(this).attr('idtxt');
+						quantity	=	$(this).val().toNumber();
+						
+						//Calculate Value
+						rate		=	$("#rate_" + id).html().toNumber();
+						$("#val_" + id).html(getCurrency((Number(quantity)*Number(rate)), 2));						
+						
+						totqty = 0;
+						$(valId).each(function(index, element) {
+							totqty = Number(totqty)+$("#sch_qty_"+index).val().toNumber();
+						});
+						$("#tot_schQty1").html(getCurrency(Number(totqty), 0));
+						
+						//Total Value
+						totVal=0;
+						$(valId).each(function(index, element) {
+								val = $(".val_"+index).html();
+								val	=	val.toNumber();
+								totVal = Number(totVal) + Number(val);
+						});
+						$("#tot_val1").html(getCurrency(Number(totVal),2));
+						$("#tot_rate1").html(getCurrency((Number(totVal)/Number(totqty)), 2));
+						//calculateTotal();
+					});					
+				
+				});
+			}
+			
+			$("#tot_schQty1").html(getCurrency(Number(tot_schQty), 0));
+			$("#tot_val1").html(getCurrency(Number(tot_val),2));
+			$("#tot_rate1").html(getCurrency((Number(tot_val)/Number(tot_schQty)), 2));
+			
+		}
+		else{
+			clearCustomerDetails();
+		}
+	}
+	else{
+		clearCustomerDetails();
+	}
+}
+
+function enableFeilds(obj){
+	id	=	$(obj).attr("idtxt"); 
+	$(".schdate_" + id).removeAttr("disabled");
+	$(".sch_qty_" + id).removeAttr("disabled");
+	}
+
+function clearCustomerDetails(){
+	$("#new_Particulars1 table tr").each(function(index, element) {
+        if(index > 0)
+		$(element).remove();
+    });	
+	// List Particulars
+	custId		=	"";
+	$('#tot_schQty').html('0');
+	$('#tot_rate').html('0');
+	$('#tot_val').html('0');
+	
+	//$("#cpd_add").css("visibility", "hidden");
+}
+
+
+function dateFormat(dateinp){
+	datearr	=	dateinp.split("/");
+	date		=	datearr[2]+"-"+datearr[1]+"-"+datearr[0];
+	return date;
+}
+
+function handleFormSubmit(){
+	custName		=	$("#new_CustID");
+	monobj			=	$("#to_date");
+	month			=	monobj.val();
+	errText			=	"";
+	numrows			=	0;
+	newError		=	$("#error_msg");
+	getstring		=	"selecttype=" + "ADDSCHEDULEENTRY";
+	schDate			= 	'';
+	
+	
+	if(errMsg != null)
+	clearTimeout(errMsg);
+	errMsg			=	setTimeout(function(){
+							newError.css("display", "none");
+						}, 2500);
+	
+	if(custName.val() == null || custName.val() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Customer Name Missing.");
+		custName.focus();
+		return false;
+	}
+	else if(month == null || month == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Month Missing.");
+		monobj.focus();
+		return false;
+	}
+	
+	$("#new_Particulars1").find('table tr:gt(0)').each(function(index, element) {		
+		cpdIdObj	=	$(this).find('td:eq(0) input'); 
+		cpdCodeObj	=	$(this).find('td:eq(0)'); 
+		cpdDescObj	=	$(this).find('td:eq(1)');
+		schNoObj	=	$(this).find('td:eq(3) input');
+		schDateObj	=	$(this).find('td:eq(4) input');
+		schQtyObj	=	$(this).find('td:eq(5) input');
+		rateObj		=	$(this).find('td:eq(6)');
+		valObj		=	$(this).find('td:eq(7)');
+		var_split	=	(isRewrite)?"/":"&";
+		
+		cpdId		=	cpdIdObj.val(); 
+		cpdCode		=	cpdCodeObj.text();  
+		cpdDesc		=	cpdDescObj.html();
+		schNo		=	schNoObj.val();
+		schDate		=	schDateObj.val(); 
+		schQty		=	(schQtyObj.val() != null && schQtyObj.val() != "")
+							?schQtyObj.val().toNumber()
+							:0;
+		rate		=	(rateObj.html() != null && rateObj.html() != "")
+							?(rateObj.html().indexOf(",") > -1)
+								?Number(rateObj.html().split(",").join(""))
+								:Number(rateObj.html())
+							:0;
+		val			=	(valObj.html() != null && valObj.html() != "")
+							?(valObj.html().indexOf(","))
+								?Number(valObj.html().split(",").join(""))
+								:Number(valObj.html())
+							:0;
+		if(schQty > 0){
+			numrows		=	index + 1;
+			getstring	+=	"&templatepost[particulars][cpdid][]="		+ cpdId +
+							"&templatepost[particulars][cpdcode][]="	+ cpdCode +
+							"&templatepost[particulars][cpddesc][]="	+ cpdDesc +
+							"&templatepost[particulars][schno][]="		+ schNo +
+							"&templatepost[particulars][schdate][]="	+ schDate +
+							"&templatepost[particulars][schqty][]="		+ schQty +
+							"&templatepost[particulars][rate][]="		+ rate +
+							"&templatepost[particulars][value][]="		+ val;
+		}
+	});
+	if (numrows == 0)
+	{		
+		errText =	"<strong>Error !</strong> - No Rows to Update.";
+	}
+	
+	if(errText != "")
+	{
+		displayError(newError, "error", errText);
+		return false;
+	}
+
+	getstring		+=	"&templatepost[custname]="		+	custName.val() +
+						"&templatepost[month]="			+	month;
+	//alert(getstring); //return false;						
+	var printObj	=	postback(actionFile,getstring,"POST","XML");
+	//alert(printObj)
+	printData		=	$(printObj);
+	error			=	printData.find("status").html();
+	cusid			=	printData.find("cusid").html();
+	month			=	printData.find("month").html();
+	
+	if(error == "success"){
+		alert("Schedulue of " + cusid + " for " + month + " has been created sucessfully");
+		window.location.reload();
+	}
+	else{
+		displayError(newError, "error", error);
+	}
+}
+
+function handleFormCancel(){
+	$("#new_CustID").val('');
+	clearCustomerDetails();
+}
+
+
+function handleSchSubmit(){
+	var filedata = document.getElementById("file");
+	formdata = false;
+	newError		=	$("#error_msg");
+ 	monobj			=	$("#schMonth");
+	month			=	monobj.val();
+	if(month == null || month == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Month Missing.");
+		monobj.focus();
+		return false;
+	}   
+	formdata = new FormData();
+    file = filedata.files[0];
+	if(file)
+	{
+		if (formdata) {
+			formdata.append("file", file,file.name);
+			formdata.append("month", month);
+		}
+		
+		$("#sch_submit").attr("value","Loading, Please Wait...");
+		$("#sch_submit").attr("disabled","true");
+		// Set up the request.
+		var xhr = new XMLHttpRequest();
+
+		// Open the connection.
+		xhr.open('POST', actionFile, true);
+
+		// Set up a handler for when the request finishes.
+		xhr.onload = function () {
+			if (xhr.status === 200) {
+				// File(s) uploaded.
+				var printObj	=	xhr.response;
+				printData		=	$(printObj);
+				error			=	printData.find("status").html();
+				month			=	printData.find("month").html();
+				
+				if(error == "success"){
+					alert("Schedulue for " + month + " has been created sucessfully");					
+					window.location.reload();
+				}
+				else{
+					displayError(newError, "error", printObj);
+					$("#sch_submit").attr("value","Upload Schedule");
+					$("#sch_submit").removeAttr("disabled");					
+				}			
+			} 
+			else {
+				displayError(newError, "error", "Unable to upload the file, Please retry again");
+				$("#sch_submit").attr("value","Upload Schedule");
+				$("#sch_submit").removeAttr("disabled");				
+			}
+		};
+		
+		// Send the Data.
+		xhr.send(formdata);
+	}
+	else
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please Select a File.");
+		$("#file").focus();	
+	}
+}
+
+
+

@@ -1,0 +1,24 @@
+Options -Indexes
+
+ErrorDocument 400 /modules/common/not_found.php
+ErrorDocument 401 /modules/common/not_found.php
+ErrorDocument 403 /modules/common/not_found.php
+ErrorDocument 404 /modules/common/no_permission.php
+ErrorDocument 500 /modules/common/not_found.php
+
+ForceType  none
+
+# Modify Headers
+<IfModule mod_headers.c>
+	Options +FollowSymLinks
+	RewriteEngine On
+	
+	# Cache files
+	<FilesMatch "\.(xls|pdf|csv|jpg|jpeg|png|gif|swf|mp3|mp4)$">
+		Header set Cache-Control "public"
+		Header set Expires "now plus 5 days"
+		Header unset Last-Modified
+	</FilesMatch>
+	 
+</IfModule>
+
