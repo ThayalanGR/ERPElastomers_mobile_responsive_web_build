@@ -7,13 +7,12 @@ $(document).ready(function(){
 		var inputs = $("#content_body").find(":input");
 		if(inputs.length > 0)
 		{
-			updateCont   =   '<table width="100%" >' +
-									'<tr><td><b>Are you Sure to Update the compound issue?</b></td></tr>' +
-									'</table>';	
+			updateCont   =   '<div class="container" >' +
+								'<div class="row justify-content-center"><b>Create</b></div><div class="row">Are you Sure to Update the compound issue?</div>' +
+							'</div>';	
+			
 			$('#create_dialog').html(updateCont).dialog({
-				title:'Create',
-				width:300,
-				height:125,
+				width:230,
 				resizable:false,
 				modal:true,
 				buttons:{
@@ -28,6 +27,7 @@ $(document).ready(function(){
 					$(this).html('').dialog('destroy');
 				}
 			});	
+			$('#create_dialog').prev('.ui-dialog-titlebar').hide();
 		}
 		else
 		{			
@@ -37,17 +37,17 @@ $(document).ready(function(){
 
 	});
 	
+
+
 	$("#button_cancel").button().click(function(){
 		var inputs = $("#content_body").find(":input");
 		if(inputs.length > 0)
 		{
-			updateCont   =   '<table width="100%" >' +
-									'<tr><td><b>Are you Sure to Clear all items?</b></td></tr>' +
-									'</table>';	
+			updateCont   =    '<div class="container" >' +
+								'<div class="row justify-content-center"><b>Create</b></div><div class="row">Are you Sure to Clear all items?</div>' +
+							'</div>';	
 			$('#clear_dialog').html(updateCont).dialog({
-				title:'Create',
-				width:300,
-				height:125,
+				width:230,
 				resizable:false,
 				modal:true,
 				buttons:{
@@ -62,6 +62,7 @@ $(document).ready(function(){
 					$(this).html('').dialog('destroy');
 				}
 			});	
+			$('#clear_dialog').prev('.ui-dialog-titlebar').hide();
 		}
 		else
 		{				
@@ -69,8 +70,13 @@ $(document).ready(function(){
 		}
 
 	});
+
+		
 	
 });
+
+
+
 
 // ----------------------------------------------------------------------------------------------------------------------------------------------- //
 
@@ -79,6 +85,8 @@ function createAutoComplete(){
 	//alert(mouldList); 
 	//$("#content_body").html(mouldList); return false;
 	listPageData($("#content_body"), mouldList, XSLFile);
+
+
 	$("#issue_dialog").dialog().dialog('destroy');
         $(".tooltip").tooltip();
 		$('a').click(function(){
@@ -89,29 +97,30 @@ function createAutoComplete(){
 				advQty		=	$(this).attr('advqty');
 				cpdName		=	$(this).attr('cpdname');
 				batches		=	postback(actionFile,"type=GETBATCH&cpdid="+cpdId,"POST","XML");
-				issueCont   =   '<div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="new_item_error"></div>'+
-									'<form action="" onsubmit="return false;">' +
-										'<table width="100%" id="titleBatch" cellpadding=0 >' +
-											'<tr><td height="25px">Compound Name</td><td style="font-weight:bold">'+cpdName+'</td></tr>' +
-											'<tr><td height="25px">Total Available Quantity</td><td style="font-weight:bold" id="totalqty" >'+getCurrency(avlTotQty, 3)+'</td></tr>';
+				issueCont   =   '<div class="text-danger" id="new_item_error"></div>'+
+									'<form action="" class="container text-primary form-control-sm" onsubmit="return false;">' +
+										'<div class="row justify-content-center text-primary"><b>Issue</b></div><div class="form-group" id="titleBatch" >' +
+											'<div class="row bg-light"><div class="col-6 text-left form-control-sm" >Compound Name</div><div class="col-6 text-left text-success">'+cpdName+'</div></div>' +
+											'<div class="row "><div class="col-6 text-left form-control-sm" >Total Available Quantity</div><div class="col-6 text-left text-success" id="totalqty" >'+getCurrency(avlTotQty, 3)+'</div></div> </div>';
 				batarr		=	[];
 				$(batches).find('row').each(function(index, element) {
 					avlQty		=	$(this).find('avlqty').text();
 					batId		=	$(this).find('sno').text();
-					issueCont	+=	'<tr>'+
-										'<td >'+$(this).find('batid').text()+' ('+avlQty+')</td>'+
-										'<td ><input type=text id="'+batId+'" avlqty="'+avlQty+'" onkeyup="calcApproved()" tab="1" style="width:50%;text-align:right;" value="0" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
-									'</tr>';
+					issueCont	+=	'<div class="form-group">'+
+										'<div class="row " ><div class="col-6 input-group-sm">'+$(this).find('batid').text()+' ('+avlQty+')</div>'+
+										'<div class="row  mx-auto" ><input type="text" class="form-control-sm" id="'+batId+'" avlqty="'+avlQty+'" onkeyup="calcApproved()"   value="0" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></div>'+
+									'</div>';
 					batarr.push(batId);
 				});
-				issueCont	+=				'<tr><td height="25px">Adviced Quantity</td><td style="font-weight:bold">'+getCurrency(advQty, 3)+'</td></tr>' +
-											'<tr><td height="20px">Issued Quantity</td><td style="font-weight:bold" id="issqty" >0.000</td></tr>' +
-										'</table>' +
+				issueCont	+=				'<div class="row"><div class="col-6 text-left">Adviced Quantity</div><div class="col-6 text-left text-success">'+getCurrency(advQty, 3)+'</div></div>' +
+											'<div class="row bg-light"><div class="col-6 text-left">Issued Quantity</div><div class="col-6 text-left text-success" id="issqty" >0.000</div></div>' +
+										'</div>' +
 									'</form>';
 				$('#issue_dialog').html(issueCont).dialog({
-					title:'Compound Issue',
-					width:500,
+					width:230,
 					resizable:false,
+					my: "center",
+ 					at: "center",
 					modal:true,
 					buttons:{
 						'Set Batch':function(){
@@ -121,25 +130,21 @@ function createAutoComplete(){
 						'Cancel':function(){
 							$(this).dialog('close');
 						}
-					},
-					close:function(){
-						$(this).html('').dialog('destroy');
 					}
 				});
+			   $('#issue_dialog').prev('.ui-dialog-titlebar').hide();
 				if(batarr.length == 0)
 					displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Batch List Not Available.");
 			}				
 
 			if(job == 'delete'){
                 keyid       =   $(this).attr('planid');
-				deleteCont   =   '<table width="100%" >' +
-                                '<tr><td><b>Are you Sure to Delete ?</b></td></tr>' +
-                                '</table>';
+				deleteCont   =   `<div class="container"><div class="row justify-content-center">Are you Sure to Delete ?</div></div>`;
                 $('#delete_dialog').html(deleteCont).dialog({
-                    title:'Delete',
-                    width:300,
-                    height:125,
+                    width:230,
                     resizable:false,
+					my: "center",
+ 					at: "center",
                     modal:true,
                     buttons:{
                         'YES':function(){
@@ -160,6 +165,7 @@ function createAutoComplete(){
                         $(this).html('').dialog('destroy');
                     }
                 });
+				 $('#delete_dialog').prev('.ui-dialog-titlebar').hide();
             }			
         });
 		
@@ -307,6 +313,5 @@ function clearDC(){
 	}
 	$('#clear_dialog').dialog('close');	
 }
-
 
 

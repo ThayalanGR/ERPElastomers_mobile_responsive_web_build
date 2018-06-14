@@ -1,0 +1,607 @@
+<?php
+	$sql		=	" select * from tbl_users where status = 1 and userType = 'Sub-Contractor' ";
+	$resUser	=	@getMySQLData($sql);
+	$user		=	$resUser['data'];
+	$userlist	=	"";
+	foreach($user as $key=>$value){
+		$userlist	.=	"<option>".$value['fullName']."</option>";
+	}	
+?>
+
+
+ <div class="row justify-content-center text-primary" style="padding-top: 65px;" >
+        <div class="col-12 text-center h6"><i class="<?php echo $_SESSION['Outward']; ?>"></i> Outward</div>
+        
+            <div class="col-12 text-center ">Compound Issue</div>
+            <div class="col-12 mt-2">
+                <form action="" onsubmit="return false;">
+                    <label for="planDate" class="">Plan Date:</label>
+                    <input type="date" class="rounded form-control form-control-sm " name="planDate" id="planDate" value="<?php echo date('Y-m-d',mktime(0, 0, 0, date("m")  , date("d"), date("Y"))); ?>" onchange="createAutoComplete();" />
+                    <label for="operator" class="">Location:</label>
+                    <select name="operator" class="rounded form-control form-control-sm" id="operator" onChange="createAutoComplete();" >
+                            <option selected >In-House</option>
+                            <?php print $userlist; ?>
+                        </select>
+                </form>
+            </div>
+            <div class="col-12 text-center">
+                <label for="details" class="mt-3">Awaiting Issue List</label>
+                <div id="window_list">
+                    <div class="window_error text-danger" id="issue_item_error">
+                        <div class="loading_txt"><span>Loading Data . . .</span></div>
+                    </div>
+                    <div id="content_body">
+                        <div class="row" >
+                            <div class="col-12 mt-2">
+                                <div class="container shadow text-left">
+                                        <div class="row ">
+                                            <div class="col-5 bg-dark" >Key Ref.</div>
+                                            <div class="col-7 bg-dark">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Plan Date</div>
+                                            <div class="col-7 text-success">#asdasdasda</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Part No</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5"> Part Desc.</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5"> Plnd Lif.</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Plnd Qty</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5"> Blk Wgt(gm)</div> 
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Adv. Qty(kg)</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Iss. Qty(kg)</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-5"> #</div>
+                                            <div class="col-7 "><i class="text-danger fa fa-window-close"></i></div>
+                                        </div>
+                                </div> 
+                            </div>
+                            <div class="col-12 mt-2">
+                                <div class="container shadow text-left">
+                                        <div class="row ">
+                                            <div class="col-5 bg-dark" >Key Ref.</div>
+                                            <div class="col-7 bg-dark">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Plan Date</div>
+                                            <div class="col-7 text-success">#asdasdasda</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Part No</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5"> Part Desc.</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5"> Plnd Lif.</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Plnd Qty</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5"> Blk Wgt(gm)</div> 
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Adv. Qty(kg)</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Iss. Qty(kg)</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-5"> #</div>
+                                            <div class="col-7 "><i class="text-danger fa fa-window-close"></i></div>
+                                        </div>
+                                </div> 
+                            </div>
+                            <div class="col-12 mt-2">
+                                <div class="container shadow text-left">
+                                        <div class="row ">
+                                            <div class="col-5 bg-dark" >Key Ref.</div>
+                                            <div class="col-7 bg-dark">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Plan Date</div>
+                                            <div class="col-7 text-success">#asdasdasda</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Part No</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5"> Part Desc.</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5"> Plnd Lif.</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Plnd Qty</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5"> Blk Wgt(gm)</div> 
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Adv. Qty(kg)</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row border-bottom">
+                                            <div class="col-5">Iss. Qty(kg)</div>
+                                            <div class="col-7 text-success">#</div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-5"> #</div>
+                                            <div class="col-7 "><i class="text-danger fa fa-window-close"></i></div>
+                                        </div>
+                                </div> 
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                   
+            </div>
+
+            <div class="col-12 mt-2">
+                <div id="errorId"></div>
+                <form action="" onsubmit="return false;">
+                    <div class="row text-center mt-3 mb-5">
+                        <div class="col-8"><button class="btn btn-block btn-primary btn-sm" id="button_submit" type="submit">Create DC </button></div>
+                        <div class="col-4"><button class="btn btn-block btn-danger btn-sm" id="button_cancel">Clear</button> </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
+<div style="display:none">
+    <div id="create_dialog" >
+    </div>
+    <div id="delete_dialog" >
+    </div>
+    <div id="issue_dialog" >
+    </div>	
+    <div id="clear_dialog" >
+    </div>	
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div id="window_list_wrapper" style="padding-bottom:5px;">
+    <div id="window_list_head">
+        <strong>Compound Issue</strong>
+    </div>
+	<form action="" onsubmit="return false;">
+    <table width="95%" border="0" cellpadding="5" cellspacing="0" style="margin-left:10px;margin-top:5px;">
+        <tr>
+            <td align="right" width="30%">Plan Date : </td>
+            <td align="left" width="15%">
+				<input type="date" name="planDate" id="planDate" value="<?php echo date('Y-m-d',mktime(0, 0, 0, date("m")  , date("d"), date("Y"))); ?>" onchange="createAutoComplete();" />
+			</td>
+            <th align="right" width='10%'>Location</th>
+            <th align="left" >
+				<select name="operator" id="operator" onChange="createAutoComplete();" >
+					<option selected >In-House</option>
+					<?php print $userlist; ?>
+				</select>
+			</th>			
+        </tr>
+    </table>
+	</form>
+</div>
+
+
+<div id="window_list_wrapper">
+    <div id="window_list_head">
+        <strong>Awaiting Issue List</strong>
+    </div>
+    <div id="content_head" style="padding-bottom:0px;">
+        <table border="0" cellpadding="6" cellspacing="0" width="100%">
+            <tr>
+                <th width="6%" align="left" title="Key Reference">Key Ref.</th>
+                <th width="10%" align="left">Plan Date</th>
+                <th width="10%" align="left" title="Part Number">Part No</th>
+                <th width="12%" align="left" title="Part Description">Part Desc.</th>
+                <th width="6%" align="right" title="Planned Lifts">Plnd Lif.</th>
+                <th width="10%" align="right" title="Planned Qty">Plnd Qty</th>
+				<th width="10%" align="center" title="Blank Weight">Blk Wgt(gm)</th>
+                <th width="10%" align="right" title="Adviced Qty">Adv. Qty(kg)</th>
+				<th width="15%" align="right" title="Issued Qty">Iss. Qty(kg)</th>
+                <th align="right" style="padding-right:20px;">#</th>
+            </tr>
+        </table>
+    </div>
+    <div id="window_list">
+    	<div class="window_error text-danger"  id="issue_item_error" style="color:red;">
+            <div class="loading_txt"><span>Loading Data . . .</span></div>
+        </div>
+        <div id="content_body"></div>
+    </div>
+
+     <div >
+ 	<form action="" onsubmit="return false;">
+	
+    <table width="95%" border="0" cellpadding="5" cellspacing="0" style="margin-left:10px;margin-top:5px;">
+        <tr>
+            <td align="right">
+					<button id="button_submit" type="submit">Create DC</button>
+					<button id="button_cancel">Clear</button>
+			</td>
+        </tr>		
+    </table>
+	</form>
+     </div>	
+</div>
+
+<div style="display:none">
+    <div id="create_dialog" >
+    </div>
+    <div id="delete_dialog" >
+    </div>
+    <div id="issue_dialog" >
+    </div>	
+    <div id="clear_dialog" >
+    </div>	
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// JavaScript Document
+$(document).ready(function(){
+
+	createAutoComplete();
+	
+	$("#button_submit").button().click(function(){
+		var inputs = $("#content_body").find(":input");
+		if(inputs.length > 0)
+		{
+			updateCont   =   '<table width="100%" >' +
+									'<tr><td><b>Are you Sure to Update the compound issue?</b></td></tr>' +
+									'</table>';	
+			$('#create_dialog').html(updateCont).dialog({
+				title:'Create',
+				width:300,
+				height:125,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'YES':function(){
+						createDC();
+					},
+					'NO':function(){
+					   $(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+			});	
+		}
+		else
+		{			
+			displayError($("#issue_item_error"), "highlight", "<strong>Info !</strong> - No DC to be created ! ! !");
+			return false;
+		}
+
+	});
+	
+
+
+		//Cancel Items
+	$("#button_cancel").button().click(function(){
+		document.getElementById('errorId').innerHTML = `<div class="bg-light ">Are you sure to clear?<br>
+		<span class="text-center"><button class="btn btn-sm btn-danger" onClick="window.location.reload();">Yes</button></span>
+		<button class="btn btn-sm btn-success" id="noClear" onClick="noClear();" >No</button>
+		</div>`	
+	});
+	
+});
+
+function noClear(){
+
+	var displayError = document.getElementById('errorId')
+
+	displayError.innerHTML = ' '
+	return 1;
+	
+
+}
+
+
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function createAutoComplete(){
+	var mouldList   =	postback(actionFile,"type=GETMOULD&plandate="+$("#planDate").val()+"&operator="+$("#operator").val(),"POST","XML");
+	//alert(mouldList); 
+	$("#content_body").html(mouldList); return false;
+	listPageData($("#content_body"), mouldList, XSLFile);
+	$("#issue_dialog").dialog().dialog('destroy');
+        $(".tooltip").tooltip();
+		$('a').click(function(){
+            job         =   $(this).attr('job');
+			if(job == 'issue'){
+                cpdId       =   $(this).attr('cpdid');
+				avlTotQty	=	$(this).attr('avlqty');
+				advQty		=	$(this).attr('advqty');
+				cpdName		=	$(this).attr('cpdname');
+				batches		=	postback(actionFile,"type=GETBATCH&cpdid="+cpdId,"POST","XML");
+				issueCont   =   '<div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="new_item_error"></div>'+
+									'<form action="" onsubmit="return false;">' +
+										'<table width="100%" id="titleBatch" cellpadding=0 >' +
+											'<tr><td height="25px">Compound Name</td><td style="font-weight:bold">'+cpdName+'</td></tr>' +
+											'<tr><td height="25px">Total Available Quantity</td><td style="font-weight:bold" id="totalqty" >'+getCurrency(avlTotQty, 3)+'</td></tr>';
+				batarr		=	[];
+				$(batches).find('row').each(function(index, element) {
+					avlQty		=	$(this).find('avlqty').text();
+					batId		=	$(this).find('sno').text();
+					issueCont	+=	'<tr>'+
+										'<td >'+$(this).find('batid').text()+' ('+avlQty+')</td>'+
+										'<td ><input type="text" id="'+batId+'" avlqty="'+avlQty+'" onkeyup="calcApproved()" tab="1" style="width:50%;text-align:right;" value="0" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+									'</tr>';
+					batarr.push(batId);
+				});
+				issueCont	+=				'<tr><td height="25px">Adviced Quantity</td><td style="font-weight:bold">'+getCurrency(advQty, 3)+'</td></tr>' +
+											'<tr><td height="20px">Issued Quantity</td><td style="font-weight:bold" id="issqty" >0.000</td></tr>' +
+										'</table>' +
+									'</form>';
+				$('#issue_dialog').html(issueCont).dialog({
+					title:'Compound Issue',
+					width:500,
+					resizable:false,
+					modal:true,
+					buttons:{
+						'Set Batch':function(){
+							if(setIssue(cpdId))
+								$(this).dialog('close');									
+						},
+						'Cancel':function(){
+							$(this).dialog('close');
+						}
+					},
+					close:function(){
+						$(this).html('').dialog('destroy');
+					}
+				});
+				if(batarr.length == 0)
+					displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Batch List Not Available.");
+			}				
+
+			if(job == 'delete'){
+                keyid       =   $(this).attr('planid');
+				deleteCont   =   '<table width="100%" >' +
+                                '<tr><td><b>Are you Sure to Delete ?</b></td></tr>' +
+                                '</table>';
+                $('#delete_dialog').html(deleteCont).dialog({
+                    title:'Delete',
+                    width:300,
+                    height:125,
+                    resizable:false,
+                    modal:true,
+                    buttons:{
+                        'YES':function(){
+                            $(this).dialog('close');
+							var resultErr       =	postback(actionFile,"type=DELPLAN&keyid="+keyid,"POST","XML");
+							if(resultErr != 'success')
+							{
+								displayError($("#issue_item_error"), "error", "<strong>Error !</strong> - Deletion of Plan failed due to : " + resultErr);
+								return false;							
+							}
+							createAutoComplete();
+                        },
+                        'NO':function(){
+                           $(this).dialog('close');
+                        }
+                    },
+                    close:function(){
+                        $(this).html('').dialog('destroy');
+                    }
+                });
+            }			
+        });
+		
+}
+
+function calcApproved(){
+	total		=	0;	
+	totalqty	=	$("#totalqty").html();
+	var temp	=	new Array();
+	temp		=	totalqty.split(",");
+	receivetemp	=	"";
+	for(i=0;i<temp.length;i++){
+		receivetemp	+=	temp[i];
+	}
+	totalqty	=	receivetemp;
+	totalqty	=	Number(totalqty);
+
+	if(!isNaN(Number(totalqty))){
+		$(batarr).each(function(index, element) {
+			vvl		=	$("#"+element).val();
+			total	=	total	+	Number(vvl);
+		});
+		if(isNaN(Number(total))){
+			total	=	0;
+		}
+		$("#issqty").html(getCurrency(total, 3));
+		$("#issqty").css('color', ((totalqty - total)>0)?'#000000':'#ff0000');
+	}	
+}
+
+function setIssue(cpdId){
+	output		=	"";
+	totVal		=	0;
+	totalqty	=	$("#issue_dialog #totalqty").html();
+	var temp	=	new Array();
+	temp		=	totalqty.split(",");
+	receivetemp	=	"";
+	for(i=0;i<temp.length;i++){
+		receivetemp	+=	temp[i];
+	}
+	totalqty	=	receivetemp;
+	totalqty	=	Number(totalqty);	
+	issQty		=	$("#issue_dialog #issqty").html();
+	var temp	=	new Array();
+	temp		=	issQty.split(",");
+	receivetemp	=	"";
+	for(i=0;i<temp.length;i++){
+		receivetemp	+=	temp[i];
+	}
+	issQty		=	receivetemp;
+	issQty		=	Number(issQty);
+	if(issQty <= 0){
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Issued Quantity cannot be zero or negative ! ! !");
+		return false;	
+	}
+	else if(issQty > totalqty ){
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Issued Quantity cannot be Greater than Total Available Quantity ! ! !");
+		return false;
+	}	
+	okToContinue	=	true;
+	$("#issue_dialog input:text").each(function(index, element){
+        val 	= 	Number($(element).val());
+		avlQty	=	Number($(element).attr("avlqty"));
+		if( val < 0 || avlQty < val){
+			okToContinue	=	false;
+		}
+		totVal	+= val;
+		if(val > 0)
+		{
+			if(output != "")
+				output	+=	";" + $(element).attr("id")+"~"+val;
+			else
+				output	=	$(element).attr("id")+"~"+val
+		}
+    });
+	if(okToContinue == false)
+	{
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Batch Quantity ! ! !");
+		return false;
+	}		
+	$("#"+cpdId).val(totVal);
+	$("#"+cpdId).attr("batches",output);
+	return true;
+}
+
+function createDC(){
+	var cpdQtys    	=   new Array();
+	var issBatids	=	new Array();
+	totBat			=	0;
+    $("#create_dialog").dialog('close');	
+	var inputs = $("#content_body").find(":input");
+	for (var i = 0; i < inputs.length; ++i) {
+		cpdId = (inputs[i].id);
+		cpdQty = $("#"+cpdId).val();
+		issBat = $("#"+cpdId).attr('batches');
+		if(cpdQty.toNumber() > 0)
+		{
+			batAndQtys	=	issBat.split(";");
+			for(bCnt = 0; bCnt < batAndQtys.length; bCnt++)
+			{
+				cpdQtyVal	=	batAndQtys[bCnt].split("~");
+				cpdQtys.push(cpdQtyVal[1]);
+				issBatids.push(cpdQtyVal[0]);
+				totBat++;
+			}
+		}
+		else
+		{
+			displayError($("#issue_item_error"), "error", "<strong>Error !</strong> - Compound Issue Qty Need to be greater than Zero ! ! !");
+			$("#"+cpdId).focus();
+			return false;			
+		}
+	}
+	getString		=	"type=MOULDISS&plandate="+$("#planDate").val()+"&operator="+$("#operator").val();
+	for(x=0; x<issBatids.length; x++){
+		getString	+=	"&cpdbatches["+ issBatids[x] + "]=" + cpdQtys[x] ;
+	}
+	if(totBat > 0){
+		//alert(getString); //return false;			
+		var mould	=	postback(actionFile,getString,"POST","XML");
+		//alert(mould); //return false;
+		temp = mould.split("-");
+		if(temp[0] == 'success')
+			displayError($("#issue_item_error"), "highlight", "<strong>Info !</strong> - DC:"+temp[1]+' has been created sucessfully');
+			//alert(temp[1]+' DCs has been created sucessfully');
+		else
+		{
+			displayError($("#issue_item_error"), "error", "<strong>Error !</strong> - DC creation failed due to : " + mould);
+			return false;
+		}
+		createAutoComplete();
+	}
+	else{
+		displayError($("#issue_item_error"), "error", "<strong>Error !</strong> - No Compound to be issued ! ! !");
+		return false;	
+	}
+	
+}
+
+function clearDC(){    	
+	var inputs = $("#content_body").find(":input");
+	for (var i = 0; i < inputs.length; ++i) {
+		cpdId = (inputs[i].id);
+		$("#"+cpdId).val('0.000');
+	}
+	$('#clear_dialog').dialog('close');	
+}
+
+
+

@@ -169,12 +169,11 @@ $(document).ready(function(){
 				arrParams = arrParams + "&numPacks[]=" + numPacks[rm] ;
 			}
 			param	= param + arrParams;			
-			confirmCont = '<table width="100%" >' +
-				'<tr><td><b>Are you Sure to Update Despatch Details?</b></td></tr>' +
-				'</table>'	;		
+			confirmCont =  '<div class="container" >' +
+								'<div class="row justify-content-center"><b>Update</b></div><div class="row">Are you Sure to Update Despatch Details?</div>' +
+							'</div>';	
 			$("#confirm_dialog").html(confirmCont).dialog({
-													title:'Despatch Entry',
-													width:450,
+													width:230,
 													height:'auto',
 													resizable:false,
 													modal:true,
@@ -204,6 +203,7 @@ $(document).ready(function(){
 															$(this).dialog("destroy");
 													} 
 			});
+			 $('#confirm_dialog').prev('.ui-dialog-titlebar').hide()
 		}
 		else	
 		{
@@ -213,27 +213,60 @@ $(document).ready(function(){
 	});	
 
 	//Cancel Items
-	$("#button_cancel").button().click(function(){
-		document.getElementById('errorId').innerHTML = `<div class="bg-light ">Are you sure to clear?<br>
-		<span class="text-center"><button class="btn btn-sm btn-danger" onClick="window.location.reload();">Yes</button></span>
-		<button class="btn btn-sm btn-success" id="noClear" onClick="noClear();" >No</button>
-		</div>`	
+//("#button_cancel").button().click(function(){
+//	document.getElementById('errorId').innerHTML = `<div class="bg-light ">Are you sure to clear?<br>
+//	<span class="text-center"><button class="btn btn-sm btn-danger" onClick="window.location.reload();">Yes</button></span>
+//	<button class="btn btn-sm btn-success" id="noClear" onClick="noClear();" >No</button>
+//	</div>`	
+//;
+$("#button_cancel").button().click(function(){
+		confirmCont =  '<div class="container" >' +
+								'<div class="row justify-content-center"><b>Create</b></div><div class="row">Are you Sure to Clear all items?</div>' +
+							'</div>';		
+		$("#confirm_dialog").html(confirmCont).dialog({
+												title:'Despatch Entry',
+												width:230,
+												height:'auto',
+												resizable:false,
+												modal:true,
+												buttons: [
+													{
+														text: "Yes",
+														click: function(){
+															$(this).dialog("close");
+															window.location.reload();
+														}
+													},
+													{
+														text: "No",
+														click: function() { $(this).dialog("close"); }
+													}
+												],
+												close: function(event, ui) {
+														$(this).dialog("destroy");
+												} 
+			});	
+			 $('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
 	});
+	
+
+
+
 
 	
 
 });
 
 
-function noClear(){
-
-	var displayError = document.getElementById('errorId')
-
-	displayError.innerHTML = ' '
-	return 1;
-	
-
-}
+//function noClear(){
+//
+//	var displayError = document.getElementById('errorId')
+//
+//	displayError.innerHTML = ' '
+//	return 1;
+//	
+//
+//}
 
 
 	

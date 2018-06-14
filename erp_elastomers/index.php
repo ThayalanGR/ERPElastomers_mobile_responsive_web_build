@@ -7,10 +7,10 @@
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!-- <link rel="stylesheet" type="text/css" href="<?php //echo ISO_REWRITE_URL; ?>style/jquery-ui-1.8.9.custom.css" />
-        <link rel="stylesheet" type="text/css" href="<?php //echo ISO_REWRITE_URL; ?>style/jquery.ui.all.css"/>
-        <link rel="stylesheet" type="text/css" href="<?php //echo ISO_REWRITE_URL; ?>style/jquery.ui.tooltip.css"/>
-        <link rel="stylesheet" type="text/css" href="<?php //echo ISO_REWRITE_URL; ?>style/jquery.ui.filters.css"/> -->
+        <link rel="stylesheet" type="text/css" href="<?php echo ISO_REWRITE_URL; ?>style/jquery-ui-1.8.9.custom.css" />
+        <!-- <link rel="stylesheet" type="text/css" href="<?php echo ISO_REWRITE_URL; ?>style/jquery.ui.all.css"/> -->
+        <link rel="stylesheet" type="text/css" href="<?php echo ISO_REWRITE_URL; ?>style/jquery.ui.tooltip.css"/>
+        <link rel="stylesheet" type="text/css" href="<?php echo ISO_REWRITE_URL; ?>style/jquery.ui.filters.css"/>
         <!-- <link rel="stylesheet" href="<?php //echo ISO_REWRITE_URL; ?>style/style.css" media="all" /> -->
         <!-- <link rel="shortcut icon" href="<?php //echo ISO_REWRITE_URL; ?>favicon.ico" /> -->
         <link rel="stylesheet" href="<?php echo ISO_REWRITE_URL; ?>fontawesome/web-fonts-with-css/css/fontawesome-all.css">
@@ -63,9 +63,8 @@
             </div>
         </div>
         <?php if(ISO_LOAD_MODULE != "login"): ?> 
-            <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/popper.min.js" type="text/javascript"></script>
-            <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/jquery-3.3.1.min.js" type="text/javascript"></script>
-            <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
+            <script language="javascript" src="<?php echo ISO_REWRITE_URL; ?>script/footer.js"></script>
+            
         <?php endif; ?>
     </body>
     </html>

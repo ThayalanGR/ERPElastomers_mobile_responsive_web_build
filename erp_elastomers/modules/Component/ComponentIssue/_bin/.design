@@ -14,7 +14,118 @@
 <xsl:stylesheet version="1.0"
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:template match="/">
+<div class="row" >
+	<xsl:for-each select="xmldata/root/data/row">
+		<xsl:for-each select="row/planDetail" >
+			<div class="col-12 mt-2">
+				<div class="container shadow text-left">
+					<div class="row bg-light">
+						<div class="col-5 " >Key Ref.</div>
+						<div class="col-7 text-success "><xsl:value-of select="planid" /></div>
+					</div>
+					<div class="row">
+						<div class="col-5">Plan Date</div>
+						<div class="col-7 text-success"><xsl:value-of select="plandate" /></div>
+					</div>
+					<div class="row bg-light">
+						<div class="col-5">Part No</div>
+						<div class="col-7 text-success"><xsl:value-of select="cmpdname" /></div>
+					</div>
+					<div class="row">
+						<div class="col-5"> Part Desc.</div>
+						<div class="col-7 text-success"><xsl:value-of select="cmpdrefno" /></div>
+					</div>
+					<div class="row bg-light">
+						<div class="col-5"> Plnd Lif.</div>
+						<div class="col-7 text-success"><xsl:value-of select='format-number(liftplanned,"###,###,##0")' /></div>
+					</div>
+					<div class="row">
+						<div class="col-5">Plnd Qty</div>
+						<div class="col-7 text-success"><xsl:value-of select='format-number(liftplanned * no_of_active_cavities,"###,###,##0")' /></div>
+					</div>
+					<div class="row bg-light">
+						<div class="col-5"> Blk Wgt(gm)</div> 
+						<div class="col-7 text-success"><xsl:value-of select='format-number(cmpd_blank_wgt,"###,###,##0.000")' /></div>
+					</div>
+					<div class="row">
+						<div class="col-5">Adv. Qty(kg)</div>
+						<div class="col-7 text-success"><xsl:value-of select='format-number(((no_of_active_cavities * cmpd_blank_wgt* liftplanned) div 1000), "###,###,##0.000")' /></div>
+					</div>
+					<div class="row bg-light">
+						<div class="col-5">Iss. Qty(kg)</div>
+						<div class="col-7 text-success"></div>
+					</div>
+					<div class="row">
+						<div class="col-5"> #</div>
+						<div class="col-7 "><a>
+								<xsl:attribute name="href">javascript:void(0)</xsl:attribute>
+								<xsl:attribute name="class">btn btn-sm btn-danger</xsl:attribute>
+								<xsl:attribute name="planid"><xsl:value-of select="planid" /></xsl:attribute>
+								<xsl:attribute name="job">delete</xsl:attribute>
+								Delete
+							</a>
+						</div>
+					</div>
+				</div> 
+			</div>
+		</xsl:for-each>
+			<div class="col-12 mt-2">
+				<div class="container shadow text-left">
+						<div class="row bg-light">
+							<div class="col-5 bg-dark" ><xsl:value-of select="title" /></div>
+							<div class="col-7 bg-dark"><xsl:value-of select="cpdName" /></div>
+						</div>
+						<div class="row ">
+							<div class="col-5">In-Stock Qty</div>
+							<div class="col-7 text-success"><xsl:value-of select="format-number(avlQty,'###,###,##0.000')" /></div>
+						</div>
+						<div class="row bg-light">
+							<div class="col-5">Total Advised Qty</div>
+							<div class="col-7 text-success"><xsl:value-of select="format-number(cpdTotWeight,'###,###,##0.000')" /></div>
+						</div>
+						<div class="row ">
+							<div class="col-5">Iss. Qty(kg)</div>
+							<div class="col-7 text-success">
+								<input>
+									<xsl:attribute name="id"><xsl:value-of select="cpdId" /></xsl:attribute>
+									<xsl:attribute name="class">invisible_text</xsl:attribute>
+									<xsl:attribute name="value">0</xsl:attribute>
+									<xsl:attribute name="readonly">true</xsl:attribute>
+									<xsl:attribute name="style">width:50%;text-align:right</xsl:attribute>
+								</input>
+							</div>
+						</div>
+						<div class="row bg-light">
+							<div class="col-5"> #</div>
+							<div class="col-7 ">	
+								<a>
+									<xsl:attribute name="href">javascript:void(0)</xsl:attribute>
+									<xsl:attribute name="cpdid"><xsl:value-of select="cpdId" /></xsl:attribute>
+									<xsl:attribute name="advqty"><xsl:value-of select="cpdTotWeight" /></xsl:attribute>
+									<xsl:attribute name="avlqty"><xsl:value-of select="avlQty" /></xsl:attribute>
+									<xsl:attribute name="cpdname"><xsl:value-of select="cpdName" /></xsl:attribute>
+									<xsl:attribute name="class">btn btn-sm btn-primary</xsl:attribute>
+									<xsl:attribute name="job">issue</xsl:attribute>Issue
+								</a>
+							</div>
+						</div>
+				</div> 
+			</div>
+	</xsl:for-each>
+</div>
+</xsl:template>
+</xsl:stylesheet>
 
+
+
+
+
+
+
+
+
+
+<!-- 
 <table border="0" cellpadding="6" cellspacing="0" width="100%">
 	<xsl:for-each select="xmldata/root/data/row">
 		<xsl:for-each select="row/planDetail" >
@@ -42,7 +153,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 						</a>
 					</td>
 				</tr>
-        	</xsl:for-each>
+		</xsl:for-each>
 				<tr style="font-weight:bold">
 					<xsl:attribute name="class">content_rows_dark cust_subtot</xsl:attribute>
 					<td align="left" colspan="2"><xsl:value-of select="title" /></td>
@@ -72,8 +183,8 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 						</a>						
 					</td>						
 				</tr>			
-		</xsl:for-each>
+	</xsl:for-each>
 </table>
 
 </xsl:template>
-</xsl:stylesheet>
+</xsl:stylesheet> -->

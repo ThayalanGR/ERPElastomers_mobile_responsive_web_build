@@ -5,7 +5,7 @@
 	$cName		=	$fullName;
 	
 	if(strlen($cName) > 0 && strlen($cName) > 10){
-		$cName	=	substr($cName, 0, 10)." . . .";
+		$cName	=	substr($cName, 0, 10)."..";
 	}
 ?>
 <?php if(ISO_LOAD_MODULE != "login"): ?> 
@@ -178,6 +178,9 @@
                 </div>                 
         </div>         
     </div>
+    <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/popper.min.js" type="text/javascript"></script>
+    <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/jquery-3.3.1.min.js" type="text/javascript"></script>
+    <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
  <?php }
  ?>
  
