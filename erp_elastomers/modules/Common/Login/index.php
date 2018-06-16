@@ -11,12 +11,12 @@
         <div class="alert alert-warning" style="display:none;" id="err_msg"></div>
         <div class="input-container form-control-sm mt-3">
             <i class="fa fa-user mt-2 mr-2 text-primary"></i>
-            <input class="input-field form-control form-control-sm" type="text" placeholder="Username" id="username" >
+            <input class="input-sm form-control" type="text" placeholder="Username"  id="username" autofocus >
         </div>
         
         <div class="input-container form-control-sm">
             <i class="fa fa-key mt-2 mr-2 text-primary"></i>
-            <input class="input-field form-control form-control-sm" type="password" placeholder="Password" id="password">
+            <input class="input-sm form-control" type="password" placeholder="Password" id="password">
         </div>
         
         <button type="submit" class="btn btn-block btn-sm btn-primary" onclick="loginUser()" id="login">Login</button>

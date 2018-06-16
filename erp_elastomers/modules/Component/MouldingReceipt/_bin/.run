@@ -8,13 +8,11 @@ function updateData(){
 		planid		=	$(this).attr('planid');
 		var planIdArray = new Array();					
 		planIdArray.push(planid);		
-		updateCont   =   '<table width="100%" >' +
-								'<tr><td><b>Are you sure to Update the Plan?</b></td></tr>' +
-								'</table>';	
+		updateCont   =   '<div class="container" >' +
+								'<div class="row justify-content-center"><b>Add</b></div><div class="row">Are you Sure to Create ?</div>' +
+							'</div>';	
 		$('#update_dialog').html(updateCont).dialog({
-			title:'Update',
-			width:300,
-			height:125,
+			width:230,
 			resizable:false,
 			modal:true,
 			buttons:{
@@ -23,32 +21,50 @@ function updateData(){
 				},
 				'NO':function(){
 				   $(this).dialog('close');
+				   
 				}
 			},
 			close:function(){
 				$(this).html('').dialog('destroy');
 			}
-		});			
+		});	
+		$('#update_dialog').prev('.ui-dialog-titlebar').hide();		
 	});
 	
 	$(".delete_button").click(function(){
 		planId		=	$(this).attr('planid');
 		param		=	"type=DELPLAN&keyid="+planId;
-		deleteCont   =   '<table width="100%" >' +
-						'<tr><td><b>Are you Sure to Delete ?</b></td></tr>' +
-						'</table>';
+		deleteCont   =    '<div class="container" >' +
+								'<div class="row justify-content-center"><b>Delete</b></div><div class="row">Are you Sure to Delete?</div>' +
+							'</div>';	
 		$('#delete_dialog').html(deleteCont).dialog({
-			title:'Delete',
-			width:300,
-			height:125,
-			resizable:false,
-			modal:true,
+			width:230,
+				resizable:false,
+				modal:true,
 			buttons:{
 				'YES':function(){
 					$('#delete_dialog').dialog('close');
 					var resultErr       =	postback(actionFile,param,"POST","XML");
-					if(resultErr != 'success')
-						alert("Deletion of Plan failed due to : " + resultErr);					
+					if(resultErr != 'success'){
+						updateCont   =    `<div class="container" >
+							<div class="row justify-content-center">Deletion of Plan failed due to  ${resultErr}</div>
+						</div>`;	
+						$('#clear_dialog').html(updateCont).dialog({
+						width:230,
+						resizable:false,
+						modal:true,
+						buttons:{
+							'OK':function(){
+							$(this).dialog('close');
+							}
+						},
+						close:function(){
+							$(this).html('').dialog('destroy');
+						}
+						});	
+						$('#clear_dialog').prev('.ui-dialog-titlebar').hide();			
+
+					}
 					updatePageBehaviour();				
 				},
 				'NO':function(){
@@ -59,7 +75,7 @@ function updateData(){
 				$(this).html('').dialog('destroy');
 			}
 		});
-		
+			$('#delete_dialog').prev('.ui-dialog-titlebar').hide();
 	});
 	
 	calcGrandTotals();
@@ -72,11 +88,11 @@ function calcGrandTotals(){
 	insQtyTot	=	0;
 	actQtyTot	=	0;
 	
-	$("#content_body table tr").each(function(index, element){
-		plTot		=	($(this).find("td:eq(4)").html())? Number($(this).find("td:eq(4)").html().split(",").join("")):0;   
-		alTot		=	($(this).find("td:eq(5) input").val())? Number($(this).find("td:eq(5) input").val().split(",").join("")):0;
-		iqTot		=	($(this).find("td:eq(6)").html())? Number($(this).find("td:eq(6)").html().split(",").join("")):0;
-		acTot		=	($(this).find("td:eq(7)").html())? Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+	$("#content_body #table #tablesub ").each(function(index, element){
+		plTot		=	($(this).find("#td:eq(4)").html())? Number($(this).find("#td:eq(4)").html().split(",").join("")):0;   
+		alTot		=	($(this).find("#td:eq(5) input").val())? Number($(this).find("#td:eq(5) input").val().split(",").join("")):0;
+		iqTot		=	($(this).find("#td:eq(6)").html())? Number($(this).find("#td:eq(6)").html().split(",").join("")):0;
+		acTot		=	($(this).find("#td:eq(7)").html())? Number($(this).find("#td:eq(7)").html().split(",").join("")):0;
 		 
 		planliftTot	=	planliftTot	+	(isNaN(plTot)?	0	:	plTot);
 		actliftTot	=	actliftTot	+	(isNaN(alTot)?	0	:	alTot);
@@ -108,20 +124,18 @@ $(document).ready(function(){
 		var inputs = $("#content_body").find(":input");
 		if(inputs.length > 0)
 		{
-			updateCont   =   '<table width="100%" >' +
-									'<tr><td><b>Are you Sure to Update the Plan?</b></td></tr>' +
-									'</table>';	
+		updateCont   =    '<div class="container" >' +
+								'<div class="row justify-content-center"><b>Update</b></div><div class="row">Are you Sure to Update?</div>' +
+							'</div>';	
 			$('#update_dialog').html(updateCont).dialog({
-				title:'Update',
-				width:300,
-				height:125,
+				width:230,
 				resizable:false,
 				modal:true,
 				buttons:{
 					'YES':function(){
 						var planIdArray = new Array();					
-						$("#content_body table tr").each(function(index, element){
-							planid		=	$(this).find("td:eq(5) input").attr('planid');
+						$("#content_body #table #tablesub ").each(function(index, element){
+							planid		=	$(this).find("#td:eq(5) input").attr('planid');
 							planIdArray.push(planid);
 						}); 
 						updatePlan(planIdArray);
@@ -133,26 +147,41 @@ $(document).ready(function(){
 				close:function(){
 					$(this).html('').dialog('destroy');
 				}
-			});	
+			});	$('#update_dialog').prev('.ui-dialog-titlebar').hide();
 		}
 		else
 		{			
-			alert(" No Items to be updated!!!");
+			updateCont   =    '<div class="container" >' +
+							'<div class="row"> No Items to be updated!!!</div>' +
+						'</div>';	
+			$('#clear_dialog').html(updateCont).dialog({
+				width:230,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'OK':function(){
+					   $(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+			});	$('#clear_dialog').prev('.ui-dialog-titlebar').hide();		
+
 		}
 
 	});
+	
 	
 	$("#button_cancel").button().click(function(){
 		var inputs = $("#content_body").find(":input");
 		if(inputs.length > 0)
 		{
-			updateCont   =   '<table width="100%" >' +
-									'<tr><td><b>Are you Sure to Clear all the Entries?</b></td></tr>' +
-									'</table>';	
+			updateCont   =    '<div class="container" >' +
+							'<div class="row justify-content-center"><b>Create</b></div><div class="row">Are you Sure to Clear all items?</div>' +
+						'</div>';	
 			$('#clear_dialog').html(updateCont).dialog({
-				title:'Create',
-				width:300,
-				height:125,
+				width:230,
 				resizable:false,
 				modal:true,
 				buttons:{
@@ -167,11 +196,28 @@ $(document).ready(function(){
 				close:function(){
 					$(this).html('').dialog('destroy');
 				}
-			});	
+			});	$('#clear_dialog').prev('.ui-dialog-titlebar').hide();
+
 		}
 		else
-		{				
-			alert(" No Items to be cleared!!!");
+		{	
+			updateCont   =    '<div class="container" >' +
+							'<div class="row justify-content-center"><b>No Items to be cleared!!!</b></div>' +
+						'</div>';	
+			$('#clear_dialog').html(updateCont).dialog({
+				width:230,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'OK':function(){
+					   $(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+			});	$('#clear_dialog').prev('.ui-dialog-titlebar').hide();		
+
 		}
 	});
 	
@@ -195,15 +241,48 @@ function updatePlan(planIdArr){
 			}
 			else
 			{
-				alert("Number of Actual Lifts greater than 110% of Planned Lifts,  Please raise new Plan for excess lifts!!!");
+				updateCont   =    '<div class="container" >' +
+							'<div class="row justify-content-center">Number of Actual Lifts greater than 110% of Planned Lifts,  Please raise new Plan for excess lifts!!!</div>' +
+						'</div>';	
+				$('#clear_dialog').html(updateCont).dialog({
+				width:230,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'OK':function(){
+					   $(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+				});	
+				$('#clear_dialog').prev('.ui-dialog-titlebar').hide();		
 				actLifts.focus()
 				return false;			
-			}
+				}
 		}
 		else
 		{
-			alert("Please enter proper values for actual Lifts!!!");
-			actLifts.focus()
+			$('#update_dialog').dialog('close'); 
+			updateCont   =    '<div class="container" >' +
+						'<div class="row justify-content-center">Please enter proper values for actual Lifts!!!</div>' +
+					'</div>';	
+			$('#clear_dialog').html(updateCont).dialog({
+			width:230,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'OK':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+			});	
+			$('#clear_dialog').prev('.ui-dialog-titlebar').hide();		
+			actLifts.focus();
 			return false;
 		}
 	}
@@ -215,16 +294,32 @@ function updatePlan(planIdArr){
 		if(resError == 'success')
 			updatePageBehaviour();
 		else
-			alert(" Update of Plan failed due to " + resError);
+			
+				updateCont   =    `<div class="container" >
+							<div class="row justify-content-center">Update of Plan failed due to  ${resError}</div>
+						</div>`;	
+				$('#clear_dialog').html(updateCont).dialog({
+				width:230,
+				resizable:false,
+				modal:true,
+				buttons:{
+					'OK':function(){
+					   $(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+				});	
+				$('#clear_dialog').prev('.ui-dialog-titlebar').hide();		
+
+			
 	}
 }
 
 function updatePageBehaviour(){
 	param =  "prodDate="+$("#prodDate").val()+"&operator="+$("#operator").val();
-	//alert(param);
 	objCompList	= postback(actionFile,param,"GET","XML");
-	//alert(objCompList);
-	//objCompList		= objCompList.split("&lt;br&gt;").join(" ");
 	listPageData($("#content_body"), objCompList, XSLFile);
 	updateData();
 	updateHeader(); 
