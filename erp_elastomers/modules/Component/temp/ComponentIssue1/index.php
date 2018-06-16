@@ -8,6 +8,7 @@
 	}	
 ?>
 
+
  <div class="row justify-content-center text-primary" style="padding-top: 65px;" >
     <div class="col-12 text-center h6"><i class="<?php echo $_SESSION['Outward']; ?>"></i> Outward</div>
     <div class="col-12 text-center ">Compound Issue</div>
@@ -24,17 +25,17 @@
     </div>
     <div class="col-12 text-center">
         <label for="details" class="mt-3">Awaiting Issue List</label>
-        <div id="content_body">
-        </div>
         <div class="window_error text-danger" id="issue_item_error">
             <div class="loading_txt"><span>Loading Data . . .</span></div>
         </div>
+        <div id="content_body">
+        </div>
     </div>
 </div>
-<div class="row justify-content-center mt-5 mb-5 text-primary"  >
-    <form action="" class="form-control-sm" onsubmit="return false;">
-        <div class="form-control-sm"><button class="btn btn-primary btn-sm" id="button_submit" type="submit">Create DC </button></div>
-        <div class="form-control-sm mb-3"><button class="btn btn-danger btn-sm" id="button_cancel">Clear</button> </div>
+<div class="row mt-5 mb-5 text-primary"  >
+    <div id="errorId"></div>
+    <div class="col-6 "><button class="btn btn-primary btn-sm" id="button_submit" type="submit">Create DC </button></div>
+    <div class="col-6"><button class="btn btn-danger btn-sm" id="button_cancel">Clear</button> </div>
     </form>
 </div>
 

@@ -199,7 +199,6 @@ function calcApproved(){
 	}	
 }
 
-
 function setIssue(cpdId){
 	output		=	"";
 	totVal		=	0;
@@ -211,8 +210,7 @@ function setIssue(cpdId){
 		receivetemp	+=	temp[i];
 	}
 	totalqty	=	receivetemp;
-	totalqty	=	Number(totalqty);
-
+	totalqty	=	Number(totalqty);	
 	issQty		=	$("#issue_dialog #issqty").html();
 	var temp	=	new Array();
 	temp		=	issQty.split(",");
@@ -222,7 +220,6 @@ function setIssue(cpdId){
 	}
 	issQty		=	receivetemp;
 	issQty		=	Number(issQty);
-
 	if(issQty <= 0){
 		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Issued Quantity cannot be zero or negative ! ! !");
 		return false;	
@@ -254,11 +251,11 @@ function setIssue(cpdId){
 	}		
 	$("#"+cpdId).val(totVal);
 	$("#"+cpdId).attr("batches",output);
-
-	//---------------------------------------------------------
-	issueString	=	`type=SETMEMORY&cpdid=${cpdId}&issueqty=${totVal}&batche=${output}`;
+	//console.log(cpdId);
+	//issueMemory(cpdId, totVal);
+	issueString	=	`type=SETMEMORY&cpdid=${cpdId}&issueqty=${totVal}`;
 	var result	=	postback(actionFile,issueString,"POST","XML");
-	//------------------------------------------------------
+	console.log(result);
 
 	return true;
 }
@@ -267,7 +264,7 @@ function createDC(){
 	var cpdQtys    	=   new Array();
 	var issBatids	=	new Array();
 	totBat			=	0;
-    $("#create_dialog").dialog('close');	
+   	$("#create_dialog").dialog('close');	
 	var inputs = $("#content_body").find(":input");
 	for (var i = 0; i < inputs.length; ++i) {
 		cpdId = (inputs[i].id);
@@ -299,7 +296,6 @@ function createDC(){
 		//alert(getString); //return false;			
 		var mould	=	postback(actionFile,getString,"POST","XML");
 		//alert(mould); //return false;
-
 		temp = mould.split("-");
 		if(temp[0] == 'success')
 			displayError($("#issue_item_error"), "highlight", "<strong>Info !</strong> - DC:"+temp[1]+' has been created sucessfully');

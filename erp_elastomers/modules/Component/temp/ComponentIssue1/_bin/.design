@@ -89,7 +89,6 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 									<xsl:attribute name="value"><xsl:value-of select="issQty"/></xsl:attribute>
 									<xsl:attribute name="readonly">true</xsl:attribute>
 									<xsl:attribute name="style">width:100%;text-align:right</xsl:attribute>
-									<xsl:attribute name="batches"><xsl:value-of select="batch"/></xsl:attribute>
 								</input>
 							</div>
 						</div>
