@@ -12,7 +12,7 @@
     <div class="row justify-content-between fixed-top shadow-sm " style="height:50px; background-color:white; ">
         <div id="homelogo" class="col-sm-2 col-md-1   mt-0 text-left ml-4 ml-md-3" style=" width: 40px;">
             <div class="jumbotron-fluid shadow-sm rounded-circle btn btn-primary text-center mt-1"  style="height: 40px; width:40px; background-color: white; "> 
-                <img src="../images/mmpl logo.jpg" style="height:20px; width: 20px; " class=""  alt="logo">
+                <img src="<?php echo ISO_REWRITE_URL; ?>images/mmpl logo.jpg" style="height:20px; width: 20px; " class=""  alt="logo">
             </div>
             
         </div>

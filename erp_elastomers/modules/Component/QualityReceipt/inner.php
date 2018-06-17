@@ -55,97 +55,102 @@
 	$status		=	$out_list['status'];
 	$list		=	$out_list['data'];
 ?>
-<div id="window_list_wrapper">
-    <div id="window_list_head">
-        <strong>Today's Plan</strong>
-    </div>
-    <div id="window_list">
-        <div id="content_body">
-        <table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
-			<thead>
-            <tr>
-				<th align="left" width="2%">S.No</th>
-				<th align="left" width="5%">Customer Name</th>    
-				<th align="left" width="10%">Part Number</th> 
-				<th align="left" width="18%">Part Desc.</th>
-				<th align="left" width="15%" >Di. Ref.</th>					
-				<th align="right" width="7%"> Di. Qty</th>
-				<th align="right" width="7%"> Pend. Qty</th>
-				<th align="right" width="7%"> Store Qty</th>
-				<th align="right" width="7%"> Pend. Insp. Qty</th>
-				<th align="right" width="7%">Await. Trim. Recv. Qty</th>
-				<th align="right" width="7%">Await. Trim. Iss. Qty</th>
-				<th align="right">To Be Inspected Qty</th>
-            </tr>
-			</thead>
-			<tbody>
-			<?php if(count($list) > 0): ?>
-				<?php
-					$cmpdtoinspect_tot	=	0;
-					for($i=0; $i<count($list); $i++):
-						$cmpdid = $list[$i]['cmpdid'];
-						$cusname = $list[$i]['cusname'];
-						$cmpdname = $list[$i]['partnum'];
-						$cmpdpartdesc = $list[$i]['partdesc']; 
-						$didesc = $list[$i]['di_desc'];
-						$diqty = $list[$i]['di_qty'];
-						$pendqty = $list[$i]['di_qty'] - $list[$i]['invqty'];
-						$storeqty = $list[$i]['cmpdTotStock']; 
-						$cmpdawtqualrec = $list[$i]['cmpdAwtQualRec'];
-						$cmpdawtdefrec = $list[$i]['cmpdAwtDefRec'];
-						$cmpdawtdefiss = $list[$i]['cmpdAwtDefIss'];						
-						$cmpdtoinspect = (($pendqty - $storeqty) > 0)?($pendqty - $storeqty):0;	
-						$cmpdtoinspect_tot	+= $cmpdtoinspect;
-				?>
+
+
+ <div class="row justify-content-center text-primary" style="padding-top: 65px;" >
+    <div class="col-12 text-center h6"><i class="<?php echo $_SESSION['Inspection Entry']; ?>"></i> Inspection Entry</div>
+    <div class="col-12 text-center ">Today's Plan</div>
+    <div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="raise_error"></div>
+    <div class="col-12 text-center">
+	<div id="content_body">
+		<div style="overflow-x:auto;">
+			<table id="resultTable" class="table table-sm table-light text-success " border="0" cellpadding="6" cellspacing="0" >
+				<thead>
 				<tr>
-					<td><?php echo $i+1 ?></td>
-					<td><?php echo $cusname; ?></td>
-					<td><?php echo $cmpdname; ?></td>
-					<td><?php echo $cmpdpartdesc; ?></td>
-					<td><?php echo $didesc; ?></td>	
-					<td align='right'><?php echo @number_format($diqty,0); ?></td>
-					<td align='right'><a href="#" onclick="getStock('<?php echo $cmpdid; ?>','<?php echo $pendqty; ?>');"/><?php echo @number_format($pendqty,0); ?></a></td>
-					<td align="right"><?php echo @number_format($storeqty,0); ?></td>
-					<td align="right"><?php echo @number_format($cmpdawtqualrec,0); ?></td>					
-					<td align="right"><?php echo @number_format($cmpdawtdefrec,0); ?></td>
-					<td align="right"><?php echo @number_format($cmpdawtdefiss,0); ?></td>
-					<td align="right"><?php echo @number_format($cmpdtoinspect,0); ?></td>
+					<th align="left">S.No</th>
+					<th align="left">Customer Name</th>    
+					<th align="left" >Part Number</th> 
+					<th align="left" >Part Desc.</th>
+					<th align="left"  >Di. Ref.</th>					
+					<th align="right"> Di. Qty</th>
+					<th align="right"> Pend. Qty</th>
+					<th align="right"> Store Qty</th>
+					<th align="right"> Pend. Insp. Qty</th>
+					<th align="right">Await. Trim. Recv. Qty</th>
+					<th align="right">Await. Trim. Iss. Qty</th>
+					<th align="right">To Be Inspected Qty</th>
 				</tr>
-				<?php endfor; ?>
-			<?php elseif($status != "success"): ?>
-				<div class="window_error"><div class="warning_txt"><span>Error Fetching Data . . . Err No: <?php echo $status; ?></span></div></div>
-			<?php else: ?>
-				<div class="window_error"><div class="warning_txt"><span>No Data Available . . .</span></div></div>
-			<?php endif; ?>
-			</tbody>
-			<tr><td colspan="11" align="center"><b>Total</b></td><td align='right'><?php echo $cmpdtoinspect_tot; ?></td></tr>
-        </table>
-		<table></table>
+				</thead>
+				<tbody>
+				<?php if(count($list) > 0): ?>
+					<?php
+						$cmpdtoinspect_tot	=	0;
+						for($i=0; $i<count($list); $i++):
+							$cmpdid = $list[$i]['cmpdid'];
+							$cusname = $list[$i]['cusname'];
+							$cmpdname = $list[$i]['partnum'];
+							$cmpdpartdesc = $list[$i]['partdesc']; 
+							$didesc = $list[$i]['di_desc'];
+							$diqty = $list[$i]['di_qty'];
+							$pendqty = $list[$i]['di_qty'] - $list[$i]['invqty'];
+							$storeqty = $list[$i]['cmpdTotStock']; 
+							$cmpdawtqualrec = $list[$i]['cmpdAwtQualRec'];
+							$cmpdawtdefrec = $list[$i]['cmpdAwtDefRec'];
+							$cmpdawtdefiss = $list[$i]['cmpdAwtDefIss'];						
+							$cmpdtoinspect = (($pendqty - $storeqty) > 0)?($pendqty - $storeqty):0;	
+							$cmpdtoinspect_tot	+= $cmpdtoinspect;
+					?>
+					<tr>
+						<td><?php echo $i+1 ?></td>
+						<td><?php echo $cusname; ?></td>
+						<td><?php echo $cmpdname; ?></td>
+						<td><?php echo $cmpdpartdesc; ?></td>
+						<td><?php echo $didesc; ?></td>	
+						<td align='right'><?php echo @number_format($diqty,0); ?></td>
+						<td align='right'><a href="#" onclick="getStock('<?php echo $cmpdid; ?>','<?php echo $pendqty; ?>');"/><?php echo @number_format($pendqty,0); ?></a></td>
+						<td align="right"><?php echo @number_format($storeqty,0); ?></td>
+						<td align="right"><?php echo @number_format($cmpdawtqualrec,0); ?></td>					
+						<td align="right"><?php echo @number_format($cmpdawtdefrec,0); ?></td>
+						<td align="right"><?php echo @number_format($cmpdawtdefiss,0); ?></td>
+						<td align="right"><?php echo @number_format($cmpdtoinspect,0); ?></td>
+					</tr>
+					<?php endfor; ?>
+				<?php elseif($status != "success"): ?>
+					<div class="window_error"><div class="warning_txt text-danger"><span>Error Fetching Data . . . Err No: <?php echo $status; ?></span></div></div>
+				<?php else: ?>
+					<div class="window_error"><div class="warning_txt text-danger"><span>No Data Available . . .</span></div></div>
+				<?php endif; ?>
+				</tbody>
+				<tr><td colspan="11" align="center"><b>Total</b></td><td align='right'><?php echo $cmpdtoinspect_tot; ?></td></tr>
+			</table>
+			<table></table>
 		</div>
-	</div>
-	<div style="display:none">
-		<div id="stock_dialog"></div>
-	</div>	
+		</div>
+    </div>
 </div>
+<div style="display:none">
+		<div id="stock_dialog"></div>
+	</div>
+
 <script>
-tableFilters.sort_config		=	{ sort_types:['us','string','string','string', 'string','us','us','us','us','us','us','us'] };
-TF_01							=	setFilterGrid("resultTable",tableFilters);
-function getStock(cmpdId,penQty)
-{	
-	param			=	"selecttype=" + "GETCMPDSTOCK&cmpdId=" + cmpdId ;
-	var XMLContent	=	postback("/modules/Commercial/DespatchPlan/_bin/.action",param,"POST","XML");
-	xmlData			=	parseXMLdoc(XMLContent);
-	confirmCont 	=	'<table width="100%" border="1" >' +
-							'<tr>' +
-								'<th>Plan Id</th>' +
-								'<th>Operator</th>' + 
-								'<th>Qty</th>' +
-							'</tr>' +
-							'<tr>' +
-								'<td colspan="2" align="center"> Total Pending Qty</td>' +
-								'<td align="right"><b>'+ penQty +'</b></td>' +
-							'</tr>' ;									
-	currDesc		=	"";
+	tableFilters.sort_config		=	{ sort_types:['us','string','string','string', 'string','us','us','us','us','us','us','us'] };
+	TF_01							=	setFilterGrid("resultTable",tableFilters);
+	function getStock(cmpdId,penQty)
+	{	
+		param			=	"selecttype=" + "GETCMPDSTOCK&cmpdId=" + cmpdId ;
+		var XMLContent	=	postback("/modules/Commercial/DespatchPlan/_bin/.action",param,"POST","XML");
+		xmlData			=	parseXMLdoc(XMLContent);
+		confirmCont 	=	'<table width="100%" border="1" >' +
+								'<tr>' +
+									'<th>Plan Id</th>' +
+									'<th>Operator</th>' + 
+									'<th>Qty</th>' +
+								'</tr>' +
+								'<tr>' +
+									'<td colspan="2" align="center"> Total Pending Qty</td>' +
+									'<td align="right"><b>'+ penQty +'</b></td>' +
+								'</tr>' ;									
+		currDesc		=	"";
 	totQty			=	0;
 	grdTot			=	0;
 	$(xmlData).find("row").each(function(index, element) {
@@ -205,5 +210,5 @@ function getStock(cmpdId,penQty)
 												} 
 											});
 
-}
+	}
 </script>

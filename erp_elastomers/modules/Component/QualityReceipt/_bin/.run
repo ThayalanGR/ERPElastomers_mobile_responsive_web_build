@@ -9,7 +9,6 @@ tableFilters.col_operation		=	{
 									};
 var TF_01						=	null;
 var rejarr						=	new Array();
-
 $(document).ready(function(){
 	createAutoComplete();
 	TF_01		=	setFilterGrid("resultTable",tableFilters);
@@ -42,50 +41,49 @@ function createAutoComplete(){
 			userList	=	username.toSelectWithValue(username, "userlist", "userlist", null, "width:75%;");				
 
 			var rejection	=	postback(actionFile,"type=GETREJ&cmpdid="+componentid,"POST","XML");
-			issueCont   	=   '<div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="new_item_error"></div>'+
-								'<form action="" onsubmit="return false;">' +
-									'<table width="100%" id="titleBatch" cellpadding=0 >' +
-										'<tr><td width="" height="25px" >Plan Reference</td><td colspan="2" >'+keyid+'</td></tr>' +
-										'<tr><td height="25px">Inpector</td><td td colspan="2">'+userList+'</td></tr>' +
-										'<tr><td height="25px">Inspection Date</td><td td colspan="2"><input type="date" name="inspDate" id="inspDate" onChange="closeDate(this);" value="<?php echo date("Y-m-d",mktime(0, 0, 0, date("m")  , date("d"), date("Y"))); ?>" /></td></tr>'  + 								
-										'<tr><td height="25px" >Receipt Quantity</td><td colspan="2" id=\"receiptqty\" >'+getCurrency(currrec, 0)+'</td></tr>' +
-										'<tr><td>Inspected Qty</td><td ><input type=text id="inspqty" onkeyup=calcApproved() style="width:50%;text-align:right;" value='+getCurrency(currrec, 0)+' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td></tr>';							
+			issueCont   	=   '<div class="container-fluid text-primary justify-content-center" style="font-size:10px;">'+   
+								'<div class="row bg-light" style="diplay:none"  id="new_item_error"></div>'+
+								'<div class="row justify-content-center"><b>Quality Receipt</b></div>'+
+								'<form action="form-control-sm" onsubmit="return false;">' +	
+									'<div class="row bg-light text-success justify-content-center"><span class="text-left">Plan Reference</span> &nbsp; ' +keyid+ '</div>' +
+									'<div class="row"><span class="text-left">Inpector</span>  &nbsp;'+userList+'</div>' +
+									'<div class="row bg-light"><span class="text-left">Inspection Date</span><input type="date" name="inspDate" id="inspDate" onChange="closeDate(this);" value="<?php echo date("Y-m-d",mktime(0, 0, 0, date("m")  , date("d"), date("Y"))); ?>" /></div>'  + 								
+									'<div class="row text-success"><span class="text-left mr-2">Receipt Quantity</span><span id=\"receiptqty\" >'+getCurrency(currrec, 0)+'</span></div>' +
+									'<div class="row bg-light"><span class="text-left">Inspected Qty</span><input type=text id="inspqty" onkeyup=calcApproved() style="" value='+getCurrency(currrec, 0)+' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></div>';							
 			rejarr			=	[];
 			$(rejection).find('row').each(function(index, element) {
-				issueCont	+=			'<tr>'+
-											'<td >'+$(this).find('rej_type').text()+' ('+$(this).find('rej_short_name').text()+')</td>'+
-											'<td ><input type=text id="rj_'+$(this).find('rej_short_name').text()+'"" onkeyup=calcApproved() style="width:50%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
-										'</tr>';
+				issueCont	+=			'<div class="row bg-light">'+
+											'<span class="text-left">'+$(this).find('rej_type').text()+' ('+$(this).find('rej_short_name').text()+')</span>'+
+											'<span><input type=text id="rj_'+$(this).find('rej_short_name').text()+'"" onkeyup=calcApproved()  value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></span>'+
+										'</div>';
 				rejarr.push($(this).find('rej_short_name').text());
 			});
-			issueCont	+=			'<tr>'+
-										'<td >Shortage (SHORT)</td>'+
-										'<td ><input type=text id="rj_SHORT" onkeyup=calcApproved() style="width:50%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
-									'</tr>';
+			issueCont	+=			'<div class="row">'+
+										'<span class="text-left">Shortage (SHORT)</span>'+
+										'<span><input type=text id="rj_SHORT" onkeyup=calcApproved()  value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></span>'+
+									'</div>';
 			rejarr.push('SHORT');						
-			issueCont	+=			'<tr>'+
-										'<td > Deflashing - Rework (REWORK)</td>'+
-										'<td ><input type=text id="rj_REWORK" onkeyup=calcApproved() style="width:50%;text-align:right;" value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
-									'</tr>';
+			issueCont	+=			'<div class="row">'+
+										'<span class="text-left">Deflashing - Rework (REWORK)</span>'+
+										'<span><input type=text id="rj_REWORK" onkeyup=calcApproved()  value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></span>'+
+									'</div>';
 			rejarr.push('REWORK');				
-			issueCont	+=				'<tr><td height="20px" >Approved Quantity</td><td colspan="2" id="appqty" >'+getCurrency(currrec, 0)+'</td></tr>' +
-									'</table>' +
-									'<input type="submit" onclick="getSubmitButton(\'issue_dialog\');" style="visibility: hidden; width: 1px; height: 1px; "/>'+
-								'</form>';
+	issueCont	+=				'<div class="row bg-light text-success"><span class="text-left mr-2">Approved Quantity</span><span id="appqty" >'+getCurrency(currrec, 0)+'</span></div>' +
+									'<input class="row" type="submit" onclick="getSubmitButton(\'issue_dialog\');" style="visibility: hidden; width: 1px; height: 1px; "/>'+	
+									'</form>'+
+									 '</div>' ;
 			$('#issue_dialog').html(issueCont).dialog({
-				title:'Quality Receipt',
-				width:500,
+				width:230,
 				resizable:false,
 				modal:true,
 				buttons:{
 					'Generate':function(){
-						confirmCont = '<table width="100%" >' +
-									'<tr><td><b>Are you Sure to Update the Quality Receipt?</b></td></tr>' +
-									'</table>'
+						confirmCont =  '<div class="container">' +
+						'<div class="row justify-content-center"><b>Quality Receipt</b></div><div class="row">Are you Sure to Update the Quality Receipt?</div>' +
+						'</div>';
+				
 						$('#confirm_dialog').html(confirmCont).dialog({
-							title:'Quality Receipt',
-							width:450,
-							height:'auto',
+							width:230,
 							resizable:false,
 							modal:true,
 							buttons:{
@@ -100,7 +98,7 @@ function createAutoComplete(){
 							close:function(){
 								$(this).html('').dialog('destroy');
 							}
-						});	                            
+						});	 $('#confirm_dialog').prev('.ui-dialog-titlebar').hide();	                           
 					},
 					'Cancel':function(){
 						$(this).dialog('close');
@@ -109,7 +107,7 @@ function createAutoComplete(){
 				close:function(){
 					$(this).html('').dialog('destroy');
 				}
-			});
+			}); $('#issue_dialog').prev('.ui-dialog-titlebar').hide();	   
 			if(rejarr.length == 0)
 				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Rejection List Not Available.");
 		}
