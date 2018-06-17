@@ -11,13 +11,12 @@ $(document).ready(function(){
 		var inputs = $("#content_body").find(":input");
 		if(inputs.length > 0)
 		{
-			updateCont   =   '<table width="100%" >' +
-									'<tr><td><b>Are you Sure to Update the Items?</b></td></tr>' +
-									'</table>';	
+			
+			updateCont =  '<div class="container">' +
+							'<div class="row justify-content-center"><b>Create</b></div><div class="row">Are you Sure to Update the Items?</div>' +
+							'</div>';
 			$('#update_dialog').html(updateCont).dialog({
-				title:'Create',
-				width:300,
-				height:125,
+				width:230,
 				resizable:false,
 				modal:true,
 				buttons:{
@@ -37,7 +36,8 @@ $(document).ready(function(){
 				close:function(){
 					$(this).html('').dialog('destroy');
 				}
-			});	
+			});
+			$('#update_dialog').prev('.ui-dialog-titlebar').hide();	
 		}
 		else
 		{			
@@ -49,13 +49,11 @@ $(document).ready(function(){
 		var inputs = $("#content_body").find(":input");
 		if(inputs.length > 0)
 		{
-			updateCont   =   '<table width="100%" >' +
-									'<tr><td><b>Are you Sure to Clear all the Items?</b></td></tr>' +
-									'</table>';	
+			updateCont =  '<div class="container">' +
+				'<div class="row justify-content-center"><b>Create</b></div><div class="row">Are you Sure to Clear all the Items?</div>' +
+				'</div>';
 			$('#update_dialog').html(updateCont).dialog({
-				title:'Create',
-				width:300,
-				height:125,
+				width:230,
 				resizable:false,
 				modal:true,
 				buttons:{
@@ -70,7 +68,8 @@ $(document).ready(function(){
 				close:function(){
 					$(this).html('').dialog('destroy');
 				}
-			});	
+			});
+			$('#update_dialog').prev('.ui-dialog-titlebar').hide();	
 		}
 		else
 		{
@@ -99,13 +98,11 @@ function createAutoComplete(){
 		sno      	=   $(this).attr('sno');
 		defiss		=	$(this).attr('planid');
 		mouldref	=	$(this).attr('mouldref');
-		issueCont   =   '<table width="100%" >' +
-						'<tr><td><b>Are you sure to delete this item? </b></td></tr>' +
-						'</table>';
+		issueCont =  '<div class="container">' +
+					'<div class="row justify-content-center"><b>Delete</b></div><div class="row">Are you Sure to delete this item?</div>' +
+					'</div>';
 		$('#update_dialog').html(issueCont).dialog({
-			title:'Delete',
-			width:300,
-			height:125,
+			width:230,
 			resizable:false,
 			modal:true,
 			buttons:{
@@ -127,6 +124,7 @@ function createAutoComplete(){
 				$(this).html('').dialog('destroy');
 			}
 		});
+		$('#update_dialog').prev('.ui-dialog-titlebar').hide();
 		
 	});
     

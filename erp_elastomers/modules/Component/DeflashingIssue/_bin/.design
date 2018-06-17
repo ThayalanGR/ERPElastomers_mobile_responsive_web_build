@@ -13,16 +13,17 @@
 ]>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:template match="/">
-<table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+<div style="overflow-x:auto;">
+<table id="resultTable" class="table table-sm table-light text-success"  border="0" cellpadding="6" cellspacing="0">
 	<thead>
 		<tr>
-			<th width="15%" align="left" title="Key Reference">Key Ref.</th>
-			<th width="15%" align="left" title="Moulding Receipt Date">Mould. Rec. Date</th>
-			<th width="15%" align="left" title="Part Number">Part No</th>
-			<th width="20%" align="left" title="Part Description">Part Desc.</th>
-			<th width="10%" align="right" title="Moulded Qty">Mld. Qty</th>
-			<th width="15%" align="left">Operator</th>
-			<th align="right" style="padding-right:70px;">#</th>
+			<th align="left" title="Key Reference">Key Ref.</th>
+			<th align="left" title="Part Number">Part No</th>
+			<th align="left" title="Part Description">Part Desc.</th>
+			<th align="left" title="Moulding Receipt Date">Mould. Rec. Date</th>
+			<th align="right" title="Moulded Qty">Mld. Qty</th>
+			<th align="left">Operator</th>
+			<th align="right" >#</th>
 		</tr>	
 	</thead>
 	<tbody>
@@ -55,6 +56,7 @@
 	  <th width="10%" align="right" id="val_total1">0</th>
 	  <th align="center">&nbsp;</th>
 	</tr>				
-</table>	
+</table>
+</div>	
 </xsl:template>
 </xsl:stylesheet>

@@ -31,12 +31,15 @@
         </div>
     </div>
 </div>
-<div class="row justify-content-center mt-5 mb-5 text-primary"  >
-    <form action="" class="form-control-sm" onsubmit="return false;">
-        <div class="form-control-sm"><button class="btn btn-primary btn-sm" id="button_submit" type="submit">Create DC </button></div>
-        <div class="form-control-sm mb-3"><button class="btn btn-danger btn-sm" id="button_cancel">Clear</button> </div>
-    </form>
-</div>
+
+
+
+
+<form action="" class="row justify-content-center mt-5 mb-5 text-primary" onsubmit="return false;">
+    <div class="col-5 mr-2"><button class="btn  btn-primary btn-sm" id="button_submit" type="submit">Create DC </button></div>
+    <div class="col-5 mb-3"><button class="btn btn-danger btn-sm" id="button_cancel">Clear</button> </div>
+</form>
+
 
 
 <div style="display:none">

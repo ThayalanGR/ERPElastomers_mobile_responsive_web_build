@@ -99,10 +99,10 @@
 			</div>
 		</div>
 
+	<div class="row mt-5 mb-5 text-primary justify-content-center " id="new_item_error" style="color:black; background:red; border-radius:2px;"></div>
 
-
-		<div class="row mt-5 mb-5 text-primary " >
-		<div id="new_item_error" style="color:black; background:red; border-radius:2px;"></div>
+		<div class="row mt-5 mb-5 text-primary justify-content-center " >
+	
 			<form action="" class="jumbotron" onsubmit="return false;">
 				<label for="new_PickedBy">Picked by: </label>
 				<input class="col rounded" type="text" id="new_PickedBy" name="new_PickedBy" placeholder="Enter name">
