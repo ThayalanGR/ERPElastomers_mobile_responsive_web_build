@@ -70,3 +70,12 @@ a.hover1:hover{
   #myBtn:hover {
     background-color: #555;
   }
+
+
+  .ui-menu-item{
+      font-size: 10px;
+  }
+
+  .ui-widget-content{
+      max-width: 200px;
+  }

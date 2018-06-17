@@ -138,9 +138,9 @@ function changeLayout(){
 				}
 			});
 
-			tabData			=	"<tr class='content_rows_dark' id='addbat_1'>" +
+			tabData			=	"<tr class='content_rows_dark form-control' id='addbat_1'>" +
 										"<td align='center'>1</td>" +
-										"<td><input type='text' tabindex='5' id='cpdcode_txt' idtxt='1' style='width:90%'  /></td>" +
+										"<td ><input type='text' tabindex='5' id='cpdcode_txt' idtxt='1' style='width:90%'  /></td>" +
 										"<td><input type='text' tabindex='5' id='poref_1' style='width:90%' disabled /></td>" + 
  										"<td><input type='text' tabindex='5' id='podate_1' style='width:90%' value='DD/MM/YYYY' class='invisible_text' onfocus=\"FieldHiddenValue(this, 'in', 'DD/MM/YYYY')\" onblur=\"FieldHiddenValue(this, 'out', 'DD/MM/YYYY')\" disabled /></td>" +
 										"<td><input type='text' tabindex='5' id='batref_1' idtxt='1' style='width:90%' disabled /></td>" +
@@ -283,7 +283,8 @@ function changeLayout(){
 			$(compDetailXML).find('row').each(function(index, element) {
 				cpdId			=	$(this).find('cpdid').text();
 				cpdRates[cpdId]	=	$(this).find('cpdcost').text();
-				contBatch		+=		'<tr class ='+((index % 2 == 1)?"content_rows_light":"content_rows_dark")+'>'+
+				contBatch		+=		'<tr class text-center><b>Select upto '+maxCpdInvoice+' Compounds</b></tr>'+
+										'<tr class ='+((index % 2 == 1)?"content_rows_light":"content_rows_dark")+'>'+
 											'<th>'+$(this).find('cpdname').text()+'</th>'+
 											'<th align="right">'+$(this).find('mcount').text()+'</th>'+
 											'<th align="right">'+$(this).find('fcount').text()+'</th>'+
@@ -298,8 +299,7 @@ function changeLayout(){
 			contBatch		+=	'<span id="err_msg"/>';			
 		
 			$("#receive_dialog").html(contBatch).dialog({
-				title:'Select upto '+maxCpdInvoice+' Compounds',
-				width:400,
+				width:230,
 				height:'auto',
 				resizable:false,
 				modal:true,
@@ -392,7 +392,7 @@ function changeLayout(){
 				close: function(event, ui) {
 					$(this).dialog("destroy");
 				} 
-			});		
+			});	$('#receive_dialog').prev('.ui-dialog-titlebar').hide();	
 		}
 		else if(billfor == "ram")
 		{
@@ -400,6 +400,7 @@ function changeLayout(){
 			ramRates		=	new Array();
 			contBatch		=	'<span id="err_msg"/>';
 			contBatch		+=	'<table border="1" cellpadding="0" cellspacing="0" width="100%">' +
+									'<tr class="text-centre">Select upto '+maxCpdInvoice+' Raw Materials with Same TaxRate</td>'+
 									'<tr>'+
 										'<td align="center" width="70%">Name</td>'+
 										'<td align="center" width="20%">TaxRate</td>'+
@@ -422,8 +423,7 @@ function changeLayout(){
 		
 			$("#receive_dialog").html(contBatch).dialog({
 				title:'Select upto '+maxCpdInvoice+' Raw Materials with Same TaxRate',
-				width:600,
-				height:400,
+				width:230,
 				resizable:false,
 				modal:true,
 				buttons: 
@@ -529,12 +529,13 @@ function changeLayout(){
 				close: function(event, ui) {
 					$(this).dialog("destroy");
 				} 
-			});		
+			});		$('#receive_dialog').prev('.ui-dialog-titlebar').hide();
 		}		
 		else if(billfor == "cmpd")
 		{
 			contBatch		=	"<table width='100%'>";
-			contBatch		+=	'<tr height="30px">'+
+			contBatch		+=	'<tr class="text-center">Enter the Sample Part Number</tr>'+
+								'<tr height="30px">'+
 									'<td align="left"> <input type="text" id="sampId" style="width:60%;" /> </td>'+
 								'</tr>';
 			contBatch		+=	"</table>";	
@@ -559,7 +560,7 @@ function changeLayout(){
 		
 			$("#receive_dialog").dialog({
 				title:'Enter the Sample Part Number',
-				width:300,
+				width:230,
 				height:'auto',
 				resizable:false,
 				modal:true,
@@ -645,7 +646,7 @@ function changeLayout(){
 				close: function(event, ui) {
 					$(this).dialog("destroy");
 				} 
-			});		
+			});		$('#receive_dialog').prev('.ui-dialog-titlebar').hide();
 		}
 		else
 		{
@@ -1085,8 +1086,7 @@ $(document).ready(function(){
 						'</table>';
 		$('#create_dialog').html(createCont).dialog({
 			title:'Create Invoice',
-			width:300,
-			height:125,
+			width:230,
 			resizable:false,
 			modal:true,
 			buttons:{
@@ -1101,7 +1101,7 @@ $(document).ready(function(){
 			close:function(){
 				$(this).html('').dialog('destroy');
 			}
-		});	
+		});	$('#create_dialog').prev('.ui-dialog-titlebar').hide();
 		
 	});
 	

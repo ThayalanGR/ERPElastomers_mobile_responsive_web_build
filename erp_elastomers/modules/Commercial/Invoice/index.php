@@ -18,214 +18,163 @@
 			$invTypeItems	.=	"<option value='".$key."'>Sample</option>";
 	}	
 ?>
-<div id="window_list_wrapper">
-    <div id="window_list_head">
-        <strong>Invoice</strong>
-    </div>
-    <form action="" onsubmit="return false;">
-        <div id="window_list">
-            <div id="content_body">
-                <div class="invoice_heading">
-                    Customer
-                </div>
-                <table border="0" cellspacing="0" cellpadding="3" class="new_form_table">
-                    <tr>
-                        <td width="20%">
-                            Invoice Reference
-                        </td>
-                        <td id="new_InvRef" height="22px" style="width:30%">
-                            <?php echo $codeNo; ?>
-                        </td>
-                        <td width="20%">
-                            Invoice Date
-                        </td>
-                        <td id="new_InvDate" height="22px">
-                            <?php echo date("d/m/Y"); ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            Customer Name
-                        </td>
-                        <td>
-                            <input type="text" id="new_CustID" name="new_CustID" style="width:75%;" tabindex="1" onchange="getCustomerDetails()" />
-                        </td>
-                        <td>
-                            Vendor Code
-                        </td>
-                        <td id="new_VendorCode" height="22px">
-                            -
-                        </td>
-                    </tr>
-                    <tr>
-                        <td valign="top" style="padding-top:10px;">
-                            Shipment Address
-                        </td>
-                        <td>
-                            <textarea id="new_ShipAddr" name="new_ShipAddr" style="width:75%;height:75px;" tabindex="2" readonly></textarea>
-                        </td>
-                        <td valign="top" style="padding-top:10px;">
-                            Billing Address
-                        </td>
-                        <td height="22px">
-                            <textarea id="new_BillAddr" name="new_BillAddr" style="width:75%;height:75px;" tabindex="2" readonly></textarea>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            Payment Terms
-                        </td>
-                        <td height="22px">
-                            <input type="text" id="new_PayTerms" name="new_PayTerms" style="width:40%;" tabindex="3" value="-" />
-                        </td>
-                        <td>
-                            Shipment Date
-                        </td>
-                        <td>
-                            <input type="text" rel="datepicker" name="new_ShipDate" id="new_ShipDate" value="<?php echo date("d/m/Y"); ?>" style="width:50%" tabindex="3" onfocus="FieldHiddenValue(this, 'in', 'DD/MM/YYYY')" onblur="FieldHiddenValue(this, 'out', 'DD/MM/YYYY')" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:5px 0px 5px 4px">
-                            Invoice for 
-                        </td>
-                        <td height="22px" colspan="3">
-							<select name="new_Billfor" id="new_Billfor" onchange="changeLayout();" tabindex="4">
-								<?php print $invTypeItems; ?>
-							</select>                            
-                        </td>
-                    </tr>					
-                </table>
-                <br /><br />
-				
-                <div class="invoice_heading">
-                    Particulars 
-                </div>
-                <div class="supplier_list_head" style="margin-right:5px;">
-                    <table border="0" cellpadding="5" cellspacing="0" width="100%">
-                        <tr>
-                            <th width="5%"  align="center">No</th>
-                            <th width="20%" align="left">Item</th>
-                            <th width="12%" align="left">PO. Ref.</th>
-                            <th width="13%" align="left">PO. Date</th>
-                            <th width="10%" align="left">Item Ref.</th>
-                            <th width="10%" align="right">Avl. Qty</th>
-                            <th width="10%" align="right">Apl. Qty</th>
-                            <th width="10%" align="right">Rate</th>
-                            <th align="right">Value</th>
-                        </tr>
-                    </table>
-                    <div class="supplier_list" id="new_Particulars" style="height:auto">
-                        <table border="0" cellpadding="5" cellspacing="0" width="100%">
-                            <tr>
-                                <th width="5%"  align="center">&nbsp;</th>
-                                <th width="20%" align="left">&nbsp;</th>
-								<th width="12%" align="left">&nbsp;</th>
-                                <th width="13%" align="left">&nbsp;</th>
-                                <th width="10%" align="left">&nbsp;</th>
-                                <th width="10%" align="right">&nbsp;</th>
-                                <th width="10%" align="right">&nbsp;</th>
-                                <th width="10%" align="right">&nbsp;</th>
-                                <th align="right">&nbsp;</th>
-                            </tr>
-                        </table>
+<form action="" onsubmit="return false;">
+    <div class="row justify-content-center text-primary" style="padding-top: 65px;" >
+        <div class="col-12 text-center h6"><i class="<?php echo $_SESSION['Invoice']; ?>"></i> Invoice</div>
+        <div class="col-12 text-center ">Customer</div>
+        <div class="col-12 mt-2">
+            <div class="container-fluid shadow" style="font-size:15px;">
+                <div class="row bg-light ">
+                    <div class="col" > Invoice Reference</div>
+                    <div class="col" id="new_InvRef" >
+                        <?php echo $codeNo; ?>
                     </div>
-					<div id='toolDesc'></div>
-					
                 </div>
-                <br />
-                <table border="0" cellpadding="5" cellspacing="0" class="new_form_table" style="padding-right:6px;">
-                    <tr>
-                        <th align="right" style="padding-right:6%;font-size:12px;">
-                            Total
-                        </th>
-                        <th id="total_field" style="font-family:arial;font-size:18px;width:15%;text-align:right;border-top:2px double #ccc;border-bottom:2px solid #ccc;">
-                            0.00
-                        </th>
-                    </tr>
-                </table>
-                <br /><br />
-                <div class="invoice_heading">
-                    Others
+                <div class="row">
+                    <div class="col"> Invoice Date</div>
+                    <div class="col text-success" id="new_InvDate">
+                        <?php echo date("d/m/Y"); ?>
+                    </div>
                 </div>
-                <table border="0" cellpadding="3" cellspacing="0" width="100%">
-                    <tr>
-                        <td align="right">
-                            <table border="0" cellpadding="3" cellspacing="0" width="50%">
-                                <tr height="28px">
-                                    <td>
-                                        Taxable Value
-                                    </td>
-                                    <td>
-                                        -
-                                    </td>
-                                    <td style="text-align:right;border-top:1px double #ccc;border-bottom:1px solid #ccc;">
-                                        <span id="taxableval_out">0.00</span>
-                                    </td>
-                                </tr> 							
-                                <tr height="28px">
-                                    <td width="50%">
-                                        CGST
-                                    </td>
-                                    <td width="20%">
-                                        <span id="cgst">0</span> %
-                                    </td>
-                                    <td align="right">
-                                        <span id="cgst_out">0.00</span>
-                                    </td>
-                                </tr>
-                                <tr height="28px">
-                                    <td>
-                                        SGST
-                                    </td>
-                                    <td>
-                                        <span id="sgst">0</span> %
-                                    </td>
-                                    <td align="right">
-                                        <span id="sgst_out">0.00</span>
-                                    </td>
-                                </tr>
-                                <tr height="28px">
-                                    <td>
-                                        IGST
-                                    </td>
-                                    <td>
-                                        <span id="igst">0</span> %
-                                    </td>
-                                    <td align="right">
-                                        <span id="igst_out">0.00</span>
-                                    </td>
-                                </tr>
+
+                <div class="row bg-light">
+                    <div class="col"> Customer Name</div>
+                    <div class="col text-success">
+                    <input type="text" id="new_CustID" name="new_CustID" onchange="getCustomerDetails()" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col"> Vendor Code</div>
+                    <div class="col text-success" id="new_VendorCode">-</div>
+                </div>
+                <div class="row bg-light">
+                    <div class="col"> Shipment Address </div>
+                    <div class="col text-success">
+                    <textarea id="new_ShipAddr" name="new_ShipAddr" style="height:75px;" readonly></textarea>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col"> Billing Address</div>
+                    <div class="col text-success">
+                    <textarea id="new_BillAddr" name="new_BillAddr" style="height:75px;" tabindex="2" readonly></textarea>
+                    </div>
+                </div>
+                <div class="row bg-light mt-2">
+                    <div class="col"> Payment Terms</div>
+                    <div class="col text-success"> 
+                        <input type="text" id="new_PayTerms" name="new_PayTerms" value="-" />
+                    </div>
+                </div>
+                <div class="row  mt-2">
+                    <div class="col">  Shipment Date</div>
+                    <div class="col text-success"> 
+                    <input type="text" rel="datepicker" name="new_ShipDate" id="new_ShipDate" value="<?php echo date("d/m/Y"); ?>" style="width:50%" tabindex="3" onfocus="FieldHiddenValue(this, 'in', 'DD/MM/YYYY')" onblur="FieldHiddenValue(this, 'out', 'DD/MM/YYYY')" />
+                    </div>
+                </div>
+                <div class="row bg-light mt-2">
+                    <div class="col">Invoice for </div>
+                    <div class="col text-success">
+                        <select name="new_Billfor" id="new_Billfor" onchange="changeLayout();">
+                            <?php print $invTypeItems; ?>
+                        </select> 
+                    </div>
+                </div>
+            </div> 
+        </div>
+        <div class="col-12 mt-2">
+            <div class="container-fluid">
+                <div class="row justify-content-center"> Particulars </div>
+                <div class="row">
+                    <div style="overflow-x:auto;">
+                        <div class="supplier_list_head" style="margin-right:5px;">
+                            <table border="0" cellpadding="5" cellspacing="0" width="100%">
                                 <tr>
-                                    <th colspan="2" align="right" style="padding-right:10%;font-size:12px;">
-                                        Grand Total
-                                    </th>
-                                    <th id="grandtotal_out" style="font-family:arial;font-size:18px;text-align:right;border-top:2px double #ccc;border-bottom:2px solid #ccc;">
-                                        0.00
-                                    </th>
+                                    <th   align="center">No</th>
+                                    <th  align="left">Item</th>
+                                    <th  align="left">PO. Ref.</th>
+                                    <th  align="left">PO. Date</th>
+                                    <th  align="left">Item Ref.</th>
+                                    <th  align="right">Avl. Qty</th>
+                                    <th  align="right">Apl. Qty</th>
+                                    <th  align="right">Rate</th>
+                                    <th align="right">Value</th>
                                 </tr>
                             </table>
-                        </td>
-                    </tr>
-                </table>
-                <br />
-                <div class="invoice_heading">
-                    Remarks
+                            <div class="supplier_list" id="new_Particulars" style="height:auto">
+                                <table border="0" cellpadding="5" cellspacing="0" width="100%">
+                                    <tr>
+                                        <th  align="center" >&nbsp;</th>
+                                        <th  align="left"  >&nbsp;</th>
+                                        <th  align="left"  >&nbsp;</th>
+                                        <th  align="left">&nbsp;</th>
+                                        <th  align="left">&nbsp;</th>
+                                        <th  align="right">&nbsp;</th>
+                                        <th  align="right">&nbsp;</th>
+                                        <th  align="right">&nbsp;</th>
+                                        <th align="right">&nbsp;</th>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div id='toolDesc'></div>
+                        </div>
+                    </div>
                 </div>
-                <textarea style="width:99%;height:100px" id="new_Remarks" tabindex="8"></textarea>
-                <br /><br />
             </div>
         </div>
-        <table border="0" cellspacing="0" cellpadding="7" width="100%">
-            <tr>
-                <td id="error_msg" style="padding:7px;">&nbsp;</td>
-                <td width="20%" align="right">
-                    <button id="button_add" type="submit">Create</button>
-                    <button id="button_cancel">Clear</button>
-                </td>
-            </tr>
-        </table>
-    </form>
-	<div id="create_dialog">
-	<div id="receive_dialog">
+        <div class="col-12 mt-2">
+            <div class="container-fluid shadow text-success" style="font-size:15px;">
+                <div class="row justify-content-center text-primary">Others</div>
+                <div class="row bg-light ">
+                    <div class="col" > Total</div>
+                    <div class="col" id="total_field" >0.00</div>
+                </div>
+                <div class="row  ">
+                    <div class="col" >Taxable Value</div>
+                    <div class="col" id="taxableval_out">0.00</div>
+                </div>
+                <div class="row bg-light ">
+                    <div class="col" > CGST&nbsp;(<span id="cgst">0</span>)</div>
+                    <div class="col" id="cgst_out" >0.00</div>
+                </div>
+                <div class="row bg-">
+                    <div class="col" > SGST&nbsp;(<span id="sgst">0</span>)</div>
+                    <div class="col" id="sgst_out" >0.00</div>
+                </div>
+                <div class="row bg-light ">
+                    <div class="col" > IGST&nbsp;(<span id="igst">0</span>)</div>
+                    <div class="col" id="igst_out" >0.00</div>
+                </div>
+                <div class="row bg-dark text-primary ">
+                    <div class="col" > Grand Total</div>
+                    <div class="col" id="grandtotal_out" >0.00</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 mt-2 ">
+            <div class="container-fluid bg-light shadow">
+                <div class="row justify-content-center">Remarks:</div>
+                <div class="row justify-content-center"> <textarea style="height:50px width:100%;" id="new_Remarks"></textarea></div>
+                <div class="row">&nbsp;</div>
+            </div>
+        </div>
+        <div id="error_msg" class="col-12 mt-1 text-center text-danger" style="diplay:none" >&nbsp;</td>
+    </div>
+
+    <div class="row justify-content-center mt-5 mb-5 text-primary" onsubmit="return false;">
+        <div class="col-5 mr-2"><button class="btn  btn-primary btn-sm" id="button_add" type="submit">Create </button></div>
+        <div class="col-5 mb-3"><button class="btn btn-danger btn-sm" id="button_cancel">Clear</button> </div>
+    </div>
+</form>
+
+<div style="display:none">
+    <div id="create_dialog"></div>
+	<div id="receive_dialog"></div>
 </div>
+
+
+
+
+
+
+
+

@@ -11,7 +11,7 @@
         <!-- <link rel="stylesheet" type="text/css" href="<?php //echo ISO_REWRITE_URL; ?>style/jquery.ui.all.css"/> -->
         <link rel="stylesheet" type="text/css" href="<?php echo ISO_REWRITE_URL; ?>style/jquery.ui.tooltip.css"/>
         <link rel="stylesheet" type="text/css" href="<?php echo ISO_REWRITE_URL; ?>style/jquery.ui.filters.css"/>
-        <!-- <link rel="stylesheet" href="<?php //echo ISO_REWRITE_URL; ?>style/style.css" media="all" /> -->
+        <link rel="stylesheet" href="<?php echo ISO_REWRITE_URL; ?>style/style.css" media="all" />
         <!-- <link rel="shortcut icon" href="<?php //echo ISO_REWRITE_URL; ?>favicon.ico" /> -->
         <link rel="stylesheet" href="<?php echo ISO_REWRITE_URL; ?>fontawesome/web-fonts-with-css/css/fontawesome-all.css">
         <link rel="stylesheet" href="<?php echo ISO_REWRITE_URL; ?>bootstrap/css/bootstrap.min.css">
