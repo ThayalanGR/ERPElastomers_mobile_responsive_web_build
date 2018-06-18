@@ -14,18 +14,18 @@
 <xsl:stylesheet version="1.0"
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:template match="/">
-
-<table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+<div style="overflow-x:auto;">
+<table id="resultTable" border="0" cellpadding="6" cellspacing="0">
 	<thead>
 		<tr>
-			<th width="10%" align="left" title="Key Reference">Key/Tool Ref.</th>
-			<th width="10%" align="left" title="Issue date">Iss. Date</th>
-			<th width="10%" align="left">Part No</th>
-			<th width="16%" align="left" title="Part Description">Part Desc.</th>
-			<th width="10%" align="right" title="Issue Quantity">Iss. Qty.</th>
-			<th width="10%" align="right" title="Pending Receipt">Pen. Qty.</th>
-			<th width="14%" align="left">Recv. Qty</th>
-			<th align="right" style="padding-right:70px;">#</th>
+			<th align="left" title="Key Reference">Key/Tool Ref.</th>
+			<th align="left" title="Issue date">Iss. Date</th>
+			<th align="left">Part No</th>
+			<th align="left" title="Part Description">Part Desc.</th>
+			<th align="right" title="Issue Quantity">Iss. Qty.</th>
+			<th align="right" title="Pending Receipt">Pen. Qty.</th>
+			<th align="left">Recv. Qty</th>
+			<th align="right" style="padding-right:70px;">Delete</th>
 		</tr>	
 	</thead>
 	<tbody>
@@ -64,7 +64,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 						<xsl:attribute name="mouldref"><xsl:value-of select="mouldref" /></xsl:attribute>
 						<xsl:attribute name="doctype"><xsl:value-of select="doctype" /></xsl:attribute>
 						<xsl:attribute name="class">delete_button link</xsl:attribute>
-						Delete
+						<i class="fa fa-trash"></i>
 					</a>
 				</xsl:if>				
             </td>
@@ -72,6 +72,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
     </xsl:for-each>
 	</tbody>
 </table>
+</div>
 </xsl:template>
 </xsl:stylesheet>
 
