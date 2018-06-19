@@ -10,7 +10,7 @@
 <style>
 #window_list{padding-left:7px;padding-top:5px;}
 </style>
-<div id="window_list_wrapper" style="padding-bottom:5px;">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px; padding-bottom:5px; ">
     <div id="window_list_head">
         <strong>Schedule List</strong>
     </div>

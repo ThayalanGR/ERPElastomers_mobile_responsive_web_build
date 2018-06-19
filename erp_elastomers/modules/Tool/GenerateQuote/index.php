@@ -2,7 +2,7 @@
 	global $tq_mixing_cost,$tq_tool_life,$tq_mould_lab_cost_hr,$tq_trim_lab_cost_hr,$tq_insp_lab_cost_hr,$tq_reject_percent,$tq_admin_percent,$tq_profit_percent	
 ?>
 
-<div id="window_list_wrapper">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         <strong>Generate Quote</strong>
     </div>

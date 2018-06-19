@@ -1,4 +1,4 @@
-<div id="window_list_wrapper">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         <strong>Preventive Action</strong>
     </div>

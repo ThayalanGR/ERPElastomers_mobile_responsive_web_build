@@ -2,7 +2,7 @@
 .grn_list{width:100%;height:180px;margin-top:10px;border:1px solid #ccc;}
 .grn_list table tr td{cursor:pointer;border-bottom:1px solid #efefef;}
 </style>
-<div id="window_list_wrapper">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         <strong>Purchase - Stock Adjustment Note</strong>
         <span id="add_stkadjnote" class="button_add">Add</span>

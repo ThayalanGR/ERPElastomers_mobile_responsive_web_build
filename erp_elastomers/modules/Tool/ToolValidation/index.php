@@ -3,7 +3,7 @@
 	$codeArray		=	@getSettingsData("toolvalidationnote");
 	$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
 ?>
-<div id="window_list_wrapper">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         <strong>Tool Validation Note</strong>
     </div>

@@ -6,7 +6,7 @@
 	}		
 	
 ?>
-<div id="window_list_wrapper">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         Supplier Master
         <span id="button_add">New</span>

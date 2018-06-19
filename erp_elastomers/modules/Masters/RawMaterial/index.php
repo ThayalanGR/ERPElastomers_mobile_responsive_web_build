@@ -20,7 +20,7 @@
 .accord_content{padding-bottom:12px;}
 #new_item_form .row1_cont, #edit_item_form .row1_cont{width:28%;}
 </style>
-<div id="window_list_wrapper">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         <strong>Raw Material Master</strong>
         <span id="button_add">New</span>

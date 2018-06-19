@@ -3,7 +3,7 @@
 .supplier_list{overflow:auto;}
 #content_body{margin-left:7px;margin-top:5px;}
 </style>
-<div id="window_list_wrapper">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         <strong>Upload Compound DC/Invoice</strong>
     </div>

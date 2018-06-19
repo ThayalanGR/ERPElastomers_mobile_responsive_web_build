@@ -56,7 +56,7 @@
 	}	
 	
 ?>
-<div id="window_list_wrapper" style="padding-bottom:5px;">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px; padding-bottom:5px;">
     <div id="window_list_head">
         <strong>Tool Sample Receipt</strong>
     </div>

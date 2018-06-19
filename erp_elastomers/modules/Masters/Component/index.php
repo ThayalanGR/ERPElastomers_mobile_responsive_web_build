@@ -25,7 +25,7 @@
 #new_item_form .three_row_table .row1_cont, .three_row_table .row2_cont{width:20% !important;}
 #new_item_form .three_row_table .row3_cont{width:auto;}
 </style>
-<div id="window_list_wrapper">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         <strong>Component Master</strong>
         <span id="button_add">New</span>

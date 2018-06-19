@@ -10,7 +10,7 @@
 		}	
 	}
 ?>
-<div id="window_list_wrapper" style="padding-bottom:5px;">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px; padding-bottom:5px;">
     <div id="window_list_head">
         <strong>Moulding Plan</strong>
 		<span id="button_view_tl" style="float:right;margin-top:2px;">Tool List</span>

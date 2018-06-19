@@ -1,7 +1,7 @@
 <div class="" style="margin-top:100px;">
 <div class="row justify-content-center mt-5">
     <div class="jumbotron-fluid shadow-sm rounded-circle text-center" style="height: 85px; width:85px; "> 
-        <img src="./images/mmpl logo.jpg" style="height:50px; width: 50px; " class="mt-3"  alt="logo">
+        <img src="<?php echo ISO_REWRITE_URL; ?>images/mmpl logo.jpg" style="height:50px; width: 50px; " class="mt-3"  alt="logo">
     </div>           
 </div>
 

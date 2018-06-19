@@ -11,7 +11,7 @@
 }
 </style>
 
-<div id="window_list_wrapper">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         <strong>Moulding - Stock Adjustment Note</strong>
         <span id="add_stkadjnote" class="button_add">Add</span>

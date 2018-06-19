@@ -6,7 +6,7 @@
 	}
 ?>
 <style>input{font-size:11px;}</style>
-<div id="window_list_wrapper" style="padding-bottom:10px">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px; padding-bottom:10px" >
     <div id="window_list_head">
         <strong>Compound Stock</strong>
         <!--<span id="button_add">New</span>-->

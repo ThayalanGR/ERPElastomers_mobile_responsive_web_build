@@ -8,7 +8,7 @@
 ?>
 <script language="javascript" src="<?php echo ISO_BASE_URL; ?>_bin/.run" ></script>
 <style>input{font-size:11px;}</style>
-<div id="window_list_wrapper" style="padding-bottom:8px;">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px; padding-bottom:8px;">
     <div id="window_list_head">
         <strong>Raw Material Stock</strong>
     </div>

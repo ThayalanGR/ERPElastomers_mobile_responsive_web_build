@@ -2,7 +2,7 @@
 .invoice_heading{border-bottom:1px solid #999;padding:5px 5px 5px 15px;margin:0px 0px 20px 0px;font-weight:bold;}
 #window_list{padding-left:7px;padding-top:5px;}
 </style>
-<div id="window_list_wrapper">
+<div id="window_list_wrapper" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         <strong>Schedule Entry</strong>
     </div>

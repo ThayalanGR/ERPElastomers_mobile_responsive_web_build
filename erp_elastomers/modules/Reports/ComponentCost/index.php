@@ -1,4 +1,4 @@
-<div id="window_list_wrapper" class="filter-table">
+<div id="window_list_wrapper" class="filter-table" style="overflow-x:auto; padding-top:65px;">
     <div id="window_list_head">
         <strong>Enter Moulding Rates</strong>
     </div>
