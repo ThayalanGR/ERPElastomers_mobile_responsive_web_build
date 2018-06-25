@@ -1,0 +1,17 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$sql_comlist		=	"select *, DATE_FORMAT(sanDate,'%d-%b-%Y')as invDate,sum(bookQty)as bookqty, sum(physicalQty)as phyqty,sum(exc_shrt)as exorshrt 
+						from tbl_mixing_san tms
+							inner join tbl_compound tc on tc.cpdId = tms.cpdId
+						where tms.status = 1 group by sanId";
+	$list	=	@getMySQLData($sql_comlist,"xml","root","lower");
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+
+?>

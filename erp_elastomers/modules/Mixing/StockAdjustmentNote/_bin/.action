@@ -1,0 +1,90 @@
+<?php
+	session_start();
+    header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "CPDATLIST":
+			echo @getXML("select cpdId, cpdName from tbl_compound");
+			exit();
+		break;
+		
+		case "CPDBOOKQTY":
+			$cpdid	=	$_POST['cpdid'];
+			echo @getMySQLData(
+				"select t1.batId, date_format(t1.batDate, '%d-%b-%Y') as batDate, t1.cpdId, t1.avlQty as bookQty
+				from tbl_mixing t1
+				where t1.cpdId='$cpdid' and t1.avlQty > 0  order by batDate desc",
+				"xml", "xmldata", "lower"
+			);			
+			exit();
+		break;
+		
+	
+		case "SANDETAILS":
+			if($_POST['sanid'] != ""){
+				$list	=	getXML("SELECT sanId, DATE_FORMAT(sanDate, '%d-%b-%Y') as sanDate, cpdId, batId,
+									DATE_FORMAT(batDate, '%d-%b-%Y') as batDate, description, bookQty, physicalQty, exc_shrt
+									FROM tbl_mixing_san where status>0 and sanId='".$_POST['sanid']."'", false);
+				$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+				echo $list;
+			}
+			exit();
+		break;
+		
+		case "ADDSAN":
+			if(count($_POST) > 0 && $_POST['cpdid'] && count($_POST['batkey']) > 0){
+				$sanCode	=	@getRegisterData("cpdstkadj");				
+				$cpdData	=	@getMySQLData("select cpdName,cpdPolymer from tbl_compound where cpdId='".$_POST['cpdid']."'");
+				$cpdData	=	$cpdData['data'][0];			
+				$sql		=	"insert into tbl_mixing_san(sanId, sanDate, cpdId, batId, batDate,
+									description, bookQty, physicalQty, exc_shrt, entry_on, entry_by) values";
+
+				for($san=0; $san<count($_POST['batkey']); $san++){
+					$batDate	=	date("Y-m-d", strtotime($_POST['batdate'][$san]));
+					$sql		.=	"(
+										'$sanCode', now(), '".$_POST['cpdid']."', '".$_POST['batkey'][$san]."', '$batDate',
+										'".$_POST['desc']."', '".$_POST['bookqty'][$san]."', '".$_POST['phyqty'][$san]."', '".$_POST['excshrt'][$san]."', now(), '".$_SESSION['userdetails']['userId']."'
+									)".(($san<count($_POST['batkey'])-1)?", ":"");					
+				}
+				$addSQL		=	@getMySQLData($sql);
+				if($addSQL['status'] == "success"){
+					for($sano=0; $sano<count($_POST['batkey']); $sano++){
+						@getMySQLData("update tbl_mixing set avlQty='".$_POST['phyqty'][$sano]."' where batId='".$_POST['batkey'][$sano]."'");
+					}				
+					updateSettingsData(array("cpdstkadj"));
+					$output	=	"
+						<addsan>
+							<sql>$sql</sql>
+							<status>".$addSQL['status']."</status>
+							<sanid>$sanCode</sanid>
+						</addsan>
+					";
+				}
+				else{
+					$output	=	"
+						<addsan>
+							<sql>$sql</sql>
+							<status>".$addSQL['status']."</status>
+							<errno>".$addSQL['errno']."</errno>
+							<errtxt>".$addSQL['errtxt']."</errtxt>
+						</addsan>
+					";
+				}
+				
+				
+			}
+		break;
+	};
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$list	=	@getMySQLData("SELECT sanId, DATE_FORMAT(sanDate, '%d-%b-%Y') as sanDate, cpdName, cpdPolymer,description
+								FROM tbl_mixing_san tms
+								left outer join tbl_compound tc on tc.cpdId = tms.cpdId 
+								where tms.status>0 and isIncoming = 0 group by sanId order by sanId asc", "xml", "root", "lower");
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

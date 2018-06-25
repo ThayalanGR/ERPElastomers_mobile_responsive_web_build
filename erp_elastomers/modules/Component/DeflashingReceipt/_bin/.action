@@ -1,0 +1,75 @@
+<?php
+	session_start();
+	
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case 'DELPLAN':
+			$sno		=	$_POST['sno'];
+			$issref		=	$_POST['defiss'];
+			$moldref	=	$_POST['moldref']; 
+			$pSQL    	=   "update tbl_deflash_issue SET status=0 WHERE sno = '$sno'";
+			$res		=	@getMySQLData($pSQL);
+			if($res['status'] == 'success'){
+				if(strripos($issref,'-rt') == strlen($issref) - 3 ){
+					@getMySQLData("update tbl_rework set status='1' where reworkref ='$moldref'");
+				}
+				else 
+				{
+					@getMySQLData("update tbl_moulding_receive set status='3' where modRecRef ='$issref'");
+				}
+			}
+			echo $res['status'];
+			break;
+		case 'GETDEF':
+			$user	=	$_POST['user'];
+			$sql	=	"select tc.cmpdId, tc.cmpdName, tc.cmpdRefNo, di.issqty, di.defiss,di.mouldref,di.sno,
+							(if((select sum(currrec) from tbl_deflash_reciept where defissref=di.sno and status > 0 ) > 0, (select sum(currrec) from tbl_deflash_reciept where defissref=di.sno and status > 0), 0)) as recQty,
+							(di.issqty - (if((select sum(currrec) from tbl_deflash_reciept where defissref=di.sno and status > 0) > 0, (select sum(currrec) from tbl_deflash_reciept where defissref=di.sno and status > 0), 0))) as pendqty,
+							di.operator, di.issDate,
+							DATE_FORMAT(di.issdate, '%d-%b-%Y') as issdatef
+						from tbl_deflash_issue di
+							inner join tbl_component tc on di.cmpdid=tc.cmpdId
+						where di.status=1 ";
+			if($user != 'All')
+				$sql .= " and di.operator = '$user' ";
+						
+			$sql .= " order by di.defiss";
+		   
+		   $list	=	@getMySQLData($sql,"xml","root","lower");
+		   echo "<xmldata>".$list."</xmldata>";
+		   break;
+		case 'INSDEFREC':
+			$usrId		=	$_SESSION['userdetails']['userId'];
+			foreach( $_POST['issref'] as $key=>$val)
+			{
+				$issSno				=	$_POST['isssno'][$key];
+				$issuedqty			=	str2num($_POST['issqty'][$key]);
+				$recievedqty		=	str2num($_POST['prerecqty'][$key]); 
+				$currentrec			=	str2num($_POST['recvqty'][$key]);
+				$total				=	$recievedqty + $currentrec;
+				$pendingqty			=	$issuedqty - $total;	
+	
+				$sql				=	" insert into tbl_deflash_reciept(defrecdate, defissref, issref, issuedqty, receivedqty, currrec, pendqty, entry_on, entry_by)
+										values( now(), '$issSno', '$val', '$issuedqty', '$recievedqty', '$currentrec','$pendingqty', now(), '$usrId') ";
+				$res				=	@getMySQLData($sql);				
+			
+				if($res['status'] == 'success'){
+					if($total >= ($issuedqty * 0.98)){
+						@getMySQLData("update tbl_deflash_issue set status='2' where sno = '$issSno'");
+						if(strripos($val,'-rt') == strlen($val) - 3 ){						
+							@getMySQLData("update tbl_rework set status='3' where reworkref = '".$_POST['mouldref'][$key]."'");
+						}
+						else{
+							@getMySQLData("update tbl_moulding_receive set status='5' where modRecRef  = '$val'");
+						}
+					}
+				}else{
+					print_r($res);
+					exit();
+				}
+			}
+			echo $res['status'];
+			break;
+		}
+
+?>

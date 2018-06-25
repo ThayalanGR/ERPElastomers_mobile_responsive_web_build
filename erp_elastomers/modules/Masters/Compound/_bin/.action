@@ -1,0 +1,298 @@
+<?php
+
+	session_start();
+	global $vendor_grp_email;
+	header('Content-Type: text/xml');
+	switch($_REQUEST["selecttype"]){
+		case "CPDPARAMATLIST":
+			$output		=	@getMySQLData("select * from tbl_param where status > 0 ", "xml", "xmldata");
+			echo $output;
+			exit();
+		break;
+		case "PARAMDETAIL":
+			if($_REQUEST['paramid'] != ""){
+				$output		=	@getMySQLData("select paramStdRef,(select uom_short_name from tbl_uom where sno = tbl_param.paramUOM) as paramUOM,paramTestMethod  from tbl_param where status > 0 and sno ='".$_REQUEST['paramid']."';", "xml", "xmldata");
+				echo $output;
+			}
+			exit();
+		break;			
+		case "CLASSATLIST":
+			$output = @getMySQLData("select sno, class_short_name from tbl_class where status>0", "xml");
+			echo $output;
+			exit();
+		break;
+		case "BRMATLIST":
+			$output = @getMySQLData("select * from tbl_rawmaterial_base where status>0 order by ramName asc", "xml");
+			echo $output;
+			exit();
+		break;
+		case "CPDDETAIL":
+			$output		=	getXML("select t1.ramId, t1.ramName, t1.ramGrade, t1.ramUnit, t1.ramClass, t1.ramMinStock, t2.ramParts, t2.item_no, t2.is_final_chemical from tbl_rawmaterial as t1, tbl_compound_rm as t2 where t2.cpdid='".$_REQUEST["CPDID"]."' and t2.ramId=t1.ramId order by t2.item_no,t1.ramName asc;",false);
+			echo $output;
+			exit();
+		break;
+		case "CPDDETAILLIST":
+			$output		=	getXML("select t2.item_no, group_concat(t1.ramId order by t1.ramId asc separator ', ') as ramId, t3.ramName,
+										group_concat(t1.ramGrade order by t1.ramId asc separator ', ') as ramGrade, t4.uom_short_name as ramUnit,
+										t5.class_short_name as ramClass, t1.ramMinStock, t2.ramParts,t2.is_final_chemical
+									from tbl_rawmaterial t1
+										inner join tbl_compound_rm t2 on t2.ramId=t1.ramId
+										inner join tbl_rawmaterial_base t3 on t1.ramNo = t3.sno
+										inner join tbl_uom t4 on t1.ramUnit = t4.sno
+										inner join tbl_class t5 on t1.ramClass = t5.sno
+									where t2.cpdid='".$_REQUEST["CPDID"]."' group by t2.item_no order by t2.item_no, t1.ramId asc", false);
+			echo $output;
+			exit();
+		break;
+		case "RMGRADELIST":
+			$output		=	getXML("select t1.ramId, t1.ramGrade
+									from tbl_rawmaterial t1
+									inner join tbl_rawmaterial_base t2 on t1.ramNo = t2.sno
+									where t2.ramName='".$_REQUEST["rmname"]."' and t1.status>0 and t2.status>0",false);
+			echo $output;
+			exit();
+		break;
+		case "CUSTATLIST":
+			$output		=	getXML("select distinct cusGroup as cusGroup from tbl_customer where status>0 and cusGroup != '';", false);
+			echo $output;
+			exit();
+		break;		
+		case "CPDADD":
+			if($_REQUEST['cpdname'] != ""){
+				// Generate Code No
+				$codeArray		=	@getSettingsData("cpdcode");
+				$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+				$cpdName		=	$_REQUEST['cpdname'];
+				if($codeNo != ""){
+					$sql			=	"insert into tbl_compound(cpdId, cpdName, isBlend, cpdUOM, isColorCpd, cpdPolymer, cpdMinStock, shelfLife, rackNo, stdPckQty, shrinkage, HSNCode, batCountFullTest,
+												  mastTime, mastTimeMin, mastTimeMax, mastTemp, mastTempMin, mastTempMax, mastPres, mastPresMin, mastPresMax, 
+												  blendTime, blendTimeMin, blendTimeMax, blendTemp, blendTempMin, blendTempMax, blendPres, blendPresMin, blendPresMax, 
+												  cblendTime, cblendTimeMin, cblendTimeMax, cblendTemp, cblendTempMin, cblendTempMax, cblendPres, cblendPresMin, cblendPresMax, kneadTime, kneadTimeMin, kneadTimeMax, kneadTemp, kneadTempMin, kneadTempMax, kneadPres, kneadPresMin, kneadPresMax, 
+												  millRollTime, millRollTimeMin, millRollTimeMax, millRollTemp, millRollTempMin, millRollTempMax,
+												  mixFinalTime, mixFinalTimeMin, mixFinalTimeMax, mixFinalTemp, mixFinalTempMin, mixFinalTempMax, 
+												  mixSheetTime, mixSheetTimeMin, mixSheetTimeMax, mixSheetTemp, mixSheetTempMin, mixSheetTempMax,
+												  entry_on, entry_by,remarks)
+											values('$codeNo', '".$cpdName."', '".$_REQUEST['isblend']."', '".$_REQUEST['cpdunits']."', '".$_REQUEST['iscolorcpd']."', '".$_REQUEST['cpdpolymer']."', '".$_REQUEST['cpdminstock']."', '".$_REQUEST['shelflife']."', '".$_REQUEST['rackno']."', '".$_REQUEST['stdpckqty']."', '".$_REQUEST['shrinkage']."', '".$_REQUEST['hsncode']."', '".$_REQUEST['fulltestcount']."',
+													'".$_REQUEST['mastTime']."', '".$_REQUEST['mastTimeMin']."', '".$_REQUEST['mastTimeMax']."', '".$_REQUEST['mastTemp']."', '".$_REQUEST['mastTempMin']."', '".$_REQUEST['mastTempMax']."', '".$_REQUEST['mastPres']."', '".$_REQUEST['mastPresMin']."', '".$_REQUEST['mastPresMax']."',
+													'".$_REQUEST['blendTime']."', '".$_REQUEST['blendTimeMin']."', '".$_REQUEST['blendTimeMax']."', '".$_REQUEST['blendTemp']."', '".$_REQUEST['blendTempMin']."', '".$_REQUEST['blendTempMax']."', '".$_REQUEST['blendPres']."', '".$_REQUEST['blendPresMin']."', '".$_REQUEST['blendPresMax']."', 
+													'".$_REQUEST['cblendTime']."', '".$_REQUEST['cblendTimeMin']."', '".$_REQUEST['cblendTimeMax']."', '".$_REQUEST['cblendTemp']."', '".$_REQUEST['cblendTempMin']."', '".$_REQUEST['cblendTempMax']."', '".$_REQUEST['cblendPres']."', '".$_REQUEST['cblendPresMin']."', '".$_REQUEST['cblendPresMax']."',
+													'".$_REQUEST['kneadTime']."', '".$_REQUEST['kneadTimeMin']."', '".$_REQUEST['kneadTimeMax']."', '".$_REQUEST['kneadTemp']."', '".$_REQUEST['kneadTempMin']."', '".$_REQUEST['kneadTempMax']."', '".$_REQUEST['kneadPres']."', '".$_REQUEST['kneadPresMin']."', '".$_REQUEST['kneadPresMax']."', 
+													'".$_REQUEST['millRollTime']."', '".$_REQUEST['millRollTimeMin']."', '".$_REQUEST['millRollTimeMax']."', '".$_REQUEST['millRollTemp']."', '".$_REQUEST['millRollTempMin']."', '".$_REQUEST['millRollTempMax']."', 
+													'".$_REQUEST['mixFinalTime']."', '".$_REQUEST['mixFinalTimeMin']."', '".$_REQUEST['mixFinalTimeMax']."', '".$_REQUEST['mixFinalTemp']."', '".$_REQUEST['mixFinalTempMin']."', '".$_REQUEST['mixFinalTempMax']."', 
+													'".$_REQUEST['mixSheetTime']."', '".$_REQUEST['mixSheetTimeMin']."', '".$_REQUEST['mixSheetTimeMax']."', '".$_REQUEST['mixSheetTemp']."', '".$_REQUEST['mixSheetTempMin']."', '".$_REQUEST['mixSheetTempMax']."',
+													now(), '".$_SESSION['userdetails']['userId']."','".$_REQUEST['cusremarks']."');";
+					$output			=	@getMySQLData($sql, "xml");
+				
+					// Add Raw Material
+					$csvOutput = "Name, Grade(s), Parts, Is Final-Chemical? \n";
+					$formula	=	$_REQUEST['formula'];
+					if(is_array($formula) && count($formula) > 0){
+						$sql	=	"insert into tbl_compound_rm(cpdId, ramId, ramParts, item_no,is_final_chemical) values";
+						for($rsl=0; $rsl<count($formula); $rsl++){
+							$rmCode		=	$formula[$rsl]['cpdrmcode'];
+							$rmFChems	=	$formula[$rsl]['cpdisfinal'];						
+							$rmParts	=	$formula[$rsl]['cpdrmper'];
+							$ramNamData	=	@getMySQLData("select ramName,group_concat(ramGrade separator '~') as ramGrade from tbl_rawmaterial where ramId in ('".implode("','",$rmCode)."') group by ramName");
+							$csvOutput	.=	$ramNamData['data'][0]['ramName'].",".$ramNamData['data'][0]['ramGrade'].",".$rmParts.",".(($rmFChems=='true')?1:0). "\n";													
+							for($rmc=0; $rmc<count($rmCode); $rmc++){
+								$sql	.=	"('$codeNo', '".$rmCode[$rmc]."', '".$rmParts."', ".($rsl+1)."," .(($rmFChems=='true')?1:0). ")".(($rsl<count($formula)-1||$rmc<count($rmCode)-1)?',':'')." ";
+							}
+						}
+						$output		.=	@getMySQLData($sql, "xml", "rmAddMysql");
+						if(is_array($vendor_grp_email) && count($vendor_grp_email) > 0)
+						{
+							$thefile = sys_get_temp_dir().'/'.$codeNo.".csv";						
+							file_put_contents($thefile, $csvOutput);
+							sendEmail($cpd_grp_email,$vendor_grp_email,"New Compound Added: ".$cpdName,"please update your Compound Formula as per the attachment",$thefile);
+						}						
+					}					
+					
+					// Add Parameters
+					$param		=	$_REQUEST['param'];
+					if(is_array($param) && count($param) > 0){
+						$sql	=	"insert into tbl_compound_qan_param(cpdId, cpdQanParamRef, 
+																		cpdQanSpec, cpdQanULimit, cpdQanLLimit, cpdSamPlan) values";
+						for($prm=0; $prm<count($param); $prm++){
+							$sql	.=	"('$codeNo', '".$param[$prm]['pname']."', 
+											'".$param[$prm]['pspec']."', '".$param[$prm]['pul']."', '".$param[$prm]['pll']."', '".$param[$prm]['psp']."')".
+											(($prm<count($param)-1)?',':'')." ";
+						}
+						$output		.=	@getMySQLData($sql, "xml", "paramAddMysql");
+					}
+					
+					// Add Customer Spec References
+					$spec		=	$_REQUEST['spec'];
+					if(is_array($spec) && count($spec) > 0){
+						$sql	=	"insert into tbl_compound_cust_spec(cpdId, cpdSpecRef, 
+																		cpdCust, remarks) values";
+						for($prm=0; $prm<count($spec); $prm++){
+							$sql	.=	"('$codeNo', '".$spec[$prm]['ref']."', 
+											'".$spec[$prm]['cust']."', '".$spec[$prm]['remarks']."')".
+											(($prm<count($spec)-1)?',':'')." ";
+						}
+						$output		.=	@getMySQLData($sql, "xml", "specAddMysql");
+					}					
+				}
+				
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					
+					if($status == "success"){
+						@updateSettingsData(array('cpdcode'));
+					}
+				}
+			}
+			else{
+				$output		=	"<mysql><status>Invalid Data</status></mysql>";
+			}
+		break;
+		case "CPDEDIT":			
+			if($_REQUEST['cpdid'] != "" && $_REQUEST['cpdname'] != ""){
+				$cpdId			=	$_REQUEST['cpdid'];
+				$cpdName		=	$_REQUEST['cpdname'];
+				$sql			=	"update tbl_compound set
+										cpdName='$cpdName', isBlend='".$_REQUEST['isblend']."', cpdUOM='".$_REQUEST['cpdunits']."', isColorCpd='".$_REQUEST['iscolorcpd']."',
+										cpdPolymer='".$_REQUEST['cpdpolymer']."', HSNCode='".$_REQUEST['hsncode']."',
+										cpdMinStock='".$_REQUEST['cpdminstock']."', shelfLife='".$_REQUEST['shelflife']."',
+										rackNo='".$_REQUEST['rackno']."', stdPckQty='".$_REQUEST['stdpckqty']."',
+										shrinkage='".$_REQUEST['shrinkage']."', mastTime='".$_REQUEST['mastTime']."',
+										mastTimeMin='".$_REQUEST['mastTimeMin']."', mastTimeMax='".$_REQUEST['mastTimeMax']."',
+										mastTemp='".$_REQUEST['mastTemp']."', mastTempMin='".$_REQUEST['mastTempMin']."',
+										mastTempMax='".$_REQUEST['mastTempMax']."', mastPres='".$_REQUEST['mastPres']."',
+										mastPresMin='".$_REQUEST['mastPresMin']."', mastPresMax='".$_REQUEST['mastPresMax']."',
+										blendTime='".$_REQUEST['blendTime']."', blendTimeMin='".$_REQUEST['blendTimeMin']."',
+										blendTimeMax='".$_REQUEST['blendTimeMax']."', blendTemp='".$_REQUEST['blendTemp']."',
+										blendTempMin='".$_REQUEST['blendTempMin']."', blendTempMax='".$_REQUEST['blendTempMax']."',
+										blendPres='".$_REQUEST['blendPres']."', blendPresMin='".$_REQUEST['blendPresMin']."',
+										blendPresMax='".$_REQUEST['blendPresMax']."', batCountFullTest='".$_REQUEST['fulltestcount']."',
+										cblendTime='".$_REQUEST['cblendTime']."', cblendTimeMin='".$_REQUEST['cblendTimeMin']."',
+										cblendTimeMax='".$_REQUEST['cblendTimeMax']."', cblendTemp='".$_REQUEST['cblendTemp']."',
+										cblendTempMin='".$_REQUEST['cblendTempMin']."', cblendTempMax='".$_REQUEST['cblendTempMax']."',
+										cblendPres='".$_REQUEST['cblendPres']."', cblendPresMin='".$_REQUEST['cblendPresMin']."',
+										cblendPresMax='".$_REQUEST['cblendPresMax']."', kneadTime='".$_REQUEST['kneadTime']."',										
+										kneadTimeMin='".$_REQUEST['kneadTimeMin']."', kneadTimeMax='".$_REQUEST['kneadTimeMax']."',
+										kneadTemp='".$_REQUEST['kneadTemp']."', kneadTempMin='".$_REQUEST['kneadTempMin']."',
+										kneadTempMax='".$_REQUEST['kneadTempMax']."', kneadPres='".$_REQUEST['kneadPres']."',
+										kneadPresMin='".$_REQUEST['kneadPresMin']."', kneadPresMax='".$_REQUEST['kneadPresMax']."',
+										millRollTime='".$_REQUEST['millRollTime']."', millRollTimeMin='".$_REQUEST['millRollTimeMin']."',
+										millRollTimeMax='".$_REQUEST['millRollTimeMax']."', millRollTemp='".$_REQUEST['millRollTemp']."',
+										millRollTempMin='".$_REQUEST['millRollTempMin']."', millRollTempMax='".$_REQUEST['millRollTempMax']."',
+										mixFinalTime='".$_REQUEST['mixFinalTime']."', mixFinalTimeMin='".$_REQUEST['mixFinalTimeMin']."',
+										mixFinalTimeMax='".$_REQUEST['mixFinalTimeMax']."', mixFinalTemp='".$_REQUEST['mixFinalTemp']."',
+										mixFinalTempMin='".$_REQUEST['mixFinalTempMin']."', mixFinalTempMax='".$_REQUEST['mixFinalTempMax']."',
+										mixSheetTime='".$_REQUEST['mixSheetTime']."', mixSheetTimeMin='".$_REQUEST['mixSheetTimeMin']."',
+										mixSheetTimeMax='".$_REQUEST['mixSheetTimeMax']."', mixSheetTemp='".$_REQUEST['mixSheetTemp']."',
+										mixSheetTempMin='".$_REQUEST['mixSheetTempMin']."', mixSheetTempMax='".$_REQUEST['mixSheetTempMax']."',
+										update_on=now(), update_by='".$_SESSION['userdetails']['userId']."',
+										remarks='".$_REQUEST['cusremarks']."'
+										where cpdId='$cpdId' and status>0;";
+				$output			=	@getMySQLData($sql, "xml");
+				
+				// Add Raw Material
+				$csvOutput = "Name, Grade(s), Parts, Is Final-Chemical? \n";
+				$formula	=	$_REQUEST['formula'];
+				if(is_array($formula) && count($formula) > 0){
+					$sqlAdd	=	"";
+					$insSql	=	"insert into tbl_compound_rm(cpdId, ramId, ramParts, item_no,is_final_chemical) values";
+					for($rsl=0; $rsl<count($formula); $rsl++){
+						$rmCode		=	$formula[$rsl]['cpdrmcode'];
+						$rmFChems	=	$formula[$rsl]['cpdisfinal'];						
+						$rmParts	=	$formula[$rsl]['cpdrmper'];
+						$ramNamData	=	@getMySQLData("select ramName,group_concat(ramGrade separator '~') as ramGrade from tbl_rawmaterial where ramId in ('".implode("','",$rmCode)."') group by ramName");
+						$csvOutput	.=	$ramNamData['data'][0]['ramName'].",".$ramNamData['data'][0]['ramGrade'].",".$rmParts.",".(($rmFChems=='true')?1:0). "\n";						
+						for($rmc=0; $rmc<count($rmCode); $rmc++){
+							$sqlAdd	.=	"('$cpdId', '".$rmCode[$rmc]."', '".$rmParts."', ".($rsl+1)."," .(($rmFChems=='true')?1:0). ")".(($rsl<count($formula)-1||$rmc<count($rmCode)-1)?',':'')." ";
+						}
+					}	
+					
+					if($sqlAdd != "")
+					{
+						// Delete All Raw Materials
+						$sql		=	"delete from tbl_compound_rm where cpdId='$cpdId'";
+						$output		.=	@getMySQLData($sql, "xml", "delRM");					
+					
+						$output		.=	@getMySQLData($insSql.$sqlAdd, "xml", "rmAddMysql");
+						if(is_array($vendor_grp_email) && count($vendor_grp_email) > 0)
+						{
+							$thefile = sys_get_temp_dir().'/'.$cpdId.".csv";						
+							file_put_contents($thefile, $csvOutput);
+							sendEmail($cpd_grp_email,$vendor_grp_email,"Compound Changed: ".$cpdName,"please update your Compound Formula as per the attachment",$thefile);
+						}
+					}
+				}
+				
+				// Delete All Parameters
+				$sql		=	"delete from tbl_compound_qan_param where cpdId='$cpdId'";
+				$output		.=	@getMySQLData($sql, "xml", "delParam");
+
+				// Add Parameters
+				$param		=	$_REQUEST['param'];
+				if(is_array($param) && count($param) > 0){
+					$sql	=	"insert into tbl_compound_qan_param(cpdId, cpdQanParamRef, 
+																	cpdQanSpec, cpdQanULimit, cpdQanLLimit, cpdSamPlan) values";
+					for($prm=0; $prm<count($param); $prm++){
+						$sql	.=	"('$cpdId', '".$param[$prm]['pname']."', 
+										'".$param[$prm]['pspec']."', '".$param[$prm]['pul']."', '".$param[$prm]['pll']."', '".$param[$prm]['psp']."')".
+										(($prm<count($param)-1)?',':'')." ";
+					}
+					$output		.=	@getMySQLData($sql, "xml", "paramAddMysql");
+				}
+			
+				// Delete All Customer Compound Spec
+				$sql		=	"delete from tbl_compound_cust_spec where cpdId='$cpdId'";
+				$output		.=	@getMySQLData($sql, "xml", "delSpec");
+
+				// Add All Customer Compound Spec
+					$spec		=	$_REQUEST['spec'];
+					if(is_array($spec) && count($spec) > 0){
+						$sql	=	"insert into tbl_compound_cust_spec(cpdId, cpdSpecRef, 
+																		cpdCust, remarks) values";
+						for($prm=0; $prm<count($spec); $prm++){
+							$sql	.=	"('$cpdId', '".$spec[$prm]['ref']."', 
+											'".$spec[$prm]['cust']."', '".$spec[$prm]['remarks']."')".
+											(($prm<count($spec)-1)?',':'')." ";
+						}
+						$output		.=	@getMySQLData($sql, "xml", "specAddMysql");
+					}					
+			}
+		break;
+		case "CPDDEL":
+			if($_REQUEST['cpdid'] != ""){
+				$output		=	@getMySQLData("update tbl_compound set status='0' where cpdId='".$_REQUEST['cpdid']."' and status>0;", "xml");
+			}
+		break;
+		case "CPDPARAMLIST":
+			if($_REQUEST['rmid'] != ""){
+				$output		=	@getMySQLData("SELECT cpdQanParamRef, paramStdRef, uom_short_name, paramTestMethod, cpdQanSpec, cpdQanLLimit, cpdQanULimit, cpdSamPlan
+												FROM tbl_compound_qan_param t1
+												LEFT OUTER JOIN tbl_param t3 ON t3.sno = t1.cpdQanParamRef
+												LEFT OUTER JOIN tbl_uom t4 ON t4.sno = t3.paramUOM
+												WHERE t1.cpdId = '".$_REQUEST['rmid']."' and t3.status > 0", "xml", "xmldata");
+				echo $output;
+			}
+			exit();
+		break;
+		case "CPDSPECLIST":
+			if($_REQUEST['rmid'] != ""){
+				$output		=	@getMySQLData("SELECT cpdSpecRef, cpdCust, remarks	FROM tbl_compound_cust_spec	WHERE cpdId = '".$_REQUEST['rmid']."' ", "xml", "xmldata");
+				echo $output;
+			}
+			exit();
+		break;		
+	}
+	
+	// List Data
+	$list	=	@getMySQLData("SELECT *, t1.cpdId, t1.cpdName, t1.cpdPolymer,
+									t1.shrinkage, t1.cpdMinStock, t1.entry_by, DATE_FORMAT(t1.entry_on, '%d/%m/%Y') as entry_on
+								FROM tbl_compound t1
+								inner join tbl_uom t2 on t1.cpdUOM = t2.sno
+								where t1.status>0 order by t1.cpdId desc;",'xml','root', 'lower');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

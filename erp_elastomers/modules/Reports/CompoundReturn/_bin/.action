@@ -1,0 +1,70 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	
+	switch($_POST["selecttype"]){
+		case "GETVAL":
+			$todate		=	$_POST["todate"];
+			$fromdate	=	$_POST["fromdate"];
+			$cpdid		= 	$_POST["cpdid"];
+			$cmpdid		= 	$_POST["cmpdid"];
+			$showdiff	=	$_POST["showdiff"];
+			$step		=	$_POST["step"];			
+			switch($step)
+			{
+				case "1":
+					$sql_invoice	=	"select substring(tmp.operator,1,12) as operator, cmpdName as dispname, substring(cmpdrefno,1,12) as description, sum( (plannedLifts * no_of_active_cavities * cmpdBlankWgt)/1000) as totalcpdplan, sum(plannedLifts) as plannedLifts, sum(actualLifts) as actualLifts, sum(cpdQtyUsed) as cpdQtyUsed,  tmp.cmpdId, cpdId, cpdName,cmpdName, '1' as step
+									from  tbl_moulding_plan tmp 
+									inner join tbl_moulding_receive tmr on tmp.planid = tmr.planRef 
+									inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planid
+									inner join tbl_compound tc on timp.cmpdCpdId = tc.cpdId
+								where tmp.planDate >= '$fromdate' and tmp.planDate <= '$todate' and ((tmp.status > 2 )or (tmp.status = 0 and mdIssRef is NOT NULL)) ";
+					$sql_invoice .=  ($cpdid != 'ALL')?	" and timp.cmpdCpdId = '".$cpdid."' ":"";
+					if($showdiff == 1)
+						$sql_invoice	.=	" and plannedLifts > actualLifts ";				
+					$sql_invoice	.=	" group by tmp.cmpdId order by cmpdName,tmp.operator";					
+				break;
+				case "2":
+					$sql_invoice	=	"select substring(tmp.operator,1,12) as operator, concat(left(modRecRef,LOCATE('_', modRecRef) - 1),right( modRecRef,2 )) as dispname, cmpdName as description, (plannedLifts * no_of_active_cavities * cmpdBlankWgt)/1000 as totalcpdplan, plannedLifts, actualLifts, cpdQtyUsed,  cpdName, cpdId, tmp.cmpdId,cmpdName, '2' as step
+									from  tbl_moulding_plan tmp 
+									inner join tbl_moulding_receive tmr on tmp.planid = tmr.planRef 
+									inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planid 
+									inner join tbl_compound tc on timp.cmpdCpdId = tc.cpdId
+								where tmp.planDate >= '$fromdate' and tmp.planDate <= '$todate' and ((tmp.status > 2 )or (tmp.status = 0 and mdIssRef is NOT NULL)) ";
+					$sql_invoice .=  ($cmpdid != 'ALL')?" and tmp.cmpdId = '".$cmpdid."' ": (($cpdid != 'ALL')? " and timp.cmpdCpdId = '".$cpdid."' " : "");
+					if($showdiff == 1)
+						$sql_invoice	.=	" and plannedLifts > actualLifts ";				
+					$sql_invoice .= 	" order by cmpdName,modRecRef,tmp.operator";					
+				break;
+			}			
+								
+			//echo $sql_invoice; exit();		
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";			
+		break;
+		case "GETTOP":
+			$todate		=	$_POST["todate"];
+			$fromdate	=	$_POST["fromdate"];
+			$showdiff	=	$_POST["showdiff"];
+
+			$sql_invoice	=	"select tc.cpdId, cpdName,cpdPolymer, sum((quantity * cmpdBlankWgt)/1000) as totalcpdplan, sum(plannedLifts) as plannedLifts,sum(actualLifts) as actualLifts,sum(cpdQtyUsed) as cpdQtyUsed, ifnull(recvQty,0) as cpdReturned
+									from  tbl_moulding_plan tmp
+									inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planid
+									inner join (select planRef,sum(plannedLifts) as plannedLifts,sum(actualLifts) as actualLifts,sum(cpdQtyUsed) as cpdQtyUsed from tbl_moulding_receive group by planRef ) tmr on timp.planid = tmr.planRef 
+									inner join tbl_compound tc on timp.cmpdCpdId = tc.cpdId
+									inner join tbl_polymer_order tpo on tc.cpdPolymer = tpo.polyName
+									left join (select cpdId, sum(recvqty) as recvQty from tbl_component_cpd_recv where invDate >= '$fromdate' and invDate <= '$todate' and invid = 'CPDRETURN' group by cpdid)tccr on timp.cmpdCpdId = tccr.cpdId 
+								where tmp.planDate >= '$fromdate' and tmp.planDate <= '$todate' and ((tmp.status > 2 ) or (tmp.status = 0 and mdIssRef is NOT NULL))";
+			if($showdiff == 1)
+				$sql_invoice	.=	" and ((plannedLifts > actualLifts) or (recvQty > 0))";
+			$sql_invoice	.=	" group by tc.cpdId order by tpo.dispOrder,tc.cpdName";
+			//echo $sql_invoice; exit();
+			
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";
+	}
+	
+
+?>

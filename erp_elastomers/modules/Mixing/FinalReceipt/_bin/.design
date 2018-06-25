@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+        <table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr>
+					<th width="15%" align="left">Base Polymer</th>
+					<th width="15%" align="left">Compound Name</th>                
+					<th width="15%" align="center">Master Wgt.</th>
+					<th width="15%" align="center">Expected Batch Wgt.</th>
+					<th width="10%" align="left">Batch Code</th>
+					<th width="15%" align="center">Actual Batch Wgt.</th>
+					<th align="center">#</th>
+				</tr>	
+			</thead>
+			<tbody>
+			<xsl:for-each select="xmldata/root/data/row">
+				<tr>
+					<xsl:attribute name="id"><xsl:value-of select="batid" /></xsl:attribute>
+					<xsl:attribute name="cpdid"><xsl:value-of select="cpdid" /></xsl:attribute>
+					<xsl:attribute name="planqty"><xsl:value-of select="planqty"/></xsl:attribute>
+					<td><xsl:value-of select="cpdpolymer"/></td>	
+					<td><xsl:value-of select="cpdname"/></td>
+					<td align="right"><xsl:value-of select="format-number(masterbatchwgt, '##,##,##0.000')"/></td>
+					<td align="right"><xsl:value-of select="format-number(planqty, '##,##,##0.000')"/></td>
+					<td align="center"><xsl:value-of select="dispbatid"/></td>
+					<td>
+						<input>
+							<xsl:attribute name="id">input_<xsl:value-of select="batid" /></xsl:attribute>
+							<xsl:attribute name="type">text</xsl:attribute>
+							<xsl:attribute name="value">0</xsl:attribute>
+							<xsl:attribute name="style">text-align:right;width:90%</xsl:attribute>
+							<xsl:attribute name="onkeyup">calculateTotbatches()</xsl:attribute>
+						</input>			
+					</td>
+					<td align="right">
+						 <span>
+							<xsl:attribute name="batid"><xsl:value-of select="batid" /></xsl:attribute>
+							<xsl:attribute name="planqty"><xsl:value-of select="planqty" /></xsl:attribute>
+							<xsl:attribute name="class">add_button link</xsl:attribute>
+							Add
+						</span>
+						&#160;&#160;
+						<span>
+							<xsl:attribute name="batid"><xsl:value-of select="batid" /></xsl:attribute>
+							<xsl:attribute name="class">delete_button link</xsl:attribute>
+							Delete
+						</span>			
+					</td>
+				</tr>
+			</xsl:for-each>
+			</tbody>
+		</table>
+	</xsl:template>
+</xsl:stylesheet>

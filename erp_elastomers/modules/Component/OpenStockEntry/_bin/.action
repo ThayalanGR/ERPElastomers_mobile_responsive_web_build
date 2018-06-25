@@ -1,0 +1,275 @@
+<?php
+	session_start();
+	global $openstock_upload_dir;
+
+	//header('Content-Type: text/xml');
+	if ( isset($_FILES['file'])) {
+		$baseItemQuery[1] 	= 	"select ramId as itemId from tbl_rawmaterial where upper(concat(ramName, ' - ', ramGrade))";
+		$baseItemQuery[2] 	= 	"select cpdId as itemId from tbl_compound where upper(cpdName)";
+		$baseItemQuery[3] 	= 	"select cmpdId as itemId from tbl_component where upper(cmpdName)";
+		$uploadPath 		= 	$_SESSION['app']['iso_dir'].$openstock_upload_dir;
+		$ticket 			= 	uniqid(rand(), true);
+		$storagename 		= 	$ticket."uploaded_file.csv";
+		try {
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			 }
+
+			 // You should also check filesize here. 
+			 if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			 }
+
+			 if( 'text/csv' == $_FILES['file']['type'] ||  'application/vnd.ms-excel' == $_FILES['file']['type'] ) 
+			 {
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					throw new RuntimeException( $_FILES['file']["name"] . " already exists. ");
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath . $storagename))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+					$itemArray 		= 	array();
+					$delimiter 		= 	",";
+					if (($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+					{
+						while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE)
+						{
+							$itemArray[] = $row ; 
+						}
+						fclose($handle);
+					}
+					$itemType		= 	$_POST['uploadtype'];
+					$recvFrom		=	$_POST['recvfrom'];
+					$itemName		= 	"";
+					$uplFillArr		=	array();
+					for($i=0;$i<count($itemArray);$i++)
+					{
+						$itemName 		= 	$itemArray[$i][0];
+						$itemDetails	=  	@getMySQLData($baseItemQuery[$itemType]." = upper('".$itemName."')" );
+						$itemId			=	$itemDetails['data'][0]['itemId'];
+						if($itemId != null && $itemId != "")
+						{
+							$openQty	=	str2num($itemArray[$i][1]);
+							if($openQty > 0)
+							{
+								$uplFillArr[$i]['itemId']		=	$itemId;
+								$uplFillArr[$i]['openQty']		=	$openQty;
+							}
+						}
+						else
+						{
+							throw new RuntimeException('No Part Number such as : ' .$itemName. ' in row number : '. ($i+1));
+						}							
+					}
+					if(count($uplFillArr) > 0)
+					{
+						$sql_query	=	setOpeningStock($uplFillArr, $itemType,$recvFrom);
+						//echo '<pre>'; print_r($sql_query); echo '</pre>'; exit();
+						$output = "<uploadopenstock>
+										<status>".$sql_query['status']."</status>
+									</uploadopenstock>";
+						if($sql_query['status'] == "success"){
+							if(!rename($uploadPath . $storagename, $uploadPath.$_FILES['file']["name"]))
+							{
+								throw new RuntimeException('Warning! Failed to rename the file: '.$uploadPath . $storagename.' to :'.$uploadPath.$_FILES['file']["name"]);
+							}							
+						}
+						else{
+							throw new RuntimeException('Insertion of schedule data failed due to :'.$sql_query['status']);						
+						}						
+						
+						echo $output;	
+					}
+					else
+					{	
+						throw new RuntimeException("No Records to upload!");									
+					}						
+				}	
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			if(($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+			{	
+				fclose($handle);
+				$thefile = $uploadPath . $storagename;
+				unlink($thefile);
+			}				
+			echo "<uploadopenstock><status>".$e->getMessage()."</status></uploadopenstock>";
+		}      
+    } 
+	else if($_POST["type"] == 'export')
+	{	
+		$itemType	=	$_POST["itemOpt"];
+		$ticket 	= 	uniqid(rand(), true);
+		// filename for download
+		$filename = $ticket."_list.csv";
+		header("Content-Disposition: attachment; filename=\"$filename\"");
+		header("Content-Type: application/vnd.ms-excel");	
+		$output 		=	"";
+		$sql			=	"";
+		if($itemType == "Purchase")
+			$sql			=	"select concat(ramName, ' - ', ramGrade) as itemName from tbl_rawmaterial where status > 0 order by ramclass,ramName";
+		else if($itemType == "Mixing")
+			$sql			=	"select cpdName as itemName from tbl_compound where status > 0 order by cpdName";
+		else if($itemType == "Moulding")
+			$sql			=	"select cmpdName as itemName from tbl_component where status > 0 order by cmpdName";
+	    $outSql 		=	@getMySQLData($sql);
+	    $cpdNames       =   $outSql['data'];
+		
+		// Get Records from the table
+		foreach($cpdNames as $keys=>$values){
+		    foreach($values as $key=>$value){
+			    $output .='"'.$value.'",';
+		    }
+		    $output .="\n";
+	    }		
+		
+		echo $output;
+		exit();
+	}
+
+	
+	function setOpeningStock($itemArr, $itemType,$recFrom){	
+		global $cpdMonthCode,$cmpdMonthCode;
+		$userId		=	$_SESSION['userdetails']['userId'];
+		$updateSQL	=	null;
+		if($itemType == 1){			
+			$codeArray		=	@getSettingsData("grncode");
+			$qanCodeArray	=	@getSettingsData("qancode");
+			$sql_items		=	"insert into tbl_invoice_grn(grnId, grnDate, invPoRef, invNo, invIssuer, invSupName, invSupDetail, invHSNCode, invRamId, invRamName, invGrade, invUom,invPOQty,invRecvQty,invRAMRate,invTotal,invGrandTotal, invTestCert, invExpiryDate, is_open_stock, avlQty, emailSent, entry_on, entry_by) values ";
+			$sql_qan		=	"insert into tbl_rawmaterial_qan(qanId, grnId, ramId, ramQanParamRef, ramQanValue, ramStatus, qanDate, ramQanRemarks,ramApproveStatus,ramStoreDate, entry_on, entry_by,update_on,update_by) values ";	
+			for($i=0;$i<count($itemArr);$i++)
+			{
+				$ramId			=	$itemArr[$i]['itemId'];
+				$openQty		=	$itemArr[$i]['openQty'];
+				$nextGRN		=	$codeArray[1]+$i;		
+				$codeNo			=	@getRegisterNo($codeArray[0], $nextGRN);
+				$nextQAN		=	$qanCodeArray[1]+$i;
+				$qanCodeNo		=	@getRegisterNo($qanCodeArray[0], $nextQAN);				
+				$ramDetSQL		=	"select  tr.ramName, tr.ramGrade, tr.ramHSNCode, tu.uom_short_name
+												from tbl_rawmaterial tr
+													inner join tbl_uom tu on tu.sno=tr.ramUnit
+												where tr.ramId='$ramId'";
+				$invData		=	@getMySQLData($ramDetSQL);
+				$invData		=	$invData['data'][0];
+				$sql_items_sub	.=	"('$codeNo', now(), 'NA', 'Open Stock', '$recFrom',  'NA (Open Stock)', 'NA (Open Stock)', '".$invData['ramHSNCode']."','$ramId', '".$invData['ramName']."', '".$invData['ramGrade']."', '".$invData['uom_short_name']."','$openQty', '$openQty', '1', '$openQty', '$openQty','N.A.',DATE_ADD(NOW(), INTERVAL 1 YEAR), 1, '$openQty', 1, now(), '$userId')";
+				$sql_qan_sub 	.=	"('$qanCodeNo', '$codeNo', '$ramId', '0', '0', '1', now(), 'Opening Stock','1', now(),now(), '$userId', now(), '$userId')";
+				if($i < count($itemArr)-1){
+					$sql_items_sub	.=	" , ";	
+					$sql_qan_sub	.=	" , ";
+				}					
+			}
+			if($sql_items_sub != "")
+			{
+				$updateSQL		=	@getMySQLData($sql_items.$sql_items_sub);
+				if($updateSQL['status'] == "success"){
+					@getMySQLData($sql_qan.$sql_qan_sub);
+					@getMySQLData("update tbl_settings set auto_inc='".($nextGRN+1)."' where name='grncode'");
+					@getMySQLData("update tbl_settings set auto_inc='".($nextQAN+1)."' where name='qancode'");
+				}
+			}
+		}
+		else if($itemType == 2){
+			$mixDate			=	date('Y-m-d');
+			$mixSQL				=	"insert into tbl_mixing(batId, cpdId, batDate, batPlanWgt, status, avlQty, is_open_stock, is_mill_batch, batFinaldate, customer, entry_on, entry_by) values";
+			$mixRecvSQL			=	"insert into tbl_mixing_recv(batId, mixRecvDate, batRecvWgt, status, entry_on, entry_by) values";
+			// Generate Code No
+			list($y, $m, $d) 	= 	explode('-', $mixDate);
+			$loc_sql			=	@getMySQLData("select value from tbl_settings where name='mixLocCode'");
+			$locCode			=	$loc_sql['data'][0]['value'];				
+			$partBatId			=	$cpdMonthCode[$m+0].$d.$locCode;
+			$financialYear		= 	$y;
+			if ( $m < 4)
+			{
+				$financialYear		= 	$y - 1;
+			}
+			$financialYear		=	(string) $financialYear;
+			$lastBatId_sql		=	@getMySQLData("SELECT count(*) as lastbatId FROM tbl_mixing WHERE DATE_FORMAT(batdate,'%m-%Y')  = '$m-$y'");
+			$codeNumber 		= 	100;
+			if($lastBatId_sql['count'] > 0)
+			{
+				$codeNumber		=	$codeNumber + $lastBatId_sql['data'][0]['lastbatId'];	
+			}																	
+			$codeNumber++;
+			for($cpdCount=0;$cpdCount < count($itemArr);$cpdCount++){
+				$mixCpdId		=	$itemArr[$cpdCount]['itemId']; 
+				$mixBatWgt		=	$itemArr[$cpdCount]['openQty'];
+				$codeNo			=	substr($financialYear,-2)."_".$partBatId . $codeNumber;
+				$mixSQL			.=	"('$codeNo', '$mixCpdId', '$mixDate', '$mixBatWgt', 4,'$mixBatWgt', 1, 1, '$mixDate', '$recFrom', now(), '$userId')".(($cpdCount == count($itemArr) - 1)?";":",");
+				$mixRecvSQL		.=	"('$codeNo', '$mixDate', '$mixBatWgt',2, now(), '$userId')".(($cpdCount == count($itemArr) - 1)?";":",");
+				$codeNumber++;
+			}			
+			$updateSQL			=	@getMySQLData($mixSQL);			
+			if($updateSQL['status'] == "success"){
+				@getMySQLData($mixRecvSQL);
+			}		
+		}
+		else if($itemType == 3){
+			$codeArray		=	@getSettingsData("mouldqal");
+			$qSql			=   " insert into tbl_moulding_quality(inspector, receiptqty, appqty, qualityref, qualitydate, planref, cmpdId, is_open_stock, entry_on, entry_by) values ";
+			$pSql			=   " insert into tbl_mould_store( planref, cmpdId, avlQty,dimComplete) values ";
+			// Generate Code No
+			$prodDate			=	date('Y-m-d');
+			list($y, $m, $d) 	= 	explode('-', $prodDate);				
+			$partPlanId			=	$cmpdMonthCode[$m+0]. "O0";
+			$financialYear		= 	$y;
+			if ( $m < 4)
+			{
+				$financialYear	= 	$y - 1;
+			}
+			$financialYear		=	(string) $financialYear;
+			$lastPlanId_sql		=	@getMySQLData("SELECT count(*) as lastPlanId FROM tbl_moulding_quality WHERE is_open_stock = 1 AND DATE_FORMAT(qualitydate,'%m-%Y')  = '$m-$y'");
+			$codeNumber 		= 	0;
+			if($lastPlanId_sql['count'] >0)
+			{
+				$codeNumber		=	$lastPlanId_sql['data'][0]['lastPlanId'];	
+			}			
+			for($cmpdCount=0;$cmpdCount < count($itemArr);$cmpdCount++){
+				$cmpdid		=	$itemArr[$cmpdCount]['itemId']; 
+				$openQty	=	$itemArr[$cmpdCount]['openQty'];
+				$nextQAN	=	$codeArray[1]+$cmpdCount;
+				$codeNo		=	@getRegisterNo($codeArray[0], $nextQAN);
+				$codeNumber++;
+				if($codeNumber < 10){
+					$codeNumber	=	"0".$codeNumber;
+				}
+				$planId		=	$partPlanId . $codeNumber."_".substr($financialYear,-2)."-x";
+				$qSql		.=	" ( 'N.A.', '$openQty', '$openQty', '$codeNo', '$prodDate' , '$planId', '$cmpdid', 1, now(), '$userId' ) ";
+				$pSql		.=	" ('$planId','$cmpdid','$openQty',1)";
+				if($cmpdCount < count($itemArr)-1){
+					$qSql	.=	" , ";
+					$pSql	.=	" , ";
+				}
+			}
+			
+			$updateSQL	=	@getMySQLData($qSql);
+			
+			if($updateSQL['status'] == 'success'){
+				@getMySQLData($pSql);
+				//update settings
+				@getMySQLData("update tbl_settings set auto_inc='".($nextQAN+1)."' where name='mouldqal'");
+			}
+		
+		}
+		return $updateSQL;
+	}	
+
+	
+?>

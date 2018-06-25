@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+   <xsl:template match="/"> 
+		<table id="resultTable" class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="10%">Req. ID</th>
+					<th width="15%">Part Number</th> 
+					<th width="15%">Customer</th>
+					<th width="6%">Enquiry Date</th>
+					<th width="4%">New?</th>
+					<th width="10%">Last Com. Act.</th>
+					<th width="6%">Act. Date</th> 					
+					<th width="10%">Last Tool. Act.</th>
+					<th width="6%">Act. Date</th>
+					<th>Remarks</th>
+				</tr>
+			</thead>
+			<tbody>
+            <xsl:for-each select="xmldata/root/data/row">
+				<tr>
+					<xsl:choose>					
+						<xsl:when test="commstatus &gt;= 4 and devcompleted = 1 and isproto = 0">
+							<xsl:attribute name="style">font-size:10px;color:#008000</xsl:attribute>
+						</xsl:when>
+						<xsl:otherwise>
+							<xsl:attribute name="style">font-size:10px;</xsl:attribute>
+						</xsl:otherwise>
+					</xsl:choose>				
+					<td>
+						<xsl:value-of select="drid"/>
+					</td>					
+					<td>
+						<xsl:value-of select="part_number"/> (<xsl:value-of select='part_description' />)
+					</td>					  
+					<td>
+						<xsl:value-of select='cusname' />
+					</td>
+					<td align="center">
+						<xsl:value-of select='enquirydate' />
+					</td>
+					<td align="center">
+						<xsl:if test="isnew != 0">
+							Yes
+						</xsl:if>
+						<xsl:if test="isnew != 1">
+							No
+						</xsl:if>						
+					</td>
+					<td align="center">
+						<xsl:if test="commstatus = 0">
+							Abandoned
+						</xsl:if>
+						<xsl:if test="commstatus = 1">
+							RFQ Created
+						</xsl:if>
+						<xsl:if test="commstatus = 2">
+							Feas. Checked
+						</xsl:if>
+						<xsl:if test="commstatus = 3">
+							Quote Submitted
+						</xsl:if>
+						<xsl:if test="commstatus &gt;= 4 ">
+							Completed
+						</xsl:if>						
+					</td>
+					<td align="center">
+						<xsl:if test="commstatus = 0">
+							<xsl:value-of select='approvaldate' />
+						</xsl:if>
+						<xsl:if test="commstatus = 1">
+							<xsl:value-of select='enquirydate' />
+						</xsl:if>
+						<xsl:if test="commstatus = 2">
+							<xsl:value-of select='feasdate' />
+						</xsl:if>
+						<xsl:if test="commstatus = 3">
+							<xsl:value-of select='quotesubdate' />
+						</xsl:if>
+						<xsl:if test="commstatus &gt;= 4">
+							<xsl:value-of select='approvaldate' />
+						</xsl:if>						
+					</td>
+					<td align="center">
+						<xsl:choose>					
+							<xsl:when test="commstatus = 0">
+								Abandoned
+							</xsl:when>	
+							<xsl:when test="isproto = 1">
+								<xsl:if test="toolordered = 1">
+									Proto Tool Ordered
+								</xsl:if>
+								<xsl:if test="toolreceived = 1">
+									Proto Tool Received
+								</xsl:if>
+								<xsl:if test="sampleplanned = 1">
+									Proto Sample Planned
+								</xsl:if>
+								<xsl:if test="samplereceived = 1">
+									Proto Sample Receipt
+								</xsl:if>	
+								<xsl:if test="submitforapp = 1">
+									Proto Submit for Approval
+								</xsl:if>
+								<xsl:if test="devcompleted = 1">
+									Proto Completed
+								</xsl:if>
+							</xsl:when>							
+							<xsl:otherwise>
+								<xsl:if test="notstarted = 1">
+									Not Started
+								</xsl:if>
+								<xsl:if test="toolordered = 1">
+									Tool Ordered
+								</xsl:if>
+								<xsl:if test="toolreceived = 1">
+									Tool Received
+								</xsl:if>
+								<xsl:if test="sampleplanned = 1">
+									Sample Planned
+								</xsl:if>
+								<xsl:if test="samplereceived = 1">
+									Sample Receipt
+								</xsl:if>	
+								<xsl:if test="submitforapp = 1">
+									Submit for Approval
+								</xsl:if>
+								<xsl:if test="devcompleted = 1">
+									Completed
+								</xsl:if>
+							</xsl:otherwise>
+						</xsl:choose>								
+					</td>
+					<td align="center">
+						<xsl:choose>					
+							<xsl:when test="commstatus = 0">
+								<xsl:value-of select='approvaldate' />
+							</xsl:when>
+							<xsl:otherwise>
+								<xsl:if test="notstarted = 1">
+									N.A.
+								</xsl:if>
+								<xsl:if test="toolordered = 1">
+									<xsl:value-of select='toolpodate' />
+								</xsl:if>
+								<xsl:if test="toolreceived = 1">
+									<xsl:value-of select='trndate' />
+								</xsl:if>
+								<xsl:if test="sampleplanned = 1">
+									<xsl:value-of select='plandate' />
+								</xsl:if>
+								<xsl:if test="samplereceived = 1">
+									<xsl:value-of select='recvdate' />
+								</xsl:if>	
+								<xsl:if test="submitforapp = 1">
+									<xsl:value-of select='subdate' />
+								</xsl:if>
+								<xsl:if test="devcompleted = 1">
+									<xsl:value-of select='tool_appr_date' />
+								</xsl:if>
+							</xsl:otherwise>
+						</xsl:choose>								
+					</td>
+					<td>
+						<xsl:value-of select="remarks"/>
+					</td>				
+				</tr>
+            </xsl:for-each>		
+			</tbody> 
+		</table>
+    </xsl:template>		
+</xsl:stylesheet>
+		

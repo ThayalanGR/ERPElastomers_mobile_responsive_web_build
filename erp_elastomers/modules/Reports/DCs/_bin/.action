@@ -1,0 +1,72 @@
+<?php
+	session_start();
+	global $cpd_grp_email,$cpdMonthCode;
+	header("Content-Type: text/xml");
+	
+	switch($_POST["selecttype"]){
+		case "GETVAL":						
+			$sql_invoice	=	"select tid.status,tid.dcid,tid.dcid as dispdcid,  tc.cusName, tc.cusEmail, tid.entry_by as user, tc.cusGroup, idi.dcDesc, sum(idi.dcqty) as dcqty,  idi.dcname, tid.dctype, '".$_POST["dctype"]."' as invoicetype, DATE_FORMAT(dcDate, '%d-%b-%Y') as dcDate
+									from tbl_invoice_dc tid 
+										inner join tbl_customer tc on trim(tid.dcCusId)=trim(tc.cusId) 
+										inner join tbl_invoice_dc_items idi on tid.dcId=idi.dcId 
+									where tid.dcdate >= '".$_POST["fromdate"]."' and  tid.dcdate  <= '".$_POST["todate"]."' ";
+			if ($_POST["dctype"] != "")
+			{
+				$sql_invoice	.=	" and tid.dctype = '".$_POST["dctype"]."' ";
+			}	
+			$sql_invoice	.=	" group by tid.dcId order by tid.dcId desc";
+			
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>
+				$list
+				$output
+			</xmldata>";
+		break;
+		case "SENDCPDDET":
+			// Fetch Record from Database
+			$output 		= 	"";
+			$sql 			= 	"select tid.dcId,dcDate,tc.cusName,dcName,dcDesc ,dcItemId ,(select batFinalDate from tbl_mixing where batId=idi.dcItemId)as batdate,dcQty
+									from tbl_invoice_dc tid 
+										inner join tbl_customer tc on trim(tid.dcCusId)=trim(tc.cusId) 
+										inner join tbl_invoice_dc_items idi on tid.dcId=idi.dcId 
+									Where dctype = 'cpd' and dcDate >= '".$_POST["fromdate"]."' and  dcDate <= '".$_POST["todate"]."'
+								order by tid.dcId desc";
+			$outSql 		=	@getMySQLData($sql);
+			$invoiceDetails =   $outSql['data'];
+			$output 		.= 	'"DC Id","DC Date","Customer","Compound Name","Base Polymer","Batch ID","Qty"';
+			$output 		.=	"\n";
+			
+			// Get Records from the table
+			foreach($invoiceDetails as $keys=>$values) {
+				foreach($values as $key=>$value) {				
+					if($key == 'dcItemId')
+					{
+						$mixDate			= 	$values['batdate'];
+						$partBatId			=	"";
+						if($mixDate != null && $mixDate != '0000-00-00' && $mixDate != '')
+						{						
+							list($y, $m, $d) 	= 	explode('-', $mixDate);
+							$partBatId			=	"/".$d . $cpdMonthCode[$m+0];
+						}
+						$batId				=	$value;
+						if(strpos($batId,"_")!== false)
+							$batId			=	substr(strrchr($batId, "_"),1);						
+						$output 			.=	'"'.$batId.$partBatId.'",';
+					}
+					else if($key != 'batdate')
+					{
+						$output .='"'.$value.'",';
+					}							
+				}
+				$output .="\n";
+			}
+			
+			$thefile = $_SERVER['DOCUMENT_ROOT']."/export/Compound-detail-from-".$_POST["fromdate"]."-to-".$_POST["todate"].".csv";
+			file_put_contents($thefile, $output);
+			$output = sendEmail($cpd_grp_email,"","Detailed Compound Report","please find the Detailed Compound Report  from ".$_POST["fromdate"]." to ".$_POST["todate"],$thefile);
+			echo $output;
+		break;		
+	}
+
+?>

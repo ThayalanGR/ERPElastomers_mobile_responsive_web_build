@@ -1,0 +1,4 @@
+/* Change to display: block if you wish to show filter and export elements by default */
+div.search {
+	display: none;
+}

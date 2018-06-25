@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+		<xsl:for-each select="xmldata/root/data/row">
+            <div>
+                <xsl:attribute name="class">live_screen_patient_rows</xsl:attribute>
+                <xsl:attribute name="id"><xsl:value-of select="cpdid" /></xsl:attribute>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_9"><xsl:value-of select="cpdId"/></span>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_25"><xsl:value-of select="cpdName"/></span>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_9"><xsl:value-of select='format-number(shrinkage,"##,##,##0.00")'/></span>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_20"><xsl:value-of select="cpdPolymer"/></span>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_9" style="text-align:right">&#160;</span>
+                <span class="live_screen_patient_cols live_screen_patient_colwidth_9" style="text-align:right">&#160;</span>
+				<span class="live_screen_patient_cols live_screen_patient_colwidth_17" style="text-align:right"><xsl:value-of select="format-number(cpdCost,'##,##,##0.00')"/></span>
+            </div>			
+			<div>
+				<xsl:attribute name="id"><xsl:value-of select="cpdId" /></xsl:attribute>
+				<xsl:element name="div">
+					<xsl:attribute name="class">live_screen_patient_cont</xsl:attribute>
+					<xsl:attribute name="id">cont_<xsl:value-of select="cpdId" /></xsl:attribute>
+					Loading...
+				</xsl:element>
+			</div>		
+		</xsl:for-each>
+    </xsl:template>
+</xsl:stylesheet>

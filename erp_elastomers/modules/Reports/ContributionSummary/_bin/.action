@@ -1,0 +1,153 @@
+<?php
+	global $defaultMixCost,$defaultLiftCost,$defaultTrimCost,$defaultInspCost,$blanksGroup;
+	session_start();
+	header("Content-Type: text/xml");
+	$fromDate	=	$_POST["fromdate"];
+	$toDate		=	$_POST["todate"];
+	$getCus		= 	$_POST["cusgrp"];
+	$prodgroup	=	$_POST["prodgroup"];
+	$blankgroup	=	$_POST["blankgroup"];
+	$blankShow	=	"(case blankWgtGroup when '0'  then 'Less Than ".$blanksGroup[0]."gms' ";
+	$blankQuery	=	"(case when cmpdBlankWgt < ".$blanksGroup[0]." then '0' ";
+	for($ct=1;$ct<count($blanksGroup)+1;$ct++)
+	{
+		if($ct<count($blanksGroup)){
+			$blankQuery	.=	" when (cmpdBlankWgt >= ".$blanksGroup[$ct-1]." and cmpdBlankWgt < ".$blanksGroup[$ct].") then '$ct' ";
+			$blankShow	.=	" when '$ct' then '".$blanksGroup[$ct-1]."gms to ".$blanksGroup[$ct]."gms' ";
+		}
+		else
+		{
+			$blankQuery	.=	" else $ct end)";
+			$blankShow	.=	" else 'Greater than ".$blanksGroup[$ct-1]."gms' end)";
+		}
+	}	
+	createTempTable($fromDate, $toDate); 	
+	
+	switch($_POST["selecttype"]){
+		case "GETVAL":
+			$compname	= 	$_POST["compname"];
+			$step		=	$_POST["step"];
+			switch($step)
+			{
+				case "1":
+					$sql_invoice	=	"select '$getCus' as cusgroup, '$prodgroup' as prodgroup, '$blankgroup' as blankgroup, timp.cmpdName as compname,'2' as step, timp.cmpdName as dispname, sum(tici.invAmt) as salesval,
+										sum(tici.invQty * timp.cmpdBlankWgt/1000) as cpdused, sum(((tici.invQty * timp.cmpdBlankWgt)/1000) * cpdRate ) as compoundcost, 
+										sum(round(tici.invQty/timp.no_of_active_cavities)) as totlifts, sum(round(tici.invQty/timp.no_of_active_cavities) * if(tt.lift_rate > 0, tt.lift_rate, $defaultLiftCost)) as moldcost,
+										sum(tici.invQty * if(tt.trim_rate > 0, tt.trim_rate, $defaultTrimCost)) as trimcost,sum(tici.invQty * if(tcmpd.cmpdInspRate > 0, tcmpd.cmpdInspRate, $defaultInspCost)) as inspcost	
+										from  tbl_invoice_sales tic
+tbl_invoice_sales_items											inner join (select *,SUBSTRING_INDEX(invPlanRef , '-',1) as planid from tbl_invoice_sales_items) tici on tic.invId = tici.invId  
+											inner join (select *, $blankQuery  as blankWgtGroup from tbl_invoice_mould_plan) timp on tici.planid = timp.planid 
+											inner join tbl_customer tcust	on tic.invCusId = tcust.cusId
+											inner join tbl_tool	tt on tt.tool_ref = timp.toolRef
+											inner join tbl_component tcmpd on timp.cmpdId = tcmpd.cmpdId
+											left join tbl_cpd_rate tcr on tcr.cpdId = timp.cmpdCpdId
+										WHERE tic.status = 1 and tic.invdate >= '$fromDate' and tic.invdate <= '$toDate' 
+										".(($getCus != 'ALL')?" and tcust.cusgroup = '".$getCus."'":"").
+										(($prodgroup != 'ALL')?" and tcmpd.cmpdProdGroup = '".$prodgroup."'":"").
+										(($blankgroup != 'ALL')?" and timp.blankWgtGroup = '".$blankgroup."'":"")."
+										group by timp.cmpdId order by timp.cmpdId";
+					break;
+				case "2":
+					$sql_invoice	=	"select '$getCus' as cusgroup, '$prodgroup' as prodgroup, '$blankgroup' as blankgroup, '$compname' as compname,'3' as step, tici.invPlanRef as dispname,timp.planid, sum(tici.invAmt) as salesval,
+										sum(tici.invQty * timp.cmpdBlankWgt/1000) as cpdused, sum(((tici.invQty * timp.cmpdBlankWgt)/1000) * cpdRate ) as compoundcost, 
+										sum(round(tici.invQty/timp.no_of_active_cavities)) as totlifts, sum(round(tici.invQty/timp.no_of_active_cavities) * if(tt.lift_rate > 0, tt.lift_rate, $defaultLiftCost)) as moldcost,
+										sum(tici.invQty * if(tt.trim_rate > 0, tt.trim_rate, $defaultTrimCost)) as trimcost,sum(tici.invQty * if(tcmpd.cmpdInspRate > 0, tcmpd.cmpdInspRate, $defaultInspCost)) as inspcost	
+										from  tbl_invoice_sales tic
+											inner join (select *,SUBSTRING_INDEX(invPlanRef , '-',1) as planid from tbl_invoice_sales_items) tici on tic.invId = tici.invId  
+											inner join (select *, $blankQuery  as blankWgtGroup from tbl_invoice_mould_plan) timp on tici.planid = timp.planid 
+											inner join tbl_customer tcust	on tic.invCusId = tcust.cusId
+											inner join tbl_tool	tt on tt.tool_ref = timp.toolRef
+											inner join tbl_component tcmpd on timp.cmpdId = tcmpd.cmpdId
+											left join tbl_cpd_rate tcr on tcr.cpdId = timp.cmpdCpdId
+										WHERE tic.status = 1 and tic.invdate >= '$fromDate' and tic.invdate <= '$toDate' 
+										".(($getCus != 'ALL')?" and tcust.cusgroup = '".$getCus."'":"").
+										(($prodgroup != 'ALL')?" and tcmpd.cmpdProdGroup = '".$prodgroup."'":"").
+										(($blankgroup != 'ALL')?" and timp.blankWgtGroup = '".$blankgroup."'":"").										
+										(($compname != 'ALL')?" and timp.cmpdName = '".$compname."'":"")." 
+										group by tici.invPlanRef order by tici.invPlanRef";
+										
+			}
+			//echo $sql_invoice; exit();		
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";			
+		break;
+		case "GETTOP":
+			$groupby	=	$_POST["groupby"];
+			$sql_invoice	=	"select $groupby as dispname, '1' as step, '$getCus' as cusgroup, '$prodgroup' as prodgroup, '$blankgroup' as blankgroup, '$groupby' as groupby, $blankShow as blankdispname, sum(tici.invAmt) as salesval,
+									sum(tici.invQty * timp.cmpdBlankWgt/1000) as cpdused, sum(((tici.invQty * timp.cmpdBlankWgt)/1000) * cpdRate ) as compoundcost, 
+									sum(round(tici.invQty/timp.no_of_active_cavities)) as totlifts, sum(round(tici.invQty/timp.no_of_active_cavities) * if(tt.lift_rate > 0, tt.lift_rate, $defaultLiftCost)) as moldcost,
+									sum(tici.invQty * if(tt.trim_rate > 0, tt.trim_rate, $defaultTrimCost)) as trimcost,sum(tici.invQty * if(tcmpd.cmpdInspRate > 0, tcmpd.cmpdInspRate, $defaultInspCost)) as inspcost									
+									from  tbl_invoice_sales tic
+										inner join (select *,SUBSTRING_INDEX(invPlanRef , '-',1) as planid  from tbl_invoice_sales_items tbl1) tici on tic.invId = tici.invId  
+										inner join (select *, $blankQuery  as blankWgtGroup from tbl_invoice_mould_plan) timp on tici.planid = timp.planid 
+										inner join tbl_customer tcust	on tic.invCusId = tcust.cusId
+										inner join tbl_tool	tt on tt.tool_ref = timp.toolRef
+										inner join tbl_component tcmpd on timp.cmpdId = tcmpd.cmpdId
+										left join tbl_cpd_rate tcr on tcr.cpdId = timp.cmpdCpdId
+								WHERE tic.status = 1 and tic.invdate >= '$fromDate' and tic.invdate <= '$toDate' 
+								".(($getCus != 'ALL')?" and tcust.cusgroup = '".$getCus."'":"").
+								(($prodgroup != 'ALL')?" and tcmpd.cmpdProdGroup = '".$prodgroup."'":"").
+								(($blankgroup != 'ALL')?" and timp.blankWgtGroup = '".$blankgroup."'":"")."
+								group by $groupby order by $groupby";
+			//echo $sql_invoice; exit();
+			
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			$output	=	 "<xmldata>".$list."</xmldata>";
+			if($_POST["conToHTML"] == 1)
+			{
+				//convert to HTML via server side XSLT
+				$xml = new DOMDocument;
+				$xml->loadXML($output);
+				$xsl = new DOMDocument;
+				$xsl->load("./.design");
+				$proc = new XSLTProcessor;
+				$proc->importStyleSheet($xsl);
+				echo $proc->transformToXML($xml);
+			}
+			else
+				echo $output;			
+			}
+	
+	function createTempTable($fdate, $tdate){
+		$maketemp 	= 	"CREATE TEMPORARY TABLE tbl_cpd_rate (
+						  `cpdId` varchar(10) NOT NULL,
+						  `cpdRate` decimal(20,2),
+						  PRIMARY KEY(cpdId)
+						) ";	
+		$output		=	@getMySQLData($maketemp);
+		if($output['status'] != 'success'){
+			print_r($output);
+			exit();	
+		}
+		$sql		=	"select distinct cmpdCpdId from 
+							tbl_invoice_sales tic
+								inner join (select *,SUBSTRING_INDEX(invPlanRef , '-',1) as planid from tbl_invoice_sales_items) tici on tic.invId = tici.invId  
+								inner join tbl_invoice_mould_plan timp on tici.planid = timp.planid 
+							WHERE tic.status = 1 and tic.invdate >= '$fdate' and tic.invdate <= '$tdate'";
+		$outputarr	=  @getMySQLData($sql);	
+		if($outputarr['count'] != null && $outputarr['count'] != "" && $outputarr['count'] > 0 )
+		{ 				  
+			$cpdIds	=	array();
+			foreach($outputarr['data'] as $oper){
+				array_push($cpdIds,$oper['cmpdCpdId']);								
+			}
+			$cpdIdCount		=	count($cpdIds);
+			$countBat		=	0;
+			$sql_insert		=	" insert into tbl_cpd_rate (cpdId, cpdRate) values  ";
+			while ($countBat < $cpdIdCount){
+				$sql_insert			.=	" ( '".$cpdIds[$countBat]."', ".(@getCompoundCost($cpdIds[$countBat]) + $defaultMixCost).") ";
+				if($countBat < $cpdIdCount -1){
+					$sql_insert		.=	" , ";
+				}
+				$countBat++;
+			} 
+			$output	=	@getMySQLData($sql_insert);
+			if($output['status'] != 'success'){
+				print_r($output);				
+				exit();
+			}
+		}
+	}
+?>

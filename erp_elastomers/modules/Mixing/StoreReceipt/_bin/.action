@@ -1,0 +1,62 @@
+<?php
+	session_start();
+	global $cpd_grp_email;
+	switch($_POST["type"]){
+        case "GETQUALITY":
+			$sql        =       "select tmp.batId,qandate, sum(planQty) as mixIssuQty,cpdname,cpdpolymer,batplanwgt,batrecvwgt,cpdid,format(((batrecvwgt/sum( planQty ))*100),2) as batchyeild
+								from tbl_invoice_mixplan_items tmp, (select trq.batId,cpdname,cpdpolymer, DATE_FORMAT(qanDate, '%d-%b-%Y') as qandate,batplanwgt,batrecvwgt,tm.cpdid
+									from tbl_compound_qan trq
+									inner join tbl_compound tc on trq.cpdId=tc.cpdId
+									inner join tbl_mixing tm on trq.batId=tm.batId
+									inner join tbl_mixing_recv tmr on tm.batId=tmr.batId
+								where trq.cpdStatus='1' and cpdApprove='0'
+									group by batId order by batId desc) tmptbl where tmp.batId = tmptbl.batId group by tmp.batId";
+			//changes for removing mixing quality from invoicing
+			$sql        =       "select tmp.batId,qandate, sum(planQty) as mixIssuQty,cpdname,cpdpolymer,batplanwgt,batrecvwgt,cpdid,format(((batrecvwgt/sum( planQty ))*100),2) as batchyeild
+								from tbl_invoice_mixplan_items tmp, (select trq.batId,cpdname,cpdpolymer, DATE_FORMAT(mixRecvDate, '%d-%b-%Y') as qandate,batplanwgt,batrecvwgt,tm.cpdid
+									from tbl_mixing_recv trq
+									inner join tbl_mixing tm on trq.batId=tm.batId
+									inner join tbl_compound tc on tm.cpdId=tc.cpdId
+								where trq.status='1' order by tm.batid) tmptbl where tmp.batId = tmptbl.batId group by tmp.batId";
+			$output		=	@getMySQLData($sql, "xml", "root", "lower");
+			echo "<xmldata>$output</xmldata>";
+		break;
+        case "APPROVESTORE":
+			$batids			=	$_REQUEST['batids'];
+			$expWgts		= 	$_REQUEST['expwgts'];			
+			$recvWgts		= 	$_REQUEST['recvwgts'];
+			$cpdNames		= 	$_REQUEST['cpdnames'];
+			$output			=	"";
+			$sno			=	1;
+			for($batCount=0; $batCount<count($batids); $batCount++)
+			{				
+				$batID		=	$batids[$batCount];
+				$recWgt		=	$recvWgts[$batCount];
+				$expWgt		=	$expWgts[$batCount];
+				$yeild		=	round(($recWgt/$expWgt)*100,2);
+				if($yeild < 98 || $yeild > 102)
+				{
+					if($output == "")
+						$output	=	'<html><body><table><tr><td colspan="6">Please Note following batches final weight are either less than 98% or greater than 102% of expected weight: </td></tr><tr><th width="10%">S.No</th><th width="20%">BatId</th><th width="20%">cpdName</th><th width="20%">Exp. Wgt(Kg)</th><th width="20%">Actual Wgt(Kg)</th><th>Yeild(%)</th></tr>';
+					
+					$output	.=	"<tr><td align='center'>$sno</td>" ;
+					$output	.=	"<td>".((strpos($batID,'_')!== false)?substr(strrchr($batID, "_"),1):$batID)."</td>";
+					$output	.=	"<td>".$cpdNames[$batCount]."</td>";
+					$output	.=	"<td align='right'>".number_format($expWgt,2)."</td>";
+					$output	.=	"<td align='right'>".number_format($recWgt,2)."</td>";
+					$output	.=	"<td align='right'>".number_format($yeild,2)."</td></tr>";				
+					$sno++;
+				}
+				
+				@getMySQLData("update tbl_mixing set avlQty='$recWgt' where batId='$batID'");
+				//changes for removing mixing quality from invoicing
+				@getMySQLData("update tbl_mixing_recv set status='2' where batId='$batID'");			
+				//@getMySQLData("update tbl_compound_qan trq set cpdApprove='1', cpdApproveDate=now(), update_on=now(), update_by='".$_SESSION['userdetails']['userId']."' where batId='$batID'");
+			}
+			if($output != "") {
+				$output	.=	"</table></body></html>";
+				$pstatus = 	sendEmail($cpd_grp_email,"", "Mixing Batch Weight Yeild Issues",$output,"");	
+			}
+		break; 
+	}
+?>

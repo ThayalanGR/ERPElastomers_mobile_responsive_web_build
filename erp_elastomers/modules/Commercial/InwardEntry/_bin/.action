@@ -1,0 +1,157 @@
+<?php
+	session_start();
+	
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case 'DELPLAN':
+			$sno		=	$_POST['sno'];
+			$issref		=	$_POST['defiss'];
+			$moldref	=	$_POST['moldref']; 
+			$doctype	=	$_POST['doctype'];
+			switch($doctype)
+			{
+				case 'mold':				
+					$res	=	@getMySQLData ("update tbl_moulding_receive SET status = 0 WHERE modRecRef='$issref'");
+					if($res['status'] == 'success')
+					{
+						$planCount	=	@getMySQLData ("select * from tbl_moulding_receive where planRef='$moldref' and status > 0","arr");
+						if($planCount['count'] == 0)
+							$res	=	@getMySQLData ("update tbl_moulding_plan SET status = 0 WHERE planid='$moldref'");
+					}
+					echo $res['status'];
+				break;
+				case 'trim':
+					$pSQL    	=   "update tbl_deflash_issue SET status=0 WHERE sno = '$sno'";
+					$res		=	@getMySQLData($pSQL);
+					if($res['status'] == 'success'){
+						if(strripos($issref,'-rt') == strlen($issref) - 3 ){
+							@getMySQLData("update tbl_rework set status='1' where reworkref ='$moldref'");
+						}
+						else 
+						{
+							@getMySQLData("update tbl_moulding_receive set status='3' where modRecRef ='$issref'");
+						}
+					}
+					echo $res['status'];	
+				break;
+			}
+		break;
+		case 'GETITEMS':		
+			$doc			=	explode('~', $_POST['dcref']);
+			$list			=	"<root><count>0</count><status>success</status></root>";
+			switch($doc[0])
+			{
+				case 'mold':				
+					$list	=	@getMySQLData("select '".$doc[0]."' as doctype, timp.cmpdName, timp.cmpdRefNo, tmr.plannedLifts as issqty, modRecRef as defiss, tmr.planRef as mouldref, modRecRef as sno, tmr.plannedLifts as pendqty, DATE_FORMAT(tmp.planDate, '%d-%b-%Y') as issdatef
+												from tbl_moulding_plan tmp
+													inner join tbl_invoice_mould_plan timp on timp.planid=tmp.planid
+													inner join tbl_moulding_receive tmr on tmr.planRef=tmp.planid and tmr.status = 2
+												where mdIssRef = '".$doc[1]."' and tmp.status = 2 ", "xml","root","lower");	
+				break;
+				case 'trim':
+					$list	=	@getMySQLData("select '".$doc[0]."' as doctype, tc.cmpdName, tc.cmpdRefNo, di.issqty, di.defiss,di.mouldref,di.sno,(di.issqty - (if((select sum(currrec) from tbl_deflash_reciept where defissref=di.sno and status > 0) > 0, (select sum(currrec) from tbl_deflash_reciept where defissref=di.sno and status > 0), 0))) as pendqty, DATE_FORMAT(di.issdate, '%d-%b-%Y') as issdatef
+												from tbl_deflash_issue di
+													inner join tbl_component tc on di.cmpdid=tc.cmpdId
+												where defissref = '".$doc[1]."' and di.status=1 
+												order by di.defiss", "xml","root","lower");	
+				break;
+				case 'tool':
+					$list	=	@getMySQLData("select '".$doc[0]."' as doctype, tc.cmpdName, tc.cmpdRefNo, '1' as issqty,tt.tool_ref as defiss, transferee_userName as mouldref, transferee_userId as sno, '1' as pendqty, DATE_FORMAT(ttn_date, '%d-%b-%Y') as issdatef
+												from tbl_tool_transfer ttt
+													inner join tbl_tool tt on tt.tool_ref=ttt.tool_ref
+													inner join tbl_component tc on tc.cmpdId=tt.compId
+												where ttn_ref = '".$doc[1]."' and ttt.status > 0  and (select transferee_userName from tbl_tool_transfer where tool_ref=ttt.tool_ref order by ttn_date desc limit 1) != 'store'", "xml","root","lower");	
+				break;							
+			}
+			echo "<xmldata>".$list."</xmldata>";
+		break;
+		case 'INSITEMS':
+			$usrId		=	$_SESSION['userdetails']['userId'];
+			$doc		=	explode('~', $_POST['dcref']);
+			$recTotal	=	0;
+			switch($doc[0])
+			{
+				case 'mold':				
+					foreach( $_POST['issref'] as $key=>$val)
+					{
+						$actlifts		=	str2num($_POST['recvqty'][$key]);						
+						$planid			=	$_POST['mouldref'][$key];					
+						$plan_sql		=	@getMySQLData("select * from tbl_invoice_mould_plan where planid = '$planid'");
+						$tool_data		=	$plan_sql['data'][0];
+						$mouldQty		=	($tool_data['no_of_active_cavities'] * $actlifts);
+						$recTotal		+=	$mouldQty;
+						$cpdQty			=	($tool_data['no_of_active_cavities'] * $tool_data['cmpdBlankWgt'] * $actlifts)/1000;					
+						$sql			=	"update tbl_moulding_receive set actualLifts = '$actlifts', mouldQty = '$mouldQty', cpdQtyUsed = '$cpdQty' , 
+												entry_on = now() , entry_by = '$usrId', status = 3 where modRecRef = '$val'";
+						$res			=   @getMySQLData($sql);						
+						if($res['status'] == 'success'){
+							$planCount	=	@getMySQLData ("select * from tbl_moulding_receive where planRef='$planid' and status = 2","arr");
+							if($planCount['count'] == 0)
+								@getMySQLData("update tbl_moulding_plan set status='3' where planid ='$planid'");
+						}else{
+							echo $res['status'];
+							exit();
+						}
+					}
+				break;
+				case 'trim':
+					foreach( $_POST['issref'] as $key=>$val)
+					{
+						$issSno				=	$_POST['isssno'][$key];
+						$issuedqty			=	str2num($_POST['issqty'][$key]);
+						$currentrec			=	str2num($_POST['recvqty'][$key]);
+						$preRecvQty			=	@getMySQLData ("select ifnull(sum(currrec),0) as prerecqty from tbl_deflash_reciept where defissref='$issSno' and status > 0","arr");
+						$recievedqty		=	str2num($preRecvQty['data'][0]['prerecqty']); 						
+						$total				=	$recievedqty + $currentrec;
+						$pendingqty			=	$issuedqty - $total;
+						$recTotal			+=	$currentrec;			
+						$sql				=	" insert into tbl_deflash_reciept(defrecdate, defissref, issref, issuedqty, receivedqty, currrec, pendqty, entry_on, entry_by)
+												values( now(), '$issSno', '$val', '$issuedqty', '$recievedqty', '$currentrec','$pendingqty', now(), '$usrId') ";
+						$res				=	@getMySQLData($sql);				
+					
+						if($res['status'] == 'success'){
+							if($total >= ($issuedqty * 0.98)){
+								@getMySQLData("update tbl_deflash_issue set status='2' where sno = '$issSno'");
+								if(strripos($val,'-rt') == strlen($val) - 3 ){						
+									@getMySQLData("update tbl_rework set status='3' where reworkref = '".$_POST['mouldref'][$key]."'");
+								}
+								else{
+									@getMySQLData("update tbl_moulding_receive set status='5' where modRecRef  = '$val'");
+								}
+							}
+						}else{
+							echo $res['errTxt'];
+							exit();
+						}
+					}
+				break;
+				case 'tool':
+					$recTotal		=	1;
+					$codeArray		=	@getSettingsData("toolTransferNote");
+					$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+					$tool_ref		=	$_POST['issref'][0];
+					$user_id 		= 	$_POST['isssno'][0];
+					$user_name 		= 	$_POST['mouldref'][0]; 				
+			
+					$sql 			= 	" insert into tbl_tool_transfer(ttn_ref, ttn_date, tool_ref, transferor_userId, transferor_userName, transferee_userId, transferee_userName, status, entry_on, entry_by) 
+											values('$codeNo', now(), '$tool_ref', '$user_id', '$user_name', 'store','Store', 1, now(), '$usrId')";					
+					$res 			= 	@getMySQLData($sql);					
+					if($res['status'] == "success"){
+						@getMySQLData("update tbl_settings set auto_inc=auto_inc+1 where name='toolTransferNote'");
+					}else{
+						echo $res['errTxt'];
+						exit();
+					}					
+				break;				
+			}
+			$sql_ins_items	=	"insert into tbl_inward (docId, docType, totalQty, entry_by, entry_on) values ('".$doc[1]."', '".$doc[0]."', '$recTotal',  '$usrId',now())";
+			$res			=   @getMySQLData($sql_ins_items);				
+			if($res['status'] != 'success'){
+				echo $res['errTxt'];
+				exit();
+			}
+			echo 'success';
+		break;
+		}
+
+?>

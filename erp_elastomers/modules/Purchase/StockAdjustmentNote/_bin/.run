@@ -1,0 +1,306 @@
+ramId			=	new Array();
+ramName			=	new Array();
+ramPrev			=	"";
+
+$(document).ready(function(){
+	$("#add_stkadjnote").button().click(function(){
+		newStockAdjustmentNote();
+	});
+	
+	$('#new_san_dialog').dialog({
+		title:'New Stock Adjustment Note',
+		width:700,
+		resizable:false,
+		modal:true,
+		autoOpen:false,
+		buttons:{
+			'Generate':function(){
+				if(typeof generateStockAdjustmentNote == "function")
+					generateStockAdjustmentNote()
+			},
+			'Clear':function(){
+				if(typeof clearStockAdjustmentNote == "function")
+					clearStockAdjustmentNote('new')
+			},
+			'Cancel':function(){
+				$(this).dialog('close');
+			}
+		},
+		open:function(){
+			$('#new_san_dialog .ram_auto_list').autocomplete({
+				source:ramName,
+				close:function(event, ui){
+					getKeyBookQty('new');
+				}
+			});
+		},
+		close:function(){
+			$('#new_san_dialog form')[0].reset();
+			$("#new_san_dialog .tbook_qty").html(Number(0).toCurrency(3));
+			$("#new_san_dialog .tphy_qty").html(Number(0).toCurrency(3));
+			$("#new_san_dialog .texcshrt_qty").html(Number(0).toCurrency(3));
+			$("#new_item_error").css("display", "none");
+			$('#new_san_dialog .supplier_list .key_list tr:gt(0)').remove();
+		}
+	});
+	
+	$('#view_san_dialog').dialog({
+		title:'View Stock Adjustment Note',
+		width:700,
+		resizable:false,
+		modal:true,
+		autoOpen:false,
+		buttons:{
+			'Close':function(){
+				$(this).dialog('close');
+			}
+		},
+		open:function(){},
+		close:function(){
+			$("#view_san_dialog #ViewSANList table tr:gt(0)").remove();
+		}
+	});
+	
+	getProcessData();
+	getRawMaterialAtList();
+});
+
+function getProcessData(){
+	processList		=	postback(actionFile, "type=SANLIST", "POST", "XML");
+	listPageData($("#content_body"), processList, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	$("#content_body .view_button").click(function(e) {
+		sanid	=	$(this).attr("sanid");
+		viewSanEntry(sanid);
+		e.stopImmediatePropagation();
+    });	
+}
+
+function getRawMaterialAtList(){
+	objRAMList	=	postback(actionFile, "type=RAMATLIST", "POST", "XML");
+	ramId		=	new Array();
+	ramName		=	new Array();
+	$(objRAMList).find("row").each(function(index, element) {
+		$this	=	$(element);
+		ramId.push($this.find("ramid").html().trim());
+		ramName.push($this.find("ramname").html().trim() + " - " + $this.find("ramgrade").html().trim());
+    });
+}
+
+function getKeyBookQty(type){
+	ramSel	=	$("#" + type + "_san_dialog .ram_auto_list").val();
+	if(ramSel != null && ramSel != ""){
+		// Get Component Id
+		ramPos			=	ramName.inArrayNo(ramSel);
+		if(ramPos > -1){
+			ramid		=	ramId[ramPos];
+			ramPrev		=	ramSel;
+			objBookQty	=	postback(actionFile, "type=RAMBOOKQTY&ramid=" + ramid, "POST", "XML");
+			$('#' + type + '_san_dialog .ram_auto_list').attr("ramid", ramid);
+			$("#" + type + "_san_dialog .key_list tr:gt(0)").remove();
+			tbookQty	=	0;
+			tphyQty		=	0;
+			texcShrt	=	0;
+			$(objBookQty).find("data row").each(function(index, element) {
+				$this	=	$(element);
+				bookQty	=	Number($this.find("bookqty").html());
+				clsNme	=	(index%2)?"content_rows_dark":"content_rows_light";
+				tbookQty	+=	bookQty;
+				tphyQty		+=	bookQty;
+                $("#" + type + "_san_dialog .key_list tr:last").after(
+					'<tr class="' + clsNme + '"> \
+						<td>' + $this.find("grnid").html() + '</td> \
+						<td>' + $this.find("grndate").html() + '</td> \
+						<td>' + $this.find("ramuom").html() + '</td> \
+						<td align="right" style="padding-right:5px;color:' + ((isNaN(bookQty) || bookQty < 0)?'#ff0000':'#000') + '">' + bookQty.toCurrency(3) + '</td> \
+						<td align="right"> \
+							<input type="text" style="width:90%;text-align:right;" class="invisible_text" \
+							value="' + bookQty.toCurrency(3) + '" onfocus="FieldHiddenValue(this, \'in\', \'' + bookQty.toCurrency(3) + '\')" \
+							onblur="FieldHiddenValue(this, \'out\', \'' + bookQty.toCurrency(3) + '\')" bookqty="' + bookQty.toCurrency(3) + '" /> \
+						</td> \
+						<td align="right" class="diffamt" style="padding-right:5px;">0.000</td> \
+					</tr>'
+				);
+            });
+			$('#' + type + '_san_dialog #san_remarks').val($this.find("description").html());
+			$('#' + type + '_san_dialog .tbook_qty').html(tbookQty.toCurrency(3));
+			$('#' + type + '_san_dialog .tbook_qty').css('color', (tbookQty>=0)?'#000000':'#ff0000');
+			$('#' + type + '_san_dialog .tphy_qty').html(tphyQty.toCurrency(3));
+			$('#' + type + '_san_dialog .tphy_qty').css('color', (tphyQty>=0)?'#000000':'#ff0000');
+			$('#' + type + '_san_dialog .texcshrt_qty').html(texcShrt.toCurrency(3));
+			$('#' + type + '_san_dialog .texcshrt_qty').css('color', (texcShrt>=0)?'#000000':'#ff0000');
+			
+			updateOnKeyUp(type);
+		}
+		else{
+			$("#" + type + "_san_dialog .ram_auto_list").val(ramPrev);
+		}
+	}
+}
+
+function updateOnKeyUp(type){
+	type	=	(type)?type:'new';
+	$("#" + type + "_san_dialog .key_list input:text").keyup(function(e) {
+		$this	=	$(this);
+		bookQty	=	Number($this.attr("bookqty"));
+		physQty	=	($this.val() != "" && Number($this.val().toNumber()) >= 0)?Number($this.val().toNumber()):bookQty;
+		diffAmt	=	(physQty >= 0)?physQty - bookQty:bookQty;
+		$this.parent().parent().find(".diffamt").html(diffAmt.toCurrency(3));
+		$this.parent().parent().find(".diffamt").css("color", ((diffAmt >= 0)?'#000':'#ff0000'));
+		
+		totPhyQty 	=	0;
+		totExcShrt	=	0;
+		$("#" + type + "_san_dialog .supplier_list table tr:gt(0)").each(function(index, element) {
+			$this		=	$(element);
+			bookQty		=	Number($this.find("input:text").attr("bookqty").toNumber());
+			phyQty		=	($this.find("input:text").val())?$this.find("input:text").val().toNumber():-1;
+			phyQty		=	(Number(phyQty) >= 0)?Number(phyQty):bookQty;
+			excShrt		=	$this.find("td:eq(5)").html().toNumber();
+			totPhyQty	+=	Number(phyQty);
+			totExcShrt	+=	Number(excShrt);
+		});
+		$('#' + type + '_san_dialog .tphy_qty').html(totPhyQty.toCurrency(3));
+		$('#' + type + '_san_dialog .tphy_qty').css('color', (totPhyQty>=0)?'#000000':'#ff0000');
+		$('#' + type + '_san_dialog .texcshrt_qty').html(totExcShrt.toCurrency(3));
+		$('#' + type + '_san_dialog .texcshrt_qty').css('color', (totExcShrt>=0)?'#000000':'#ff0000');
+	});
+}
+
+function newStockAdjustmentNote(){
+	$('#new_san_dialog').dialog("open");
+}
+
+function generateStockAdjustmentNote(){
+	stkError	=	$("#new_item_error");
+	stkRows		=	$('#new_san_dialog .supplier_list table tr:gt(0)');
+	totSel		=	0;
+	stkOutput	=	true;
+	param		=	"type=ADDSAN";
+	ramid		=	$('#new_san_dialog .ram_auto_list').attr("ramid");
+	
+	if(stkRows.length <= 0){
+		displayError(stkError, "error", "<strong>Error !</strong> - Invalid Data / No Data found ! ! !");
+		stkOutput	=	false;
+		return false;
+	}
+	
+	remarks 	=	$('#new_san_dialog #san_remarks').val();
+
+	if(remarks.trim() == null || remarks.trim() == ''){
+		displayError(stkError, "error", "<strong>Error !</strong> - Please enter remarks for this SAN ! ! !");
+		stkOutput	=	false;
+		return false;
+	}	
+	
+	param		+=	"&ramid=" + ramid +
+					"&desc=" + remarks;
+	
+	stkRows.each(function(index, element) {
+        $this	=	$(element);
+		txtObj	=	$this.find("input:text");
+		bookQty	=	txtObj.attr("bookqty").toNumber();
+		txtVal	=	txtObj.val().toNumber();
+		
+		if(txtObj.val() != "" && !isNaN(txtVal) && txtVal != bookQty){
+			if(txtVal < 0){
+				stkOutput	=	false;
+				displayError(stkError, "error", "<strong>Error !</strong> - Invalid Physical Qty. at Row " + (index+1) + " ! ! !");
+				txtObj.focus();
+				return false;
+			}
+			
+			param	+=	"&grnkey[]=" + $this.find("td:eq(0)").html() + 
+						"&grndate[]=" + $this.find("td:eq(1)").html() +
+						"&uom[]=" + $this.find("td:eq(2)").html() +
+						"&bookqty[]=" + $this.find("td:eq(3)").html().toNumber() +
+						"&phyqty[]=" + txtVal +
+						"&excshrt[]=" + $this.find("td:eq(5)").html().toNumber();
+			
+			totSel++;
+		}
+    });
+	
+	if(stkOutput){
+		if(totSel <= 0){
+			displayError(stkError, "error", "<strong>Error !</strong> - Invalid GRN / No GRN Selected ! ! !");
+			$('#new_san_dialog .supplier_list table tr:eq(1) input:text').focus();
+			return false;
+		}
+		
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Create the Stock Adjustment Note?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Raise SAN',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															$('#new_san_dialog').dialog("close");
+															addSAN	=	postback(actionFile, param, "POST", "XML");
+															sanStat	=	$(addSAN).find("addsan status").html();
+															sanId	=	$(addSAN).find("addsan sanid").html();
+															if(sanStat == "success"){	
+																alert("Stock Adjustment Note No: " + sanId + " Created Successfully . . .");
+															}
+															else{
+																alert("Stock Adjustment Note Creation failed due to:" + sanStat);
+															}
+															listPageData($("#content_body"), addSAN, XSLFile);
+															updatePageBehaviour();															
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+	}
+}
+
+function viewSanEntry(sid){
+	if(sid != null && sid != ""){
+		innerContent	=	postback(actionFile, "type=SANDETAILS&sanid=" + sid, "POST", "XML");
+		$("#view_san_dialog").dialog("open");
+		$(innerContent).find("row").each(function(index, element) {
+			excShrt	=	$(this).find("exc_shrt").html().toNumber();
+			$("#view_san_dialog #ViewSANList table tr:last").after(
+				"<tr class='" + ((index%2)?"content_rows_dark":"content_rows_light") + "'> \
+					<td>" + $(this).find("grnid").html() + "</td> \
+					<td>" + $(this).find("grndate").html() + "</td> \
+					<td>" + $(this).find("uom").html() + "</td> \
+					<td align='right'>" + $(this).find("bookqty").html().toCurrency(3) + "</td> \
+					<td align='right'>" + $(this).find("physicalqty").html().toCurrency(3) + "</td> \
+					<td align='right'" + ((excShrt<0)?" style='color:#ff0000;'":"") + ">" + $(this).find("exc_shrt").html().toCurrency(3) + "</td> \
+				</tr>"
+			);
+        });
+	}
+}
+
+function clearStockAdjustmentNote(type){
+	texcShrt	=	0;
+	$("#" + type + "_san_dialog .key_list input:text").each(function(index, element) {
+        $this		=	$(element);
+		bookQty		=	Number($this.attr("bookqty"));
+		texcShrt	+=	bookQty;
+		$this.val("0.00").removeClass("normal_text").addClass("invisible_text");
+		$this.parent().parent().find(".diffamt").html(bookQty);
+		$this.parent().parent().find(".diffamt").css("color", ((bookQty >= 0)?'#000':'#ff0000'));
+		$('#' + type + '_san_dialog .tphy_qty').html(0);
+		$('#' + type + '_san_dialog .tphy_qty').css('color', '#000000');
+		$('#' + type + '_san_dialog .texcshrt_qty').html(texcShrt.toCurrency());
+		$('#' + type + '_san_dialog .texcshrt_qty').css('color', (texcShrt>=0)?'#000000':'#ff0000');
+    });
+	$("#" + type + "_san_dialog .key_list input:text:eq(0)").focus();
+}
+
+

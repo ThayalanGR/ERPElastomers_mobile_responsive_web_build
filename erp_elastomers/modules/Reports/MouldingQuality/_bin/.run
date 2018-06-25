@@ -1,0 +1,78 @@
+$(document).ready(function(){
+
+	//MonthPicker
+	$('#to_date').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	}).bind('monthpicker-click-month', function (e, month) {
+		//Destroy filters & rebuild newly
+		$(".filter-table").filters('destroy');
+    	updatePageBehaviour();
+	})
+	updatePageBehaviour();
+	
+});
+
+function openReport(){
+	openInvoice({mod:"overall",invID:$("#no_months").val()});
+}
+
+
+function updatePageBehaviour(){
+
+	var val				=	$("#to_date").val(); 			
+	space_pos 			= 	val.indexOf(' ');
+	month 				= 	val.substring(0,space_pos);
+	cur_year 			= 	val.substring(space_pos+1,val.length);
+	var monthsArray 	= 	[ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+	var LastDaysArray 	= 	[ 31,28,31,30,31,30,31,31,30,31,30,31 ];
+	monthIndex 			= 	monthsArray.indexOf(month);
+	cur_month			=	monthIndex + 1;
+	cur_month 			= 	(cur_month>9)?cur_month:'0'+cur_month;
+	start_day 			=	cur_year + "-" + cur_month +"-01";
+	last_day 			= 	(Number(cur_year)%4!=0)?LastDaysArray[monthIndex]:LastDaysArray[monthIndex]+1;
+	end_day				=	cur_year + "-" + cur_month +"-" + last_day;	
+	param				=	"startDate="+start_day+"&endDate="+end_day;	
+	var objCompList=postback(actionFile,param,"POST","XML");
+	listPageData($("#content_tbl"), objCompList, XSLFile);
+	updateData();
+	updateHeader();updateContent();
+	
+	$(".filter-table").filters({
+		onUpdate:updateData
+	});
+	
+}
+function updateData(){
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('invid');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});
+		
+	insQtyTot		=	0;
+	appQtyTot		=	0;
+	rejQtyTot		=	0;
+	rewQtyTot		=	0;
+	rejPerTot		=	0;
+	rewPerTot		=	0;	
+	$("#content_body table tr").each(function(index, element) {
+        iqTot		=	($(this).find("td:eq(4)").html())?Number($(this).find("td:eq(4)").html().split(",").join("")):0;
+		aqTot		=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+		rqTot		=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().split(",").join("")):0;
+		rwTot		=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+		insQtyTot	=	insQtyTot + (isNaN(iqTot) ?0 :iqTot);
+		appQtyTot	=	appQtyTot + (isNaN(aqTot) ?0 :aqTot);
+		rejQtyTot	=	rejQtyTot + (isNaN(rqTot) ?0 :rqTot);
+		rewQtyTot	=	rewQtyTot + (isNaN(rwTot) ?0 :rwTot);
+	}); 
+	$("#ins_qty_total").html(insQtyTot.toCurrency());
+	$("#app_qty_total").html(appQtyTot.toCurrency());
+	$("#rej_qty_total").html(rejQtyTot.toCurrency());
+	$("#rew_qty_total").html(rewQtyTot.toCurrency());
+	rejPerTot		=	(rejQtyTot/insQtyTot)* 100;
+	$("#rej_per_total").html(isNaN(rejPerTot) ?0.00 :rejPerTot.toCurrency(2));
+	rewPerTot		=	(rewQtyTot/insQtyTot)* 100;
+	$("#rew_per_total").html(isNaN(rewPerTot) ?0.00 :rewPerTot.toCurrency(2));	
+}

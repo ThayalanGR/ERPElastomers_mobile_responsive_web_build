@@ -1,0 +1,38 @@
+<?php
+
+	// Includes
+	session_start();
+	
+	// Do Actions
+	header('Content-Type: text/xml');
+	switch($_POST['selecttype']){
+		case "CLASSADD":
+			if($_POST['classtype'] != "" && $_POST['classsname'] != ""){
+				$output		=	@getMySQLData("insert into tbl_class(class_name, class_short_name)
+												values('".$_POST['classtype']."', '".$_POST['classsname']."');", "xml");
+			}
+		break;
+		case "CLASSEDIT":
+			if($_POST['sno'] != "" && $_POST['classtype'] != "" && $_POST['classsname'] != ""){
+				$output		=	@getMySQLData("update tbl_class set
+												class_name='".$_POST['classtype']."',
+												class_short_name='".$_POST['classsname']."'
+												where sno='".$_POST['sno']."' and status>0;", "xml");
+			}
+		break;
+		case "CLASSDEL":
+			if($_POST['sno'] != ""){
+				$output		=	@getMySQLData("update tbl_class set status='0' where sno='".$_POST['sno']."' and status>0;", "xml");
+			}
+		break;
+	}
+	
+	// List Data
+	$list	=	@getMySQLData("SELECT * FROM tbl_class where status>0 order by sno asc;",'xml','root');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

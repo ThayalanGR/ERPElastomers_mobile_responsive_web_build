@@ -1,0 +1,88 @@
+function updateData(){
+	ordQtyTot	=	0;
+	
+	$("#content_body table tr").each(function(index, element) {
+        oqTot		=	($(this).find("td:eq(3)").html())?Number($(this).find("td:eq(3)").html().split(",").join("")):0;		
+		ordQtyTot	=	ordQtyTot + (isNaN(oqTot) ?0 :oqTot);
+    });
+	$("#qty_total").html(ordQtyTot.toCurrency(2));
+	
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('schRef');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});
+	
+	$(".delete_button").click(function(){
+		schRef		=	$(this).attr('schref');
+		$("#del_item_form").css('visibility', 'visible');
+		$("#del_item_form").dialog({ autoOpen: true ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 400,
+									buttons: [
+										{
+											text: "Yes",
+											click: function(){
+												delError		=	$('#del_item_error');
+												displayError(delError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Removing Data From Server . . .</strong>");
+												schMonth 	= 	$("#to_date").val();													
+												param		=	"selecttype=SCHDEL&schRef=" + schRef +"&schMonth=" + schMonth;
+												XMLContent	=	postback(actionFile, param, "POST", "XML");
+												xmlData		=	parseXMLdoc(XMLContent);
+												error		=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+												if(error == "success"){
+													$("#del_item_form").dialog("close");
+													listPageData($("#content_body"), XMLContent, XSLFile);
+													updateData();
+												}
+												else{
+													displayError(delError, "error", error);
+													setTimeout(function(){
+														$("#del_item_form").dialog("close");
+													}, 2000);
+												}
+											}
+										},
+										{
+											text: "No",
+											click: function() { $(this).dialog("close"); }
+										}
+									],
+									close: function(event, ui) {
+											$("#del_item_error").html("");
+											$("#del_item_error").css("display", "none");
+										}, 
+
+		});
+
+	});
+		
+}
+
+$(document).ready(function(){
+
+	//MonthPicker
+	$('#to_date').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	}).bind('monthpicker-click-month', function (e, month) {
+    	updatePageBehaviour();
+	})
+
+	updatePageBehaviour();	
+
+	
+});
+
+function updatePageBehaviour(){
+	
+	var val				=	$("#to_date").val(); 			
+	param				=	"schMonth="+val;	
+	var objCompList		=	postback(actionFile, param, "POST", "XML");
+	listPageData($("#content_body"), objCompList, XSLFile);	
+	updateData();
+}

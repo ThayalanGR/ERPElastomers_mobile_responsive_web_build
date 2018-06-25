@@ -1,0 +1,543 @@
+baseCPRList		=	new Array();
+compIdList		=	new Array();
+var TF_01		=	null;
+needRefresh		=	false;
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+function getParamDataAndValidate(type)
+{
+	objData			=	[
+		// Object Name's
+		[
+			['ComPartRef', 'Nature', 'NoOfCav', 'NoOfActiveCav', 'stdLifts', 'moldProc', 'moldType','ToolLife', 'Manufact', 'StripsPerLift', 'LiftRate', 'TrimRate', 'Rack', 'NextValid','IntroDate','PrevLifts', 'Status', 'Remarks', 'BlankType', 'StripProf', 'BlankMethod'],
+			['StripWeightSpec', 'StripWeightMin', 'StripWeightMax','StripDim1Spec', 'StripDim1Min', 'StripDim1Max','StripDim2Spec', 'StripDim2Min', 'StripDim2Max', 'StripDim3Spec', 'StripDim3Min', 'StripDim3Max']
+		],
+		// Object Default Values
+		[
+			['', '', '0', '0','120', '', '', '0', '', '0', '0.00', '0.00', '', '0', '','0','', '', '', '', ''],
+			['0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.000']
+		],
+		// Object POST Variable
+		[
+			['compartref', 'nature', 'noofcav', 'noofactivecav', 'stdlifts', 'mold_process', 'mold_type', 'toollife', 'manufact', 'stripsperlift', 'lift_rate', 'trim_rate', 'rack', 'nextvalid','introdate','prevlifts', 'status', 'remarks', 'blanktype', 'stripprof','blankmethod'],
+			['stripweightspec', 'stripweightmin', 'stripweightmax', 'stripdim1spec', 'stripdim1min', 'stripdim1max', 'stripdim2spec', 'stripdim2min', 'stripdim2max', 'stripdim3spec', 'stripdim3min', 'stripdim3max']
+		],
+		// Object Error Name
+		[
+			['Component Part Reference', 'Nature', 'No. of Cavities', 'No. of Active Cavities', 'Standard Lifts', 'Moulding Process', 'Mold Type', 'Tool Life', 'Manufacturer', 'StripsPerLift', 'Lift Rate', 'Trimming Rate', 'Rack', 'Next Validation','Tool Introduction Date','Lifts Run Previously', 'Status', 'Remarks','Bank Type', 'Strip Profile', 'Blanking Method'],
+			['Strip Weight Spec', 'Strip Weight Min', 'Strip Weight Max', 'Strip Dim1 Spec', 'Strip Dim1 Min', 'Strip Dim1 Max', 'Strip Dim2 Spec', 'Strip Dim2 Min', 'Strip Dim2 Max', 'Strip Dim3 Spec', 'Strip Dim3 Min', 'Strip Dim3 Max']
+		],
+		// Object Mandatory
+		[
+			[true, false, true, true, false, true, true, true, false, false, false, false, false, true,false, false, false, false, false, false, false],
+			[false, false, false, false, false, false, false, false, false, false, false, false]
+		]
+	];
+	
+	paramVal = "";
+	errObj		=	$('#'+type+'_item_error');
+	accordionObj	=	$("#"+type+"_item_accord");
+	
+	if(objData.length > 0 && objData[0].length > 0){
+		for(o=0; o<objData[0].length; o++){
+			for(j=0; j<objData[0][o].length; j++){
+				object	=	$("#" + type + "_" + objData[0][o][j]);
+				if(objData[4][o][j] && (object.val() == null || object.val() == "" || object.val() == objData[1][o][j]))
+				{	
+					displayError(errObj, "error", "<strong>Error !</strong> - " + objData[3][o][j] + " Missing.");
+					if(accordionObj.accordion("option", "active") != o)
+						accordionObj.accordion("option", "active", o );
+					throw object;
+				}
+				else
+				{	
+					if(object.val() != "" && object.val() != objData[1][o][j]){
+						value	=	object.val();
+						switch(objData[0][o][j]){
+							case 'ComPartRef':
+								compId		=	"";
+								compName	=	"";
+								for(sl=0; sl<baseCPRList.length; sl++){
+									if(baseCPRList[sl] == value){
+										space_pos 	= 	baseCPRList[sl].indexOf(' (');
+										compName 	= 	baseCPRList[sl].substring(0,space_pos); //alert(compname);
+										compId		= 	compIdList[sl];										
+									}
+								}
+								if(compId != null && compId != "")
+								{
+									paramVal +="&compName="+compName+"&compId="+compId;
+								}
+								else
+								{
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid " + objData[3][o][j] +".");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									throw object;									
+								}
+							break;
+							case 'NoOfCav':
+							case 'NoOfActiveCav':
+							case 'stdLifts':
+							case 'LiftRate':
+							case 'TrimRate':
+							case 'ToolLife':
+							case 'NextValid':
+							case 'PrevLifts':
+							case 'StripWeightSpec':
+							case 'StripWeightMin':
+							case 'StripWeightMax':
+							case 'StripDim1Spec':
+							case 'StripDim1Min':
+							case 'StripDim2Spec':
+							case 'StripDim2Min':
+							case 'StripDim2Max':
+							case 'StripDim3Spec':
+							case 'StripDim3Min':
+							case 'StripDim3Max':															  
+								if(isNaN(Number(value)) || Number(value) <= 0){
+									displayError(errObj, "error", "<strong>Error !</strong> - "+objData[3][o][j] + " should be number.");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									object.val(0);
+									throw object;
+								}
+							break;
+							case 'Nature':
+							case 'Status':
+							case 'BlankMethod':
+								var radio = $('input:radio[name="' + type + "_" + objData[0][o][j] + '"]:checked');
+								if(radio.length == 0)//no buttons selected
+								{
+									displayError(errObj, "error", "<strong>Error !</strong> - "+objData[3][o][j] + " should be selected.");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);									 
+									throw object;
+								}
+								value =radio.val();
+							break;									
+						}
+						paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+					}
+					else{
+						value		=	object.val();
+						paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+					}					
+				}
+			}
+		}
+	}
+	return paramVal;
+}
+
+function getPageData(){
+	XMLContent		=	postback(actionFile,"selecttype=CUSVIEW&outtype=xml","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updateData(){
+	$(".editBtn").click(function(e) {
+		$idno	=	$(this).attr("uid");
+		editForm($idno);
+    });
+	
+	$(".delBtn").click(function(e) {
+		$idno	=	$(this).attr("uid");
+		deleteForm($idno);
+    });
+}
+
+function updatePageBehaviour(){
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh = true;
+	updateData();
+}
+
+function viewChild(toolId,view){
+	
+	openMvmt({toolId:toolId, view:view});	
+}
+	
+function getComponentPartRef(){
+	var objComPartRefList=postback(actionFile,"selecttype=COMPONENTPARTREF&outtype=xml","POST","XML");
+	cprXML			=	parseXMLdoc(objComPartRefList); 
+	rowXML			=	cprXML.getElementsByTagName("row"); 
+	baseCPRList		=	new Array();
+	compIdList		=	new Array();
+	
+	for(rm=0; rm<rowXML.length; rm++){
+		baseCPRList.push(rowXML[rm].childNodes[0].firstChild.nodeValue+" ("+rowXML[rm].childNodes[2].firstChild.nodeValue+")"); 
+		compIdList.push(rowXML[rm].childNodes[1].firstChild.nodeValue); 		
+	}
+}
+
+function openAccordion(obj, ev, type, no){
+	ev = ev || window.event;			// gets the event in ie or ns
+	kCode = ev.keyCode || ev.which;		// gets the keycode in ie or ns
+	if(ev != null && no != null && no > 0){
+		if(!ev.shiftKey && kCode == 9){
+			switch(type){
+				case 'new':
+					$("#new_item_accord").accordion("option", "active", no);
+				break;
+				case 'edit':
+					$("#edit_item_accord").accordion("option", "active", no);
+				break;
+			}
+		}
+	}
+}
+
+function editForm(no){
+	$("#edit_item_form").css('visibility', 'visible');
+	$("#edit_item_form").dialog("open");
+	EditNo		=	(no)?no:null;	
+	if(typeof setEditFunc == "function")
+	setEditFunc();
+}
+
+function deleteForm(no){
+	$("#del_item_form").css('visibility', 'visible');
+	$("#del_item_form").dialog("open");
+	DeleteNo	=	(no)?no:null;
+}
+
+function addItemFunc(){
+	newError		=	$('#new_item_error');
+	newAccordion	=	$("#new_item_accord");	
+	displayError(newError, "highlight", "<div class='loading' /> <strong>Adding Data to Server . . .</strong>");	
+	param				=	"selecttype=" + "TOOLADD";
+	try{
+		param		+=	getParamDataAndValidate("new");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}	
+	//alert (param); return false;
+	XMLContent			=	postback(actionFile, param, "POST", "XML");
+	xmlData				=	$(XMLContent); 
+	error				=	xmlData.find("tooladd status").html(); 
+	toolRef				=	xmlData.find("tooladd toolref").html();	
+	if(error == "success"){
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		updatePageBehaviour();
+		$("#new_item_form").dialog("close");
+		alert("Tool No: " + toolRef + " has been created successfully");
+	}
+	else{
+		displayError(newError, "error", error);
+	}
+}
+
+function setEditFunc(){
+	editError		=	$('#edit_item_error');	
+	if(EditNo != null && EditNo != ""){
+		XMLContent 	=	postback(actionFile, "selecttype=TOOLVIEW&tool_ref="+EditNo+"&outtype=xml", "POST", "XML");
+		xmlData		=	parseXMLdoc(XMLContent);  
+		Rows		=	xmlData.getElementsByTagName("row");  
+		EditData	=	new Array();
+		if(Rows.length > 0){
+			for(R=0; R<Rows.length; R++){
+				Obj		=	Rows[R];
+				Sno		=	Obj.childNodes[0].firstChild.nodeValue; 
+				if(Sno == EditNo){ 
+					for(ER=0; ER<Obj.childNodes.length; ER++){
+						EditData[Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+					}
+					break;
+				}
+			}			
+			compRef=EditData['comp_part_ref']+" ("+EditData['cmpdrefno']+")";
+			$('#edit_ToolRef').html(EditData['tool_ref']);
+			$('#edit_ComPartRef').val(compRef);
+			$('#edit_'+ EditData['tool_status']).attr('checked',true);
+			$('#edit_Remarks').val(EditData['remarks']);
+			
+			$('#edit_NoOfCav').val(EditData['no_of_cavities']);
+			$('#edit_NoOfActiveCav').val(EditData['no_of_active_cavities']);
+			$('#edit_stdLifts').val(EditData['std_lifts_per_plan']);
+			$('#edit_moldProc').val(EditData['mold_process']);
+			$('#edit_moldType').val(EditData['mold_type']);
+			$('#edit_ToolLife').val(EditData['tool_life']);
+			$('#edit_Manufact').val(EditData['manufacturer']);
+			$('#edit_StripsPerLift').val(EditData['strips_per_lift']); 
+			$('#edit_LiftRate').val(EditData['lift_rate']);
+			$('#edit_TrimRate').val(EditData['trim_rate']);
+			$('#edit_Rack').val(EditData['rack']);
+			$('#edit_NextValid').val(EditData['next_validation']);
+			$('#edit_IntroDate').val(EditData['intro_date']);
+			$('#edit_PrevLifts').val(EditData['prev_lifts_run']);			
+			$('#edit_'+ EditData['nature']).attr('checked',true);
+			$('#edit_'+ EditData['blank_method']).attr('checked',true);
+			$('#edit_BlankType').val(EditData['blanking_type']);
+			$('#edit_StripProf').val(EditData['strip_profile']);
+			$('#edit_StripWeightSpec').val(EditData['strip_weight_spec']);
+			$('#edit_StripWeightMin').val(EditData['strip_weight_min']);
+			$('#edit_StripWeightMax').val(EditData['strip_weight_max']);
+			$('#edit_StripDim1Spec').val(EditData['strip_dim1_spec']);
+			$('#edit_StripDim1Min').val(EditData['strip_dim1_min']);
+			$('#edit_StripDim1Max').val(EditData['strip_dim1_max']);
+			$('#edit_StripDim2Spec').val(EditData['strip_dim2_spec']);
+			$('#edit_StripDim2Min').val(EditData['strip_dim2_min']);
+			$('#edit_StripDim2Max').val(EditData['strip_dim2_max']);
+			$('#edit_StripDim3Spec').val(EditData['strip_dim3_spec']);
+			$('#edit_StripDim3Min').val(EditData['strip_dim3_min']);
+			$('#edit_StripDim3Max').val(EditData['strip_dim3_max']);
+			
+			if(EditData['no_of_cavities'])
+				$('#edit_NoOfCav').removeClass().addClass('normal_text');
+			if(EditData['no_of_active_cavities'])
+				$('#edit_NoOfActiveCav').removeClass().addClass('normal_text');
+			if(EditData['std_lifts_per_plan'])
+				$('#edit_stdLifts').removeClass().addClass('normal_text');
+			if(EditData['tool_life'])
+				$('#edit_ToolLife').removeClass().addClass('normal_text');
+			if(EditData['strips_per_lift'])
+				$('#edit_StripsPerLift').removeClass().addClass('normal_text');
+			if(EditData['next_validation'])
+				$('#edit_NextValid').removeClass().addClass('normal_text');
+			if(EditData['lift_rate'] && EditData['lift_rate'] > 0)
+				$('#edit_LiftRate').removeClass().addClass('normal_text');
+			if(EditData['trim_rate'] && EditData['trim_rate'] > 0)
+				$('#edit_TrimRate').removeClass().addClass('normal_text');			
+			
+			if(EditData['strip_weight_spec'] && EditData['strip_weight_spec'] > 0)
+				$('#edit_StripWeightSpec').removeClass().addClass('normal_text');
+			if(EditData['strip_weight_min'] && EditData['strip_weight_min'] > 0)
+				$('#edit_StripWeightMin').removeClass().addClass('normal_text');
+			if(EditData['strip_weight_max'] && EditData['strip_weight_max'] > 0)
+				$('#edit_StripWeightMax').removeClass().addClass('normal_text');
+			
+			if(EditData['strip_dim1_spec'] && EditData['strip_dim1_spec'] > 0)
+				$('#edit_StripDim1Spec').removeClass().addClass('normal_text');
+			if(EditData['strip_dim1_min'] && EditData['strip_dim1_min'] > 0)
+				$('#edit_StripDim1Min').removeClass().addClass('normal_text');
+			if(EditData['strip_dim1_max'] && EditData['strip_dim1_max'] > 0)
+				$('#edit_StripDim1Max').removeClass().addClass('normal_text');
+			if(EditData['strip_dim2_spec'] && EditData['strip_dim2_spec'] > 0)
+				$('#edit_StripDim2Spec').removeClass().addClass('normal_text');
+			if(EditData['strip_dim2_min'] && EditData['strip_dim2_min'] > 0)
+				$('#edit_StripDim2Min').removeClass().addClass('normal_text');
+			if(EditData['strip_dim2_max'] && EditData['strip_dim2_max'] > 0)
+				$('#edit_StripDim2Max').removeClass().addClass('normal_text');
+			if(EditData['strip_dim3_spec'] && EditData['strip_dim3_spec'] > 0)
+				$('#edit_StripDim3Spec').removeClass().addClass('normal_text');
+			if(EditData['strip_dim3_min'] && EditData['strip_dim3_min'] > 0)
+				$('#edit_StripDim3Min').removeClass().addClass('normal_text');
+			if(EditData['strip_dim3_max'] && EditData['strip_dim3_max'] > 0)
+				$('#edit_StripDim3Max').removeClass().addClass('normal_text');			
+			$('#edit_item_accord').accordion("option", "active", 0);
+		}
+	}
+}
+
+function editItemFunc(){
+	editError		=	$('#edit_item_error');
+	editAccordion	=	$("#edit_item_accord");
+	displayError(editError, "highlight", "<div class='loading' /> <strong>Adding Data to Server . . .</strong>");
+	param				=	"selecttype=" + "TOOLEDIT"+ "&tool_ref=" + EditNo;
+	try{
+		param		+=	getParamDataAndValidate("edit");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}	
+	//alert(param); return false;
+	XMLContent			=	postback(actionFile, param, "POST", "XML"); 
+	xmlData				=	$(XMLContent);
+	error				=	xmlData.find("tooladd status").html();
+	toolRef				=	xmlData.find("tooladd toolref").html();
+	if(error == "success"){
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		updatePageBehaviour();
+		$("#edit_item_form").dialog("close");
+		alert("Tool No: " + toolRef + " has been updated successfully");
+	}
+	else{
+		displayError(editError, "error", error);
+	}
+}
+
+function delItemFunc(){
+	delError		=	$('#del_item_error');
+	if(DeleteNo != null && DeleteNo != ""){
+		displayError(delError, "highlight", "<div class='loading' align='absmiddle' /> <strong>Removing Data From Server . . .</strong>");
+		param			=	"selecttype=TOOLDEL" + "&tool_ref=" + DeleteNo;
+		XMLContent		=	postback(actionFile, param, "POST", "XML");
+		xmlData			=	$(XMLContent); 
+		error			=	xmlData.find("tooladd status").html();
+		toolRef			=	xmlData.find("tooladd toolref").html();
+			if(error == "success"){
+			listPageData($("#content_body"), XMLContent, XSLFile);
+			updatePageBehaviour();
+			$("#del_item_form").dialog("close");
+			alert("Tool No: " + toolRef + " has been deleted successfully");
+		}
+		else{
+			displayError(delError, "error", error);
+			setTimeout(function(){
+				$("#del_item_form").dialog("close");
+			}, 2000);
+		}
+	}
+}
+
+function setObjFocus(ui)
+{
+	if ($(document.activeElement).attr("type") != "text" && $(document.activeElement).attr("type") != "select-one" && $(document.activeElement).attr("type") != "textarea"){
+		if($('input', ui.newContent.html()).length > 0)
+			$('#' + $('input', ui.newContent.html())[0].id).focus();
+		else if ($('textarea', ui.newContent.html()).length > 0)
+			$('#' + $('textarea', ui.newContent.html())[0].id).focus();
+		else if ($('select', ui.newContent.html()).length > 0)
+			$('#' + $('select', ui.newContent.html())[0].id).focus();
+	}  
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+
+	// Add Item Dialog
+	
+	$("#new_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 850,
+		height:'auto',
+		buttons: [
+			{
+				text: "Create",
+				click: function(){
+					if(typeof addItemFunc == "function"){
+						addItemFunc();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Cancel",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		open: function(event, ui) {
+			$('#new_ComPartRef').autocomplete({
+				source:baseCPRList
+			});
+			$("#new_item_form").css('visibility','visible');
+			$("#new_item_form form")[0].reset();
+			$("#new_item_accord").accordion("option", "active", 0);
+			$('#new_ComPartRef').focus();
+			
+		},
+		close: function(event, ui) {
+			$("#new_item_error").html("");
+			$("#new_item_error").css("display", "none");
+			} 
+	});
+	// Add Item Accordion
+	$("#new_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui)
+		}
+	});
+	$("#button_add").button().click(function(){
+		$("#new_item_form").dialog("open");
+	});
+	
+	// Edit Item Dialog
+	$("#edit_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 850,
+		height:'auto',
+		buttons: {
+			Update:function(){
+				$(this).css("default");
+				if(typeof editItemFunc == "function"){
+					editItemFunc();
+				}else{
+					$(this).dialog("close");
+				}
+			},
+			Close:function(){
+				$(this).dialog("close");
+			}
+		},
+		open: function(event, ui) {
+			$('#edit_ComPartRef').autocomplete({
+				source:baseCPRList
+			});
+			$("#edit_item_accord").accordion("option", "active", 0);
+			$('#edit_ComPartRef').focus();
+		},
+		close: function(event, ui) {
+			$("#edit_item_error").html("");
+			$("#edit_item_error").css("display", "none");
+			$("#edit_item_form form")[0].reset();
+		} 
+	});
+	// Add Item Accordion
+	$("#edit_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui)
+		}
+	});
+	
+	// Delete Item Dialog
+	$("#del_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 400,
+		buttons: [
+			{
+				text: "Yes",
+				click: function(){
+					if(typeof delItemFunc == "function"){
+						delItemFunc();
+					}else{
+						$(this).dialog("close");
+					}
+				}
+			},
+			{
+				text: "No",
+				click: function() { $(this).dialog("close"); }
+			}
+		],
+		close: function(event, ui) {
+			$("#del_item_error").html("");
+			$("#del_item_error").css("display", "none");
+		} 
+	});
+	
+	getPageData();
+	getComponentPartRef();
+	
+});

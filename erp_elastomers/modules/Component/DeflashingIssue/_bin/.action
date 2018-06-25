@@ -1,0 +1,68 @@
+<?php
+	session_start();
+	
+	switch($_POST["type"]){
+	    case 'GETUSERS':
+		   $sql		=	"select userName, fullName from tbl_users where status>0 and userType = 'Sub-Contractor'";
+		   echo getXML($sql);
+		   break;
+	    case 'GETMDREC':
+		   $sql		=	"(select mr.planRef as modRecRef, mr.modRecRef as planId, tc.cmpdId, tc.cmpdName, tc.cmpdRefNo, mouldQty,tc.cmpdDeflashJWCont,								
+							DATE_FORMAT(mr.entry_on, '%d-%m-%Y') as recdatef,mr.operator
+							from tbl_moulding_receive mr
+							inner join tbl_moulding_plan mp on mr.planRef=mp.planid
+							inner join tbl_component tc on mp.cmpdid=tc.cmpdId 
+						where mr.status = 3 ) 
+						union ALL
+						(select rw.reworkref  as modRecRef, concat(rw.planid,'-rt') as planId, tc.cmpdId, tc.cmpdName, tc.cmpdRefNo, rw.quantity as mouldQty, tc.cmpdDeflashJWCont,
+							DATE_FORMAT(rw.inspdate, '%d-%m-%Y') as recdatef,'Not Applicable' as operator
+							from tbl_rework rw
+							inner join tbl_component tc on rw.cmpdid=tc.cmpdId 
+						where rw.status = 1)								
+						order by cmpdName,planId";
+		   $res		=	@getMySQLData($sql,"xml","root","lower");
+		   echo "<xmldata>".$res."</xmldata>";
+		   break;
+		case 'INSDEF':
+			$operator		=	$_POST['operator'];
+			if($operator == 'In-House')
+				$codeName  	=  "intdefiss";
+			else
+				$codeName  	=   "defiss";
+			$codeArray  	=   @getSettingsData($codeName);
+			$codeNo			=   @getRegisterNo($codeArray[0], $codeArray[1]);
+			$issueDate		=	$_POST['issdate'];
+			$userID			=	$_SESSION['userdetails']['userId'];
+			$res			=	"";
+			foreach( $_REQUEST['planref'] as $key=>$val)
+			{
+				$issuedQuantity	=	$_POST['issdefqty'][$key];
+				$mouldRecRef	=	$_POST['mouldref'][$key];
+				$cmpdid			=	$_POST['cmpdid'][$key];	
+				$cmpdPORate		=	@getMySQLData("select poRate from tbl_customer_cmpd_po_rate	where cmpdId='$cmpdid' and status > 0 order by update_on limit 1");
+				$cmpdRate		=	$cmpdPORate['data'][0]['poRate'] ;				
+				$sql			=	"insert into tbl_deflash_issue(defissref,defiss, cmpdid, mouldref, operator, issqty, issdate, rate, entry_on, entry_by)
+									values('$codeNo', '$val', '$cmpdid', '$mouldRecRef','$operator', '$issuedQuantity', '$issueDate', '$cmpdRate', now(), '$userID') ";
+				$res			=	@getMySQLData($sql);
+				if($res['status'] == 'success'){
+					if(strripos($val,'-rt') == strlen($val) - 3 )
+					{
+						@getMySQLData("update tbl_rework set status='2' where reworkref ='$mouldRecRef'");
+					}
+					else
+					{
+						@getMySQLData("update tbl_moulding_receive set status='4' where modRecRef='$val'");
+					}
+				}
+				else
+				{
+					echo $res['status'];
+					exit();					
+				}					
+			}
+			@updateSettingsData(array($codeName));
+			echo $codeNo."-". $res['status'];
+			break;
+	}
+        
+?>

@@ -1,0 +1,599 @@
+<?php
+	session_start();
+	global 	$mixCutoffDate;
+	
+	header('Content-Type: text/xml');
+	switch($_REQUEST["selecttype"]){
+		case "CPDATLIST":
+			echo getXML("select cpdId, cpdName, cpdUOM from tbl_compound where status>0 order by cpdId asc", false);
+		break;
+		case "GETDETAIL":
+			$one_day			=	24 * 60 * 60;
+			$customer			=	$_REQUEST['customer'];
+			$mixType			=	$_REQUEST['mixtype'];
+			$cpdId				=	$_REQUEST['compcode'];
+			$fromDate			=	$_REQUEST['from_date'];
+			$toDate				=	$_REQUEST['to_date'];
+			$order				=	"/";
+			$replace			=	"-";
+			$fromDate			=	str_replace($order,$replace,$fromDate);
+			$toDate				=	str_replace($order,$replace,$toDate);
+			$fromdate			=	date("Y-m-d",strtotime($fromDate));
+			$todate				=	date("Y-m-d",strtotime($toDate));		
+			$from_time			=	strtotime($fromdate);
+			$to_time			=	strtotime($todate);
+			$stock				=	0;
+			$scheduleGrdTot		=	0;
+			$scheduleGrdBTot	=	0;
+			$opnStockGrdTot		=	0;
+			$opnStockGrdBTot	=	0;
+			$todaysAdviceGrdTot	=	0;
+			$todaysAdviceGrdBTot=	0;
+			$todaysRecptGrdTot	=	0;
+			$todaysRecptGrdBTot	=	0;
+			$recieptsGrdTot		=	0;
+			$recieptsGrdBTot	=	0;
+			$todaysIssuesGrdTot	=	0;
+			$todaysIssuesGrdBTot=	0;
+			$issuesGrdTot		=	0;
+			$issuesGrdBTot		=	0;
+			$clsStockGrdTot		=	0;	
+			$clsStockGrdBTot	=	0;
+			$return				=	"";
+			// Get Compound Opening Stock
+			$sql				=	"select tc.cpdId,cpdName,cpdPolymer,entry_on ,if(batchWgt>0,batchWgt,1) as batchWgt
+										from tbl_compound tc 
+											inner join tbl_polymer_order tpo on tpo.polyName = tc.cpdPolymer 
+											inner join (select cpdid, (sum(rmWght) * (select cpdMinStock from tbl_compound where cpdid = tab1.cpdId ) * if(polyWgt = pripolyWgt,1,(pripolyWgt+secpolywgt)/pripolyWgt)/polyWgt) as batchWgt                            
+																	from (select cpdid, 
+																			ramParts as rmWght,
+																			(SELECT sum(ramparts) 
+																				FROM (select * from tbl_compound_rm group by cpdid,item_no) tcr 
+																					inner join tbl_rawmaterial  on tcr.ramId = tbl_rawmaterial.ramId and tbl_rawmaterial.ramClass = 1 
+																				where cpdId = tcr1.cpdId ) as polyWgt,
+																			(SELECT ramparts 
+																				FROM (select * from tbl_compound_rm group by cpdid,item_no) tcr 
+																					inner join tbl_rawmaterial  on tcr.ramId = tbl_rawmaterial.ramId and tbl_rawmaterial.ramClass = 1 
+																				where cpdId = tcr1.cpdId order by item_no asc limit 1) as pripolyWgt, 
+																			(SELECT ramparts 
+																				FROM (select * from tbl_compound_rm group by cpdid,item_no) tcr 
+																					inner join tbl_rawmaterial  on tcr.ramId = tbl_rawmaterial.ramId and tbl_rawmaterial.ramClass = 1 
+																				where cpdId = tcr1.cpdId order by item_no desc limit 1) as secpolyWgt																		
+																			from (select * from tbl_compound_rm group by cpdid,item_no) tcr1 
+																		) tab1 
+																group by cpdid ) tw on tw.cpdid = tc.cpdId
+										where status>0 ".((isset($cpdId) && $cpdId != "")?" and tc.cpdId='$cpdId'":"")." 
+									order by dispOrder, cpdName";
+			$cpddata			=	@getMySQLData($sql);
+			/*echo "<pre>";
+			print_r($cpddata);
+			echo "</pre>"; exit();*/
+			
+			for($r=0; $r<$cpddata['count']; $r++){
+				$cpdid				=	$cpddata['data'][$r]['cpdId'];
+				$cpdRef				=	$cpddata['data'][$r]['cpdName'];
+				$cpdPolymer			=	$cpddata['data'][$r]['cpdPolymer'];
+				$open_stock_date	=	strtotime($cpddata['data'][$r]['entry_on']);
+				$cpdBatWgt			=	$cpddata['data'][$r]['batchWgt'];
+				
+				$tot_receipt		=	0;
+				$tot_issue			=	0;
+				$tot_open			=	0;	
+				//Get schedule
+				$compSch_sql			=	"SELECT t1.cpdId, sum(schQty) as schQty
+												FROM (select cusId, cpdId_cmpdId as cpdId, schQty from (select * from tbl_scheduling where schOrder = 'compound' and entry_on > '$mixCutoffDate'  and (STR_TO_DATE(concat('01',' ',schMonth),'%d %M %Y') between '".date("Y-m-01",strtotime("$fromdate"))."' and '".date("Y-m-t",strtotime("$todate"))."') order by entry_on desc)tsch group by cpdId_cmpdId,cusId) t1													
+													".((isset($customer) && $customer != "")?" INNER JOIN tbl_customer t2 on t2.cusId = t1.cusId and t2.cusGroup ='$customer'":"")."
+												where t1.cpdId = '$cpdid'"	;
+				//echo $compSch_sql; exit();
+				$stocksched				=	@getMySQLData($compSch_sql, "arr");
+				$compound				=	$stocksched['data'];
+				$schedqty				=	0;
+				$schedbats				=	0;
+				for($os=0; $os<$stocksched['count']; $os++){
+					$schQty				=	$compound[$os]['schQty'];
+					$schedqty			+=	$schQty;
+					$schedbats			+=	ceil($schQty/$cpdBatWgt);
+				}				
+				$scheduleGrdTot			+=	$schedqty;
+				$scheduleGrdBTot		+=	$schedbats;
+				//added "round" for preventing "-0.000" display
+				$scedule_qty			=	"<schedule_qty>".round($schedqty,3)."</schedule_qty>";
+				$scedule_qtyb			=	"<schedule_qtyb>".$schedbats."</schedule_qtyb>";
+				
+				// Get Stock List before Start Date
+				if($mixType == 'Final')
+				{
+					$sql			=	"select sum(mxrv.batRecvWgt) as batRecvWgt,count(*) as batches
+											from tbl_mixing mx									
+												inner join tbl_mixing_recv mxrv on mx.batId = mxrv.batId 
+											where mx.cpdId = '$cpdid' and mx.status >= 3 and mx.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." and  mxrv.mixRecvDate<'$fromdate'";
+				}
+				else
+				{
+					$sql			=	"select sum(masterBatchWgt) as batRecvWgt,count(*) as batches
+											from tbl_mixing 
+										where cpdId = '$cpdid' and is_mill_batch = 0 and status >= 2 and batDate > '$mixCutoffDate' and batDate < '$fromdate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"");								
+				}
+				$stockopen				=	@getMySQLData($sql, "arr");
+				
+				// Stock Total for Opening
+				$stock_list_open	=	0;
+				$stock_list_openb	=	0;
+				for($os=0; $os<$stockopen['count']; $os++){
+					$stock_list_open	+=	$stockopen['data'][$os]['batRecvWgt'];
+					$stock_list_openb	+= 	$stockopen['data'][$os]['batches'];
+				}
+				
+				// Get SAN Before Start Date
+				if($mixType == 'Final')
+				{
+					$sql			=	"select  sum(exc_shrt) as exc_shrt 
+											from tbl_mixing_san tms
+												inner join tbl_mixing mx on tms.batId = mx.batId and mx.status >= 3 and mx.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")."
+											where tms.cpdId='$cpdid' and tms.status=1 and tms.isIncoming = 0 and tms.sanDate < '$fromdate' ";
+					$sanopen		=	@getMySQLData($sql, "arr");
+					// Stock Total for Opening
+					for($osa=0; $osa<$sanopen['count']; $osa++){
+						$stock_list_open	+=	$sanopen['data'][$osa]['exc_shrt'];
+					}	
+				}				
+				
+				// Get Issue List before Start Date
+				if($mixType == 'Final')
+				{
+						$sql			=	"select  sum(t1.dcQty) as dcQty,count(*) as batches
+												from tbl_invoice_dc_items t1 
+													inner join tbl_invoice_dc t2 on t1.dcId = t2.dcId and t2.status > 0 and t2.dcDate<'$fromdate'  
+													inner join tbl_mixing tm on tm.cpdId = '$cpdid' and dcItemId = tm.batId and tm.status >= 3 and tm.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")."
+												where  t2.dctype='cpd' ";		
+				}
+				else
+				{
+						$sql			=	"select sum(dcQty) as dcQty, sum(batches) 
+												from (select sum(masterBatchWgt) as dcQty,count(*) as batches
+															from tbl_mixing 
+															where cpdId = '$cpdid' and is_mill_batch = 0 and status >= 3 and batDate > '$mixCutoffDate' and batFinalDate < '$fromdate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")."
+														Union all
+														select  sum(t1.dcQty) as dcQty,count(*) as batches
+															from tbl_invoice_dc_items t1 
+																inner join tbl_invoice_dc t2 on t1.dcId = t2.dcId and t2.status > 0 and t2.dcDate<'$fromdate'  
+																inner join tbl_mixing tm on tm.cpdId = '$cpdid' and dcItemId = tm.batId and tm.status = 2 and tm.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")."
+															where  t2.dctype='cpd'
+														Union all
+														select  sum(t1.invQty) as dcQty,count(*) as batches
+															from tbl_invoice_sales_items t1 
+																inner join tbl_invoice_sales t2 on t1.invId = t2.invId and t2.status > 0 and t2.invDate<'$fromdate'  
+																inner join tbl_mixing tm on tm.cpdId = '$cpdid' and invPlanRef = tm.batId and tm.status = 2 and tm.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")."
+															where  t1.invtype='cpd') tab1"; 
+				}				
+				$issueopen				=	@getMySQLData($sql, "arr");
+				// Issue Total for Opening
+				$issue_list_open		=	0;	
+				$issue_list_openb		=	0;
+				for($oi=0; $oi<$issueopen['count']; $oi++){
+					$issue_list_open	+=	$issueopen['data'][$oi]['dcQty'];
+					$issue_list_openb	+=	$issueopen['data'][$oi]['batches'];
+				}
+				
+				// Get Opening Stock
+				$stock				=	$stock_list_open - $issue_list_open;
+				$tot_open			=	$stock;
+				$tot_openb			=	$stock_list_openb - $issue_list_openb;
+				$opnStockGrdTot		+= 	$stock;
+				$opnStockGrdBTot	+= 	$tot_openb;
+				//added "round" for preventing "-0.000" display
+				$opening_stock		=	"<opening_stock>".round($stock, 3)."</opening_stock>";
+				$opening_stockb		=	"<opening_stockb>".$tot_openb."</opening_stockb>";
+				
+				//Get today's plan
+				if($mixType == 'Final')
+				{
+					$sql			=	"select sum(sumPlanned) as planqty,count(*) as batches 
+											from tbl_mixing tm 
+												inner join (select batid, sum(planQty) as sumPlanned from tbl_invoice_mixplan_items group by batid) tmp on tm.batid = tmp.batid 
+											where status > 0 and cpdId = '$cpdid' and batDate > '$mixCutoffDate' and batfinaldate = '$todate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"");
+				}
+				else
+				{
+					$sql			=	"select sum(sumPlanned) as planqty,count(*) as batches 
+											from ( select * , sum(planQty) as sumPlanned 
+														from (select tm.batid, tmp.planQty , tm.status, tm.batDate, is_mill_batch, customer
+																from tbl_mixing tm	
+																	INNER JOIN (select cpdid, ramid from tbl_compound_rm where is_final_chemical = 0 and cpdId = '$cpdid') tbc ON tm.cpdid = tbc.cpdid
+																	inner join tbl_invoice_mixplan_items tmp on tm.batid = tmp.batid and tbc.ramId = tmp.ramId																	 
+																)tblm
+														group by batid) tbl1  
+											where status > 0  and batDate > '$mixCutoffDate' and is_mill_batch = 0 and batDate = '$todate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"");								
+				}
+				//echo $sql; exit();
+				$stockdata			=	@getMySQLData($sql, "arr");
+				$tdyadviceqty		=	0;
+				$tdyadvicebats		=	0;
+				for($os=0; $os<$stockdata['count']; $os++){
+					$tdyadviceqty	+=	$stockdata['data'][$os]['planqty'];
+					$tdyadvicebats	+=	$stockdata['data'][$os]['batches'];
+				}				
+				$todaysAdviceGrdTot += 	$tdyadviceqty;
+				$todaysAdviceGrdBTot+=	$tdyadvicebats;
+				//added "round" for preventing "-0.000" display
+				$advised_receipts	=	"<advised_receipts>".round($tdyadviceqty,3)."</advised_receipts>";
+				$advised_receiptsb	=	"<advised_receiptsb>".$tdyadvicebats."</advised_receiptsb>";
+				
+				//Get today's receipts
+				if($mixType == 'Final')
+				{
+					$sql		=	" select sum(batRecvWgt) as batRecvWgt,count(*) as batches
+										from tbl_mixing mx											
+											inner join tbl_mixing_recv mxrv on mx.batId = mxrv.batId
+										where mx.status >= 3 and mx.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." and mx.cpdId = '$cpdid' and mxrv.mixRecvDate = '$todate'";
+				}
+				else
+				{
+					$sql		=	" select sum(masterBatchWgt) as batRecvWgt,count(*) as batches 
+											from tbl_mixing 
+											where cpdId = '$cpdid' and is_mill_batch = 0 and status >= 2 and batDate > '$mixCutoffDate' and batDate = '$todate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"") ;
+				}
+				$stockdata			=	@getMySQLData($sql, "arr");
+				$tdyrecptqty		=	0;
+				$tdyrecptbats		=	0;
+				for($os=0; $os<$stockdata['count']; $os++){
+					$tdyrecptqty	+=	$stockdata['data'][$os]['batRecvWgt'];
+					$tdyrecptbats	+=	$stockdata['data'][$os]['batches'];
+				}				
+				$todaysRecptGrdTot 	+= 	$tdyrecptqty;
+				$todaysRecptGrdBTot += 	$tdyrecptbats;
+				//added "round" for preventing "-0.000" display
+				$todays_receipt		=	"<todays_receipt>".round($tdyrecptqty,3)."</todays_receipt>";
+				$todays_receiptb	=	"<todays_receiptb>".$tdyrecptbats."</todays_receiptb>";
+				
+				// Get Stock Information
+				if($mixType == 'Final')
+				{
+					$sql			=	" select if(is_open_stock = 1, concat(group_concat(batId), '(Opening Stock)'), concat(count(batId), ' - batch(es)')) as batId, qanDate, sum(batRecvWgt) as batRecvWgt,count(*) as batches 
+											from (select mx.batId, mx.cpdId, mxrv.mixRecvDate as qanDate, mxrv.batRecvWgt,mx.is_open_stock
+													from tbl_mixing mx											
+														inner join tbl_mixing_recv mxrv on mx.batId = mxrv.batId
+													where mx.status >= 3 and mx.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." and mx.cpdId = '$cpdid' and (mxrv.mixRecvDate between '$fromdate' and '$todate')
+													group by mx.batId ) tbl1 
+											group by is_open_stock,qanDate";	
+				}
+				else
+				{
+					$sql			=	" select concat(count(batId), ' - batch(es)') as batId, batDate as qanDate, sum(masterBatchWgt) as batRecvWgt,count(*) as batches 
+											from tbl_mixing 
+											where cpdId = '$cpdid' and is_mill_batch = 0 and status >= 2 and batDate > '$mixCutoffDate' and (batDate between '$fromdate' and '$todate') ".((isset($customer) && $customer != "")?" and customer='$customer'":"") ." 
+										group by batDate";								
+				}
+				$stockdat			=	@getMySQLData($sql, "arr");
+				$tot_receiptb		=	0;
+				for($os=0; $os<$stockdat['count']; $os++){
+					$tot_receiptb	+=	$stockdat['data'][$os]['batches'];
+				}				
+				
+				
+				//Get today's issues
+				if($mixType == 'Final')
+				{
+					$sql			=	"select sum(t1.dcQty) as issueQty, count(*) as batches
+											from tbl_invoice_dc_items t1 
+											inner join tbl_invoice_dc t2 on t1.dcId = t2.dcId and t2.status > 0 and t2.dcDate = '$todate'
+											inner join tbl_mixing tm on tm.cpdId = '$cpdid' and dcItemId = tm.batId and tm.status >= 3 and tm.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." 
+										where  t2.dctype='cpd' 
+										group by t2.dcId";
+				}
+				else
+				{
+					$sql			=	"select sum(masterBatchWgt) as issueQty, count(*) as batches
+											from tbl_mixing 
+											where cpdId = '$cpdid' and is_mill_batch = 0 and status >= 3 and batDate > '$mixCutoffDate' and batFinalDate = '$todate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." 
+										group by batFinalDate
+										Union all
+										select  sum(t1.dcQty) as issueQty, count(*) as batches 
+											from tbl_invoice_dc_items t1 
+												inner join tbl_invoice_dc t2 on t1.dcId = t2.dcId and t2.status > 0 and  t2.dcDate = '$todate'  
+												inner join tbl_mixing tm on tm.cpdId = '$cpdid' and dcItemId = tm.batId and tm.status = 2 and tm.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." 
+											where  t2.dctype='cpd' 
+										group by t2.dcId
+										Union all
+										select  sum(t1.invQty) as issueQty, count(*) as batches 
+											from tbl_invoice_sales_items t3 
+												inner join tbl_invoice_sales t4 on t3.invId = t4.invId and t4.status > 0 and  t4.invDate = '$todate'  
+												inner join tbl_mixing tm on tm.cpdId = '$cpdid' and invPlanRef = tm.batId and tm.status = 2 and tm.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." 
+											where  t3.invtype='cpd' 
+										group by t4.invId";						
+				}
+				$stockdata			=	@getMySQLData($sql, "arr");
+				$tdyactissqty		=	0;
+				$tdyactissbats		=	0;
+				for($os=0; $os<$stockdata['count']; $os++){
+					$tdyactissqty	+=	$stockdata['data'][$os]['issueQty'];
+					$tdyactissbats	+=	$stockdata['data'][$os]['batches'];
+				}				
+				$todaysIssuesGrdTot += 	$tdyactissqty;
+				$todaysIssuesGrdBTot+= 	$tdyactissbats;
+				//added "round" for preventing "-0.000" display
+				$todays_issue			=	"<todays_issue>".round($tdyactissqty,3)."</todays_issue>";
+				$todays_issueb			=	"<todays_issueb>".$tdyactissbats."</todays_issueb>";
+				
+				if($mixType == 'Final')
+				{
+					$sql		=	"select t2.dcDate, t2.dcId, sum(t1.dcQty) as dcQty,count(*) as batches
+										from tbl_invoice_dc_items t1 
+										inner join tbl_invoice_dc t2 on t1.dcId = t2.dcId and t2.status > 0 and (t2.dcDate between '$fromdate' and '$todate')
+										inner join tbl_mixing tm on tm.cpdId = '$cpdid' and dcItemId = tm.batId and tm.status >= 3 and tm.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." 
+									where  t2.dctype='cpd' 
+									group by t2.dcId";
+				}
+				else
+				{
+					$sql		=	"select concat(count(batId), ' - Final batch(es)') as dcId, batFinalDate as dcDate, sum(masterBatchWgt) as dcQty,count(*) as batches 
+										from tbl_mixing 
+										where cpdId = '$cpdid' and is_mill_batch = 0 and status >= 3 and batDate > '$mixCutoffDate' and (batFinalDate between '$fromdate' and '$todate') ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." 
+									group by batFinalDate
+									Union all
+									select  t2.dcId,t2.dcDate, sum(t1.dcQty) as dcQty,count(*) as batches 
+										from tbl_invoice_dc_items t1 
+											inner join tbl_invoice_dc t2 on t1.dcId = t2.dcId and t2.status > 0 and  (t2.dcDate between '$fromdate' and '$todate')  
+											inner join tbl_mixing tm on tm.cpdId = '$cpdid' and dcItemId = tm.batId and tm.status = 2 and tm.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." 
+										where  t2.dctype='cpd' 
+									group by t2.dcId 
+									Union all
+									select  t2.invId as dcId,t2.invDate as dcDate,sum(t1.invQty) as dcQty, count(*) as batches 
+										from tbl_invoice_sales_items t1 
+											inner join tbl_invoice_sales t2 on t1.invId = t2.invId and t2.status > 0 and ( t2.invDate between '$fromdate' and '$todate')  
+											inner join tbl_mixing tm on tm.cpdId = '$cpdid' and invPlanRef = tm.batId and tm.status = 2 and tm.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." 
+										where  t1.invtype='cpd' 
+									group by t2.invId";						
+				}
+				$issue			=	@getMySQLData($sql, "arr");
+				$tot_issueb		=	0;
+				for($os=0; $os<$issue['count']; $os++){
+					$tot_issueb	+=	$issue['data'][$os]['batches'];
+				}								
+				
+				if($mixType == 'Final')
+				{				
+					$sql		=	"select sanId, sanDate, sum(exc_shrt) as exc_shrt from tbl_mixing_san tms
+										inner join tbl_mixing mx on tms.batId = mx.batId and mx.status >= 3 and mx.batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"")." 
+									where tms.cpdId='$cpdid' and tms.status=1 and tms.isIncoming = 0 and (tms.sanDate between '$fromdate' and '$todate') group by sanId asc;";
+					$san		=	@getMySQLData($sql, "arr");
+				}
+				else
+				{
+					$san['status'] 	=	"success";
+					$san['count']	=	0;
+				}
+
+				// Get Dates
+				$from_date	=	$from_time;
+				$to_date	=	$to_time;
+				$date_now	=	$from_date;
+				$count		=	0;
+				$stock_list	=	'';
+		
+				if($stockdat['status']=="success" && $issue['status']=="success"  && $san['status']=="success"){
+					
+					if($open_stock_date >= $from_time && $stock > 0){
+						$stock_list		.=	"<row>
+							<txn_date>".date("d-M-Y", $open_stock_date)."</txn_date>
+							<txn_doc>Opening Stock</txn_doc>
+							<receipt>-</receipt>
+							<issue>-</issue>
+							<stock>".@number_format($stock, 3)."</stock>
+						</row>";
+						$count++;
+					}
+					
+					while($date_now <= $to_date){
+						$slist			=	array();
+						$slist_time		=	array();
+						
+						// Get Stock Data
+						for($sd=0; $sd<$stockdat['count']; $sd++){
+							$thisdate	=	strtotime($stockdat['data'][$sd]['qanDate']);
+							if($thisdate == $date_now){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$stockdat['data'][$sd]['batId'];
+								$slist[$nxt]['receipt']			=	$stockdat['data'][$sd]['batRecvWgt'];
+								$slist[$nxt]['issue']			=	0;
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						// Get Issue Data
+						for($isd=0; $isd<$issue['count']; $isd++){
+							$thisdate	=	strtotime($issue['data'][$isd]['dcDate']);
+							$nxtdate	=	$date_now + $one_day;
+							if($thisdate >= $date_now && $thisdate < $nxtdate){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$issue['data'][$isd]['dcId'];
+								$slist[$nxt]['receipt']			=	0;
+								$slist[$nxt]['issue']			=	$issue['data'][$isd]['dcQty'];
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						// Get Stock Adjustments Note
+						for($stk=0; $stk<$san['count']; $stk++){
+							$thisdate	=	strtotime($san['data'][$stk]['sanDate']);
+							$nxtdate	=	$date_now + $one_day;
+							if($thisdate >= $date_now && $thisdate < $nxtdate){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$san_no	=	$san['data'][$stk]['exc_shrt'] + 0;
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$san['data'][$stk]['sanId'];
+								$slist[$nxt]['receipt']			=	($san_no > 0)?$san_no:0;
+								$slist[$nxt]['issue']			=	($san_no < 0)?preg_replace("/[-]/", "", $san_no):0;
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						@array_multisort($slist_time, SORT_ASC, SORT_NUMERIC);
+						
+						for($sa=0; $sa<count($slist_time); $sa++){
+							for($sl=0; $sl<count($slist); $sl++){
+								if($slist[$sl]['time'] == $slist_time[$sa]){
+									$stock			=	(($stock + $slist[$sl]['receipt']) - $slist[$sl]['issue']);
+									$stock_list		.=	"<row>
+										<txn_date>".$slist[$sl]['txn_date']."</txn_date>
+										<txn_doc>".$slist[$sl]['txn_doc']."</txn_doc>
+										<receipt>".(($slist[$sl]['receipt'] >= 0 && $slist[$sl]['issue'] == "-")?@number_format($slist[$sl]['receipt'], 3):"-")."</receipt>
+										<issue>".(($slist[$sl]['receipt'] == "-" && $slist[$sl]['issue'] >= 0)?@number_format($slist[$sl]['issue'], 3):"-")."</issue>
+										<stock>".(($stock >= 0)?@number_format($stock, 3):"-")."</stock>
+									</row>";
+									$tot_receipt	+=	$slist[$sl]['receipt'];
+									$tot_issue		+=	$slist[$sl]['issue'];
+									$count++;
+									array_splice($slist, $sl, 1);
+									break;
+								}
+							}
+						}
+						
+						$date_now	+=	$one_day;
+					}
+					$statusTab		=	"<status>success</status>";
+					$countTab	=	"<count>$count</count>";
+				}
+				else if($stockdat['status']!="success"){
+					$statusTab	=	"<error>".$stockdat['errno']."</error>";
+				}
+				else if($issue['status']!="success"){
+					$statusTab	=	"<error>".$issue['errno']."</error>";	
+				}
+				else if($san['status']!="success"){
+					$statusTab	=	"<error>".$san['errno']."</error>";
+				}
+				//to resolve "-0.000" issue
+				$schedqty			=	round($schedqty,3);
+				$tot_open			=	round($tot_open,3);
+				$tdyadviceqty		=	round($tdyadviceqty,3);
+				$tot_receipt		=	round($tot_receipt,3);
+				$tot_issue			=	round($tot_issue,3);				
+				$stock				=	round($stock,3);				
+				$recieptsGrdTot		+=	$tot_receipt;
+				$recieptsGrdBTot 	+= 	$tot_receiptb;
+				$issuesGrdTot		+=	$tot_issue;
+				$issuesGrdBTot		+=	$tot_issueb;
+				$clsStockGrdTot		+=	$stock;	
+				$clsStockGrdBTot	+=	$tot_openb + $tot_receiptb - $tot_issueb;
+				
+				$tot_rec			=	"<total_receipt>".$tot_receipt."</total_receipt>";
+				$tot_recb			=	"<total_receiptb>".$tot_receiptb."</total_receiptb>";
+				$tot_iss			=	"<total_issue>".$tot_issue."</total_issue>";
+				$tot_issb			=	"<total_issueb>".$tot_issueb."</total_issueb>";
+				$close_stock		=	"<closing_stock>".$stock."</closing_stock>";
+				$close_stockb		=	"<closing_stockb>".($tot_openb + $tot_receiptb - $tot_issueb)."</closing_stockb>";
+				if($cpdId != ""){
+					$return		.=	"<rootxml>
+										<root>
+											$opening_stock
+											$countTab
+											$statusTab
+											$close_stock
+											$tot_rec
+											$tot_iss
+											<stock_list>
+												<data>
+													$stock_list
+												</data>
+											</stock_list>
+										</root>
+									</rootxml>";
+				}else if(!($schedqty == 0 && $tot_open == 0 && $tdyadviceqty == 0 && $tot_receipt == 0 && $tot_issue == 0 && $stock == 0)){
+					$bat_list_open		=	"";
+					if($mixType == 'Final' )
+					{					
+						$sql		=	"select batId,avlQty from tbl_mixing where cpdId = '$cpdid' and avlQty > 0 and status >= 3 and batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"");
+					}
+					else 
+					{
+						$sql		=	"select batId,(masterBatchWgt - mstrIssuedQty) as avlQty from tbl_mixing where cpdId = '$cpdid' and (masterBatchWgt - mstrIssuedQty) > 0 and status = 2 and batDate > '$mixCutoffDate' ".((isset($customer) && $customer != "")?" and customer='$customer'":"");
+					}
+					$stockopen	=	@getMySQLData($sql, "arr");
+					for($os=0; $os<$stockopen['count']; $os++){
+						if($bat_list_open != "")
+						{
+							$bat_list_open	= $bat_list_open .  "\n";
+						}
+						$bat_list_open	=	$bat_list_open . $stockopen['data'][$os]['batId'] . "(" . $stockopen['data'][$os]['avlQty']. ")";											
+					}					
+					$return		.=	"
+										<row>
+											<cpdid>$cpdid</cpdid>
+											<cpdref>$cpdRef</cpdref>
+											<cpdpolymer>$cpdPolymer</cpdpolymer>
+											<cpdcost>".@getCompoundCost($cpdid)."</cpdcost>
+											$scedule_qty
+											$scedule_qtyb
+											$opening_stock
+											$opening_stockb
+											$countTab
+											$statusTab
+											$close_stock
+											$close_stockb
+											<batdetails>".$bat_list_open."</batdetails>
+											$advised_receipts
+											$advised_receiptsb
+											$todays_receipt
+											$todays_receiptb
+											$tot_rec
+											$tot_recb
+											$todays_issue
+											$todays_issueb
+											$tot_iss
+											$tot_issb
+											<stock_list>
+												<data>
+													$stock_list
+												</data>
+											</stock_list>
+										</row>";
+				}
+			}
+			$output	= (isset($cpdId) && $cpdId != "")?$return:	"<rootxml>
+																<root>
+																	<count>".$cpddata['count']."</count>
+																	<status>".$cpddata['status']."</status>
+																	".$return."
+																	<sceduleGrdTot>$scheduleGrdTot</sceduleGrdTot>
+																	<sceduleGrdBTot>$scheduleGrdBTot</sceduleGrdBTot>
+																	<openStockGrdTot>$opnStockGrdTot</openStockGrdTot>
+																	<openStockGrdBTot>$opnStockGrdBTot</openStockGrdBTot>
+																	<todayAdviceGrdTot>$todaysAdviceGrdTot</todayAdviceGrdTot>
+																	<todayAdviceGrdBTot>$todaysAdviceGrdBTot</todayAdviceGrdBTot>
+																	<todayRcptGrdTot>$todaysRecptGrdTot</todayRcptGrdTot>
+																	<todayRcptGrdBTot>$todaysRecptGrdBTot</todayRcptGrdBTot>
+																	<recieptsGrdTot>$recieptsGrdTot</recieptsGrdTot>
+																	<recieptsGrdBTot>$recieptsGrdBTot</recieptsGrdBTot>
+																	<todayIssGrdTot>$todaysIssuesGrdTot</todayIssGrdTot>
+																	<todayIssGrdBTot>$todaysIssuesGrdBTot</todayIssGrdBTot>
+																	<issuesGrdTot>$issuesGrdTot</issuesGrdTot>
+																	<issuesGrdBTot>$issuesGrdBTot</issuesGrdBTot>
+																	<clsStockGrdTot>$clsStockGrdTot</clsStockGrdTot>
+																	<clsStockGrdBTot>$clsStockGrdBTot</clsStockGrdBTot>
+																</root>
+															</rootxml>";
+			if($_POST["conToHTML"] == 1)
+			{
+				//convert to HTML via server side XSLT
+				$xml = new DOMDocument;
+				$xml->loadXML($output);
+				$xsl = new DOMDocument;
+				$xsl->load($_SESSION['app']['iso_dir'].$_POST["xslfile"]);
+				$proc = new XSLTProcessor;
+				$proc->importStyleSheet($xsl);
+				echo $proc->transformToXML($xml);
+			}
+			else
+				echo $output;
+			exit();
+		break;
+	}
+
+?>

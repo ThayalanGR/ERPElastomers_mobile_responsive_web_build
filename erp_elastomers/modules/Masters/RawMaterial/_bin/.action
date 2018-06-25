@@ -1,0 +1,206 @@
+<?php
+
+	// Includes
+	session_start();
+	
+	// Do Actions
+	header('Content-Type: text/xml');
+	switch($_REQUEST['selecttype']){
+		case "RMSUPATLIST":
+			$output		=	getXML("select supId, supName from tbl_supplier where status>0;", false);
+			echo $output;
+			exit();
+		break;
+		case "BASERMATLIST":
+			$output		=	getXML("select upper(t1.ramName) as ramName, t1.ramUoM, t2.uom_short_name, t1.ramClass, t3.class_short_name
+									from tbl_rawmaterial_base t1
+									inner join tbl_uom t2 on t1.ramUoM = t2.sno
+									inner join tbl_class t3 on t1.ramClass = t3.sno
+									where t1.status>0;", false);
+			echo $output;
+			exit();
+		break;
+		case "RMSUPLIST":
+			if($_REQUEST['rmid'] != ""){
+				$output		=	@getMySQLData("select supId from tbl_rawmaterial_sup where ramId='".$_REQUEST['rmid']."';");
+				if($output['count'] > 0){
+					$data		=	$output['data'];
+					$sql		=	"select supId, supName from tbl_supplier where supId='".$data[0]['supId']."' ";
+					for($si=1; $si<$output['count']; $si++){
+						$sql	.=	"or supId='".$data[$si]['supId']."' ";
+					}
+					$sql		.=	"and status>0";
+					$output		=	getXML($sql, false);
+					echo $output;
+				}
+			}
+			exit();
+		break;
+		case "RMPARAMATLIST":
+			$output		=	@getMySQLData("select * from tbl_param where status > 0 ", "xml", "xmldata");
+			echo $output;
+			exit();
+		break;
+		case "PARAMDETAIL":
+			if($_REQUEST['paramid'] != ""){
+				$output		=	@getMySQLData("select paramStdRef,(select uom_short_name from tbl_uom where sno = tbl_param.paramUOM) as paramUOM,paramTestMethod  from tbl_param where status > 0 and sno ='".$_REQUEST['paramid']."';", "xml", "xmldata");
+				echo $output;
+			}
+			exit();
+		break;			
+		case "RMPARAMLIST":
+			if($_REQUEST['rmid'] != ""){
+				$output		=	@getMySQLData("select ramQanParamRef,paramStdRef,uom_short_name,paramTestMethod,ramQanSpec,ramQanLLimit,ramQanULimit,ramSamPlan from tbl_rawmaterial_qan_param t1 
+													left outer join tbl_param t3 on t3.sno = t1.ramQanParamRef
+													left outer join tbl_uom t4 on t4.sno = t3.paramUOM 
+													where t1.ramId='".$_REQUEST['rmid']."' and t3.status > 0 ", "xml", "xmldata");
+				echo $output;
+			}
+			exit();
+		break;
+		case "RMADD":
+			if($_REQUEST['rmname'] != ""){
+				// Generate Code No
+				$codeNo		=	@getRegisterData("rmcode");
+				
+				// Get RamNo
+				$rmNoSQL		=	@getMySQLData("select * from tbl_rawmaterial_base where ramName='".$_REQUEST['rmname']."' and status>0");
+				if($rmNoSQL['count'] <= 0){
+					echo "<mysql><status>No Raw Material Base found for this Raw Material</status></mysql>";
+					exit();
+				}
+				$rmNo			=	$rmNoSQL['data'][0]['sno'];
+				
+				if($codeNo != ""){
+					$sql		=	"insert into tbl_rawmaterial(ramId, ramNo, ramName, ramUnit, ramGrade, ramManufacturer, ramChemName, ramComposition, ramClass, ramMinStock, ramShelfLife, ramRackNo, ramHSNCode, ramApprovedRate,ramStdPacking, entry_on, entry_by,remarks)
+										values('$codeNo', '$rmNo', '".$_REQUEST['rmname']."', '".$_REQUEST['rmunits']."', '".$_REQUEST['rmgrade']."', '".$_REQUEST['rammanufacturer']."', '".$_REQUEST['ramchemname']."', '".$_REQUEST['ramcomposition']."', '".$_REQUEST['rmclass']."', '".$_REQUEST['rmminstock']."', '".$_REQUEST['rmshelflife']."', '".$_REQUEST['rmrackno']."', '".$_REQUEST['rmhsncode']."', '".$_REQUEST['rmapprate']."', '".$_REQUEST['rmstdpack']."', now(), '".$_SESSION['userdetails']['userId']."', '".$_REQUEST['rmremarks']."');";
+					
+					$output		=	@getMySQLData($sql, "xml");
+					
+					// Add Suppliers
+					$supList		=	$_REQUEST['rmsuplist'];
+					if(is_array($supList) && count($supList) > 0){
+						$sql		=	"insert into tbl_rawmaterial_sup(ramId, supId) values";
+						for($rsl=0; $rsl<count($supList); $rsl++){
+							$sql	.=	"('$codeNo', '".$supList[$rsl]."')".(($rsl<count($supList)-1)?',':'')." ";
+						}
+						$output		.=	@getMySQLData($sql, "xml", "suplierAddMysql");
+					}
+					
+					// Add Parameter
+					$paramList		=	$_REQUEST['param'];
+					if(is_array($_REQUEST['param']) && count($_REQUEST['param']) > 0){
+						$sql		=	"insert into tbl_rawmaterial_qan_param(ramId, ramQanParamRef,ramQanSpec, ramQanULimit, 
+																				ramQanLLimit, ramSamPlan) values";
+						for($rpl=0; $rpl<count($paramList); $rpl++){
+							$sql	.=	"('$codeNo', '".$paramList[$rpl]['pname']."', '".$paramList[$rpl]['pspec']."', '".$paramList[$rpl]['pul']."',
+											'".$paramList[$rpl]['pll']."', '".$paramList[$rpl]['psp']."')".
+										(($rpl<count($paramList)-1)?',':'')." ";
+						}
+						$output		.=	@getMySQLData($sql, "xml", "paramAddMysql");
+					}
+				}
+				if($output != ""){
+					$output.="<output><ramid>".$codeNo."</ramid></output>";
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					if($status == "success"){
+						@updateSettingsData(array('rmcode'));
+					}
+				}
+			}
+			else{
+				$output	=	"<mysql><status>Invalid Data . . .</status></mysql>";
+			}
+		break;
+		case "RMEDIT":
+			if($_REQUEST['rmid'] != ""){
+				
+				// Get RamNo
+				$rmNoSQL		=	@getMySQLData("select * from tbl_rawmaterial_base where ramName='".$_REQUEST['rmname']."' and status>0");
+				if($rmNoSQL['count'] <= 0){
+					echo "<mysql><status>No Raw Material Base found for this Raw Material</status></mysql>";
+					exit();
+				}
+				$rmNo			=	$rmNoSQL['data'][0]['sno'];				
+				
+				$sql			=	"update tbl_rawmaterial set
+										ramNo='$rmNo', ramName='".$_REQUEST['rmname']."', ramUnit='".$_REQUEST['rmunits']."', ramGrade='".$_REQUEST['rmgrade']."',
+										ramActStatus='".$_REQUEST['rmstatus']."', ramManufacturer='".$_REQUEST['rammanufacturer']."', ramChemName='".$_REQUEST['ramchemname']."', 
+										ramComposition='".$_REQUEST['ramcomposition']."', ramClass='".$_REQUEST['rmclass']."',ramShelfLife='".$_REQUEST['rmshelflife']."',
+										ramMinStock='".$_REQUEST['rmminstock']."', ramHSNCode='".$_REQUEST['rmhsncode']."', ramRackNo='".$_REQUEST['rmrackno']."',										  
+										ramApprovedRate='".$_REQUEST['rmapprate']."', ramStdPacking='".$_REQUEST['rmstdpack']."', update_on=now(),
+										update_by='".$_SESSION['userdetails']['userId']."' , remarks='".$_REQUEST['rmremarks']."' where ramId='".$_REQUEST['rmid']."' and status>0;";
+				$output			=	@getMySQLData($sql, "xml");
+								
+				// Delete All Suppliers
+				$sql	=	"delete from tbl_rawmaterial_sup where ramId='".$_REQUEST['rmid']."'";
+				@getMySQLData($sql);
+				
+				// Insert New Suppliers
+				$supList	=	(is_array($_REQUEST['rmsuplist']))?$_REQUEST['rmsuplist']:array();
+				if(count($supList) > 0){
+					$sql		=	"insert into tbl_rawmaterial_sup(ramId, supId) values";
+					for($rsl=0; $rsl<count($supList); $rsl++){
+						$sql	.=	"('".$_REQUEST['rmid']."', '".$supList[$rsl]."')".(($rsl<count($supList)-1)?',':'')." ";
+					}
+					$output		.=	@getMySQLData($sql, "xml", "newSuppliers");
+				}
+				
+				// Delete All Parameters
+				$sql	=	"delete from tbl_rawmaterial_qan_param where ramId='".$_REQUEST['rmid']."'";
+				@getMySQLData($sql);
+				
+				// Add New Parameters
+				$paramList		=	$_REQUEST['param'];
+				if(is_array($_REQUEST['param']) && count($_REQUEST['param']) > 0){
+					$sql		=	"insert into tbl_rawmaterial_qan_param(ramId, ramQanParamRef, 
+																			ramQanSpec, ramQanULimit, ramQanLLimit, ramSamPlan) values";
+					for($rpl=0; $rpl<count($paramList); $rpl++){
+						$sql	.=	"('".$_REQUEST['rmid']."', '".$paramList[$rpl]['pname']."', 
+										'".$paramList[$rpl]['pspec']."', '".$paramList[$rpl]['pul']."', '".$paramList[$rpl]['pll']."', '".$paramList[$rpl]['psp']."')".
+									(($rpl<count($paramList)-1)?',':'')." ";
+					}
+					$output		.=	@getMySQLData($sql, "xml", "paramAddMysql");
+				}				
+				
+			}
+			else{
+				$output	=	"<mysql><status>Invalid Data . . .</status></mysql>";
+			}
+		break;
+		case "RMDEL":
+			if($_REQUEST['rmid'] != ""){
+				$del_suppliers	=	@getMySQLData("delete from tbl_rawmaterial_sup where ramId='".$_REQUEST['rmid']."'", "xml");
+				$del_param		=	@getMySQLData("delete from tbl_rawmaterial_qan_param where ramId='".$_REQUEST['rmid']."'", "xml");
+				$output			=	@getMySQLData("update tbl_rawmaterial set status='0' where ramId='".$_REQUEST['rmid']."' and status>0;", "xml");
+			}
+		break;
+		case "BASERMADD":
+			if($_REQUEST['rmname'] != "" && $_REQUEST['rmunits'] != "" && $_REQUEST['rmclass'] != ""){
+				$output		=	@getMySQLData("insert into tbl_rawmaterial_base(ramName, ramUoM, ramClass)
+												values('".$_REQUEST["rmname"]."', '".$_REQUEST["rmunits"]."', '".$_REQUEST["rmclass"]."')", "xml");
+				echo $output;
+			}
+			exit();
+		break;
+	}
+	
+	// List Data
+	$list	=	@getMySQLData("SELECT t1.ramId, t2.ramName as ramName, t1.ramUnit as ramUnitNo, t3.uom_short_name as ramUnit, t1.ramGrade, 
+									t1.ramManufacturer, t1.ramChemName, t1.ramComposition,	t1.ramClass as ramClassNo,t4.class_short_name as ramClass,  
+									t1.ramMinStock, t1.ramActStatus, t1.ramShelfLife, t1.ramRackNo, t1.ramHSNCode, t1.status, 
+									t1.ramApprovedRate, t1.ramStdPacking,t1.entry_by, DATE_FORMAT(t1.entry_on, '%d/%m/%Y') as entry_on, t1.remarks
+								FROM tbl_rawmaterial t1
+								inner join tbl_rawmaterial_base t2 on t1.ramNo = t2.sno
+								inner join tbl_uom t3 on t1.ramUnit = t3.sno
+								inner join tbl_class t4 on t1.ramClass = t4.sno
+								where t1.status>0 order by t4.class_short_name, t2.ramName asc;",'xml','root', 'lower');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

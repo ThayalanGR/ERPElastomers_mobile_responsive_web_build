@@ -1,0 +1,72 @@
+
+$(document).ready(function(){
+
+	// Set AutoComplete Text Box
+	var objDCList	=	postback(actionFile,"type=GETINV&outtype=xml","POST","XML");
+	dcXML			=	parseXMLdoc(objDCList);
+	dcList			=	new Array();
+	$(dcXML).find('row').each(function(index, element) {
+        dcList.push($(this).find('invid').text() );
+    });
+	
+	$("#dcRef").autocomplete({
+		source:dcList,
+		close:function(event, ui){
+			createAutoComplete();
+		}
+	});
+	
+	createAutoComplete();
+	
+	$("#dcRef").focus();
+
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function createAutoComplete(){
+	dcRef		=	$("#dcRef").val();
+	var mouldList       =	postback(actionFile,"type=GETDEF&dcref="+dcRef,"POST","XML");
+	//alert(mouldList);
+	listPageData($("#content_body"), mouldList, XSLFile); 
+
+	$('.delete_button').click(function(){
+		invid       =   $(this).attr('invid');
+		deleteCont   =   '<table width="100%" >' +
+						'<tr><td><b>Are you Sure to Delete ?</b></td></tr>' +
+						'</table>';
+		$('#delete_dialog').html(deleteCont).dialog({
+			title:'Delete',
+			width:300,
+			height:125,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'YES':function(){
+					$(this).dialog('close');
+					deleteInvoice(invid);
+				},
+				'NO':function(){
+				   $(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});
+	});
+
+}
+
+function deleteInvoice(invid){
+    var resultErr       =	postback(actionFile,"type=DELINVOICE&invid="+invid,"POST","XML");
+	if(resultErr != 'success')
+	{
+		alert("Deletion of Plan failed due to : " + resultErr);
+	}
+	else
+	{		
+		setTimeout(function(){window.location.reload();}, 500);		
+	}
+	
+}

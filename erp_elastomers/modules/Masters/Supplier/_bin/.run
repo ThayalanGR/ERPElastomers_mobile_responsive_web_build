@@ -1,0 +1,449 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+function getParamDataAndValidate(type)
+{
+	objData			=	[
+		// Object ID's
+		[
+			['RefNo', 'SupName', 'SupAddr1',
+			 'ContName', 'Mobile', 'Phone', 'Fax', 'Email'],
+			['BankName', 'BankNo', 'IFSCCode', 'Credit'],
+			['PANNo', 'GSTNo', 'SupplyPlace','SupplyState'],
+			['AppUser', 'AppDate', 'Remarks']
+		],
+		// Object Default Values
+		[
+			['', '', '',
+			 '', '', '', '', ''],
+			['', '', '', '', '',''],
+			['', '', '', ''],
+			['', 'DD/MM/YYYY', '']
+		],
+		// Object POST Variable
+		[
+			['suprefno', 'supname', 'supaddress1',
+			 'supcontperson', 'supmobile', 'supphone', 'supfax', 'supemail'],
+			['supbankname', 'supbankno', 'supifsc', 'supcredit', 'taxrateid', 'supfreight'],
+			['suppan','supgstn','supplace','supstate'],
+			['supappuser', 'supappdate', 'supremarks']
+		],
+		// Object Error Name
+		[
+			['Reference No.', 'Supplier Name', 'Address',
+			 'Contact Person', 'Mobile No.', 'Phone No.', 'Fax No.', 'Email'],
+			['Bank Name', 'Bank No.', 'IFSC Code', 'Credit Days', 'Tax Rate', 'Freight'],
+			['PAN Number','GST Number','Supply Place','Supply State'],
+			['Approved User', 'Approved Date', 'Remarks']
+		],
+		// Object Mandatory
+		[
+			[false, true, true,
+			 false, false, false, false, false],
+			[false, false, false, false, true, false],
+			[false, false, true, true],
+			[false, false, false]
+		]
+	];
+	
+	paramVal = "";
+	errObj		=	$('#'+type+'_item_error');
+	accordionObj	=	$("#"+type+"_item_accord");
+	if(objData.length > 0 && objData[0].length > 0){
+		for(o=0; o<objData[0].length; o++){
+			for(j=0; j<objData[0][o].length; j++){
+				object	=	$("#"+type+"_" + objData[0][o][j]);
+				if((objData[4][o][j]) && (object.val() == null || object.val() == "" || object.val() == objData[1][o][j]))
+				{	
+					displayError(errObj, "error", "<strong>Error !</strong> - " + objData[3][o][j] + " Missing.");
+					if(accordionObj.accordion("option", "active") != o)
+						accordionObj.accordion("option", "active", o );
+					throw object;
+				}
+				else
+				{				
+					if(object.val() != "" && object.val() != objData[1][o][j]){
+						value	=	object.val();
+						switch(objData[0][o][j]){
+							case 'Email':
+								if(!emailCheck(object.val())){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid Email Format.");									
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									throw object;
+								}
+							break;
+							case 'AppDate':
+								value	=	value.split('/');
+								value	=	value[2] + '-' +  value[1] + '-' +  value[0];
+							break;
+							case 'Credit':
+								if(isNaN(Number(value)) || Number(value) <= 0){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid Credit Days.");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									object.val(0);
+									throw object;
+								}
+							break;
+							case 'PANNo':
+								if(value.length != 10){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid " + objData[3][o][j] + ".");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									throw object;
+								}
+							break;
+							case 'GSTNo':
+								if(value.length != 15){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid " + objData[3][o][j] + ".");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									throw object;
+								}
+							break;
+						}
+						paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+					}
+					else
+					{
+						value	=	object.val();
+						paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+					}
+				}
+			}
+		}
+	}
+	
+	return paramVal;
+}
+
+function getPageData(){
+	XMLContent		=	postback(actionFile, "selecttype=SUPVIEW&outtype=xml", "POST", "XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	$(".edit_button").click(function(e) {
+        editForm($(this).attr('supid'));
+    });
+	
+	$(".delete_button").click(function(e) {
+        deleteForm($(this).attr('supid'));
+    });
+	
+	updateHeader();updateContent();
+}
+
+function openAccordion(obj, ev, type, no){
+	ev = ev || window.event;			// gets the event in ie or ns
+	kCode = ev.keyCode || ev.which;		// gets the keycode in ie or ns
+	if(ev != null && no != null && no >= 0){
+		if(!ev.shiftKey && kCode == 9){
+			switch(type){
+				case 'new':	
+					$("#new_item_accord").accordion("option", "active", no);
+				break;
+				case 'edit':	
+					$("#edit_item_accord").accordion("option", "active", no);	
+				break;
+			}
+		}
+	}	
+}
+
+function getSubmitButton(fid){
+	if(fid != null){
+		fid			=	(typeof fid == "object")?fid:document.getElementById(fid);
+		if(fid){
+			nsib		=	fid.nextSibling;
+			if(nsib){
+				buttons		=	nsib.getElementsByTagName("button");
+				if(buttons.length > 0){
+					buttons[0].click();
+				}
+			}
+		}
+	}
+}
+
+function setServiceTaxNo(obj, tar){
+	if(typeof obj == 'object' && tar != null && tar != ""){
+		if(obj.value == null || obj.value == ""){
+			obj.value	=	$("#" + tar).val();
+		}
+	}
+}
+
+function editForm(no){
+	EditNo		=	(no)?no:null;
+	$("#edit_item_form").css('visibility', 'visible');
+	$("#edit_item_form").dialog("open");
+	$("#edit_item_form").dialog('option', "title", "Edit Supplier for Id: " + EditNo);	
+	if(typeof setEditFunc == "function")
+		setEditFunc();
+}
+
+function deleteForm(no){
+	$("#del_item_form").css('visibility', 'visible');
+	$("#del_item_form").dialog("open");
+	DeleteNo	=	(no)?no:null;
+}
+
+function addItemFunc(){
+	newError		=	$('#new_item_error');
+	newAccordion	=	$("#new_item_accord");
+	
+	displayError(newError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");
+	param			=	"selecttype=" + "SUPADD";
+	try{
+		param		+=	getParamDataAndValidate("new");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}
+	XMLContent		=	postback(actionFile, param, "POST", "XML");
+	error			=	$(XMLContent).find("mysql status").html();
+	if(error == "success"){
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		$("#new_item_form").dialog("close");
+		updatePageBehaviour();
+	}
+	else{
+		displayError(newError, "error", error);
+	}
+}
+
+function setEditFunc(){
+	editError		=	$('#edit_item_error');
+	
+	if(EditNo != null && EditNo != ""){
+		xmlData		=	parseXMLdoc(XMLContent);
+		Rows		=	xmlData.getElementsByTagName("row");
+		EditData	=	new Array();
+		if(Rows.length > 0){
+			for(R=0; R<Rows.length; R++){
+				Obj		=	Rows[R];
+				Sno		=	Obj.childNodes[0].firstChild.nodeValue;
+				if(Sno == EditNo){
+					for(ER=0; ER<Obj.childNodes.length; ER++){
+						EditData[Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+					}
+					break;
+				}
+			}
+			$('#edit_RefNo').val(EditData['suprefno']);
+			$('#edit_SupName').val(EditData['supname']);
+			$('#edit_SupAddr1').val(EditData['supaddress1']);
+			$('#edit_Email').val(EditData['supemail']);
+			$('#edit_ContName').val(EditData['supcontname']);
+			$('#edit_Mobile').val(EditData['supmobile']);
+			$('#edit_Phone').val(EditData['supphone']);
+			$('#edit_Fax').val(EditData['supfax']);
+			$('#edit_BankName').val(EditData['supbankname']);
+			$('#edit_BankNo').val(EditData['supbankno']);
+			$('#edit_IFSCCode').val(EditData['supifsccode']);
+			$('#edit_PANNo').val(EditData['suppan']);
+			$('#edit_GSTNo').val(EditData['supgstn']);
+			$('#edit_SupplyPlace').val(EditData['supplace']);
+			$('#edit_SupplyState').val(EditData['supstate']);
+			$('#edit_AppUser').val(EditData['supapprovedby']);
+			$('#edit_AppDate').val(EditData['supapproveddate']);
+			$('#edit_Credit').val(EditData['supcreditdays']);
+			$('#edit_ServiceTaxNo').val(EditData['supservicetaxno']);
+			$('#edit_Remarks').val(EditData['supremarks']);			
+			if(EditData['supapproveddate'])
+				$('#edit_AppDate').removeClass().addClass('normal_text');				
+			$('#edit_item_accord').accordion("option", "active", 0);
+			$('#edit_RefNo').focus();
+		}
+	}
+}
+
+function editItemFunc(){
+	editError		=	$('#edit_item_error');
+	editAccordion	=	$("#edit_item_accord");	
+	displayError(editError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");
+	param			=	"selecttype=" + "SUPEDIT" +
+						"&supid=" + EditNo;	
+	try{
+		param		+=	getParamDataAndValidate("edit");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}
+	XMLContent			=	postback(actionFile, param, "POST", "XML");
+	xmlData				=	parseXMLdoc(XMLContent);
+	error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+	if(error == "success"){
+		listPageData($("#content_body"), XMLContent, XSLFile);
+		$("#edit_item_form").dialog("close");
+		updatePageBehaviour();
+	}
+	else{
+		displayError(editError, "error", error);
+	}
+}
+
+function delItemFunc(){
+	delError		=	$('#del_item_error');
+	if(DeleteNo != null && DeleteNo != ""){
+		displayError(delError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Removing Data From Server . . .</strong>");
+		param			=	"selecttype=SUPDEL" + "&supid=" + DeleteNo;
+		XMLContent		=	postback(actionFile, param, "POST", "XML");
+		xmlData			=	parseXMLdoc(XMLContent);
+		error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			listPageData($("#content_body"), XMLContent, XSLFile);
+			$("#del_item_form").dialog("close");
+			updatePageBehaviour();
+		}
+		else{
+			displayError(delError, "error", error);
+			setTimeout(function(){
+				$("#del_item_form").dialog("close");
+			}, 2000);
+		}
+	}
+}
+
+function setObjFocus(ui)
+{
+	if ($(document.activeElement).attr("type") != "text" && $(document.activeElement).attr("type") != "select-one" && $(document.activeElement).attr("type") != "textarea"){
+		if($('input', ui.newContent.html()).length > 0)
+			$('#' + $('input', ui.newContent.html())[0].id).focus();
+		else if ($('textarea', ui.newContent.html()).length > 0)
+			$('#' + $('textarea', ui.newContent.html())[0].id).focus();
+		else if ($('select', ui.newContent.html()).length > 0)
+			$('#' + $('select', ui.newContent.html())[0].id).focus();
+	}  
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+
+	// Add Item Dialog
+	$("#new_item_form").dialog({ autoOpen: false ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 850,
+									//height: 450,
+									height: 'auto',
+									buttons: [
+										{
+											text: "Add",
+											click: function(){
+												if(typeof addItemFunc == "function"){
+													addItemFunc();
+												}else{
+													$(this).dialog("close"); 
+												}
+											}
+										},
+										{
+											text: "Close",
+											click: function(){
+												$(this).dialog("close");
+											}
+										}
+									],
+									open: function(event, ui){
+										$("#new_RefNo").focus();
+									},
+									close: function(event, ui) {
+											$("#new_item_error").html("");
+											$("#new_item_error").css("display", "none");
+										} 
+									});
+	// Add Item Accordion
+	$("#new_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui);
+		}
+		
+
+	});
+	
+	// Edit Item Dialog
+	$("#edit_item_form").dialog({ autoOpen: false ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 850,
+									height:'auto',
+									buttons: {
+										Update:function(){
+											$(this).css("default");
+											if(typeof editItemFunc == "function"){
+												editItemFunc();
+											}else{
+												$(this).dialog("close");
+											}
+										},
+										Close:function(){
+											$(this).dialog("close");
+										}
+									},
+									close: function(event, ui) {
+											$("#edit_item_error").html("");
+											$("#edit_item_error").css("display", "none");
+										} 
+									});
+	// Add Item Accordion
+	$("#edit_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui);
+		}
+	});
+	
+	// Delete Item Dialog
+	$("#del_item_form").dialog({ autoOpen: false ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 400,
+									buttons: [
+										{
+											text: "Yes",
+											click: function(){
+												if(typeof delItemFunc == "function"){
+													delItemFunc();
+												}else{
+													$(this).dialog("close");
+												}
+											}
+										},
+										{
+											text: "No",
+											click: function() { $(this).dialog("close"); }
+										}
+									],
+									close: function(event, ui) {
+											$("#del_item_error").html("");
+											$("#del_item_error").css("display", "none");
+										} 
+									});
+	
+	$("#button_add").button().click(function(){
+		$("#new_item_form").css('visibility','visible');
+		$("#new_item_form").dialog("open");
+		$("#new_item_accord").accordion("option", "active", 0);
+	});	
+
+	getPageData();
+});

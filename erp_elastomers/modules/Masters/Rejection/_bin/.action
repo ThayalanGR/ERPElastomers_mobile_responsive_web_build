@@ -1,0 +1,37 @@
+<?php
+
+	// Includes
+	session_start();
+	
+	// Do Actions
+	switch($_POST['selecttype']){
+		case "REJADD":
+			if($_POST['rejtype'] != "" && $_POST['rejsname'] != ""){
+				$output		=	@getMySQLData("insert into tbl_rejection(rej_type, rej_short_name)
+												values('".$_POST['rejtype']."', '".$_POST['rejsname']."');", "xml");
+			}
+		break;
+		case "REJEDIT":
+			if($_POST['sno'] != "" && $_POST['rejtype'] != "" && $_POST['rejsname'] != ""){
+				$output		=	@getMySQLData("update tbl_rejection set
+												rej_type='".$_POST['rejtype']."',
+												rej_short_name='".$_POST['rejsname']."'
+												where sno='".$_POST['sno']."' and status>0;", "xml");
+			}
+		break;
+		case "REJDEL":
+			if($_POST['sno'] != ""){
+				$output		=	@getMySQLData("update tbl_rejection set status='0' where sno='".$_POST['sno']."' and status>0;", "xml");
+			}
+		break;
+	}
+	
+	// List Data
+	$list	=	@getMySQLData("SELECT * FROM tbl_rejection where status>0 order by sno asc;", 'xml', 'root');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

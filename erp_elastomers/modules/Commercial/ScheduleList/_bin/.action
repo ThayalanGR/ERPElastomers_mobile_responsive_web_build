@@ -1,0 +1,352 @@
+<?php
+	session_start();
+	
+	header('Content-Type: text/xml');
+	switch($_REQUEST["selecttype"]){
+		case "GETCUSDETAIL":
+			$sch_order 		=	$_REQUEST['opt_code'];
+			$curMonth		= 	$_REQUEST['value']; 
+			$preMonth		= 	date("F Y", strtotime("-1 months", strtotime($curMonth)));
+			$grouping		= 	$_REQUEST['grouping'];
+			$compType		= 	$_REQUEST['comptype'];
+			$condition		=	$_REQUEST['condition'];
+			$oper			=	($_REQUEST['oper'] == '1')?">=":"<=";
+			$percent		=	$_REQUEST['percent'];
+			$penval			=	$_REQUEST["penval"];
+			$joincond		=	$_REQUEST["joincond"];			
+			$datestart 		= 	date("Y-m-d", strtotime($curMonth));	
+			$dateend 		= 	date("Y-m-d", strtotime("-6 months", strtotime($curMonth)));
+			$sql = "select * from (select cpdId_cmpdId,schQty,tc.cusId,rate,cmpdBlankWgt,typeAbbr,";
+			if($grouping == 'cuswise')
+					$sql .= "cusName, IF(cusGroup IS NULL or cusGroup = '', 'OTHERS', UPPER(cusGroup)) as cusGroup";
+			else if ($grouping == 'cpdwise')
+					$sql .=	"cpdPolymer as cusGroup, cpdName as cusName,dispOrder";
+			else
+					$sql .= "operator as cusName,'ALL' as cusGroup";
+			$sql .= " ,	if((select schQty from tbl_scheduling where cpdId_cmpdId=schedule.cpdId_cmpdId and schMonth='$preMonth' and cusId = schedule.cusId and status>0 order by entry_on desc limit 1)>0,(select schQty from tbl_scheduling where cpdId_cmpdId=schedule.cpdId_cmpdId and schMonth='$preMonth' and cusId = schedule.cusId and status>0 order by entry_on desc limit 1),0) as preMonthQty,
+						sum(invQty) as disQty
+					from (select ts.entry_on, invCode as cpdId_cmpdId, ifnull(schQty,0) as schQty, invCusId as cusId, invRate as rate,invQty,invPlanRef
+							from tbl_invoice_sales_items tici
+								inner join tbl_invoice_sales tic on tici.invId=tic.invId and tic.status > 0 and DATE_FORMAT(tic.invDate,'%M %Y')='$curMonth'
+								left outer join (select * from (select * from tbl_scheduling  where schOrder='$sch_order' and schMonth='$curMonth' and status>0 order by entry_on desc)tbl1  group by cusId,cpdId_cmpdId) ts on tic.invCusId=ts.cusId and tici.invCode=ts.cpdId_cmpdId
+								where invtype = 'cmpd'
+							UNION ALL
+							select entry_on,cpdId_cmpdId,schQty,cusId,rate, 0 as invQty,'NA' as invPlanRef from (select * from (select * from tbl_scheduling  where schOrder='$sch_order' and schMonth='$curMonth' and status>0 order by entry_on desc)tbl_ts group by  cusId,cpdId_cmpdId)ts
+									left join (select invCode, invCusId	from tbl_invoice_sales_items tici
+													inner join tbl_invoice_sales tic on tici.invId=tic.invId and tic.status > 0 and DATE_FORMAT(tic.invDate,'%M %Y')='$curMonth'
+												where invtype = 'cmpd') ti on ti.invCusId=ts.cusId and ti.invCode=ts.cpdId_cmpdId
+							WHERE ti.invCode IS NULL 
+						order by entry_on desc)as schedule 
+							inner join tbl_customer tc on tc.cusId=schedule.cusId 
+							inner join tbl_component tcmpd on tcmpd.cmpdId = schedule.cpdId_cmpdId 
+							inner join tbl_product_group tpg on tpg.prodType = tcmpd.cmpdProdGroup  
+							inner join tbl_compound  tcpd on tcmpd.cmpdCpdId = tcpd.cpdId ".(($compType > 0)?(($compType == 1)?" and tcpd.isColorCpd = 0 ":" and tcpd.isColorCpd = 1 "):"");
+			if($grouping == 'cpdwise')
+				$sql	.=	"inner join tbl_polymer_order tpo on tpo.polyName = tcpd.cpdPolymer";
+			else if($grouping == 'contwise')
+				$sql	.=	'inner join tbl_moulding_receive tmr on tmr.modRecRef=schedule.invPlanRef';						
+			$sql	.=	"  group by cpdId_cmpdId, cusName )table1 ";
+			if ($condition == '1')
+				$sql	.=	" where ($percent * schQty) $oper disQty $joincond (schQty - disQty) * rate >= $penval";
+			if($grouping == 'cpdwise')
+					$sql	.=	" order by dispOrder,cusName,typeAbbr,cmpdBlankWgt";
+			else
+					$sql	.=	" order by cusGroup,cusName,typeAbbr,cmpdBlankWgt";
+			if($sch_order == 'compound')
+			{
+				$sql = "select * from (select cpdId_cmpdId,schQty,tc.cusId,rate,cusName,IF(cusGroup IS NULL or cusGroup = '', 'OTHERS', UPPER(cusGroup)) as cusGroup ,
+							if((select sum(schQty) from tbl_scheduling where cpdId_cmpdId=schedule.cpdId_cmpdId and schMonth='$preMonth' and cusId = schedule.cusId and status>0)>0,(select sum(schQty) from tbl_scheduling where cpdId_cmpdId=schedule.cpdId_cmpdId and schMonth='$preMonth' and cusId = schedule.cusId and status>0),0) as preMonthQty,
+							sum(dcQty) as disQty
+						from (select ts.entry_on, dcCode as cpdId_cmpdId, ifnull(schQty,0) as schQty, dcCusId as cusId, 1 as rate, dcQty
+								from tbl_invoice_dc_items tidi
+									inner join tbl_invoice_dc tid on tidi.dcId=tid.dcId and tid.status > 0 and DATE_FORMAT(tid.dcDate,'%M %Y')='$curMonth'
+									left outer join (select * from (select * from tbl_scheduling  where schOrder='$sch_order' and schMonth='$curMonth' and status>0 order by entry_on desc)tbl1  group by cusId,cpdId_cmpdId) ts on tid.dcCusId=ts.cusId and tidi.dcCode=ts.cpdId_cmpdId
+									where dctype = 'cpd'
+								UNION ALL
+								select entry_on,cpdId_cmpdId,schQty,cusId,rate, 0 as dcQty from (select * from (select * from tbl_scheduling  where schOrder='$sch_order' and schMonth='$curMonth' and status>0 order by entry_on desc)tbl1  group by cusId,cpdId_cmpdId) ts
+										left join (select dcCode, dcCusId from tbl_invoice_dc_items tidi
+														inner join tbl_invoice_dc tid on tidi.dcId=tid.dcId and tid.status > 0 and DATE_FORMAT(tid.dcDate,'%M %Y')='$curMonth'
+													where dctype = 'cpd') ti on ti.dcCusId=ts.cusId and ti.dcCode=ts.cpdId_cmpdId
+								WHERE ti.dcCode IS NULL 
+							order by entry_on desc)as schedule 
+								inner join tbl_customer tc on tc.cusId=schedule.cusId
+						group by cpdId_cmpdId, cusId)table1 ";
+						if ($condition == '1')
+							$sql	.=	" where ($percent * schQty) $oper disQty $joincond (schQty - disQty) * rate >= $penval";
+						$sql	.=	" order by cusGroup";
+			}
+			
+			//echo $sql; exit();
+			
+			$outputarr	=  @getMySQLData($sql);
+			$data = "";
+			$sno = 1;
+			
+			if( ($outputarr['errno'] == 0)&&($outputarr['count'] > 0) ){
+
+				$custGroup 	= 	array();
+				foreach($outputarr['data'] as $cusgrp){
+					if(!in_array($cusgrp['cusGroup'],$custGroup)){
+						array_push($custGroup,$cusgrp['cusGroup']);	
+					}
+				}
+				
+				foreach($custGroup as $cusGroup)
+				{
+					$grpTotAvg 			= 	0;
+					$grpTotPreSchQty 	= 	0;
+					$grpTotPreSchVal 	= 	0;
+					$grpTotSchQty 		= 	0;
+					$grpTotSchVal		= 	0;
+					$grpTotDisQty		= 	0;
+					$grpTotDisVal		= 	0;
+					$grpTotPenQty		= 	0;
+					$grpTotPenVal		= 	0;
+					$grpTotComp			= 	0;
+					$grpTotPercent		= 	0;			
+					$data				.=	"<row>";
+					$data				.=	"<cusGroup>".$cusGroup."</cusGroup>";
+					$data				.=	"<row>";
+					$customer 			= 	array();
+					foreach($outputarr['data'] as $cust){
+						if(!in_array($cust['cusName'],$customer) && $cust['cusGroup'] == $cusGroup){
+							array_push($customer,$cust['cusName']);	
+						}
+					}
+					
+					foreach($customer as $cus){
+						$totAvg 		= 	0;
+						$totPreSchQty 	= 	0;
+						$totPreSchVal 	= 	0;
+						$totSchQty 		= 	0;
+						$totSchVal		= 	0;
+						$totDisQty		= 	0;
+						$totDisVal		= 	0;
+						$totPenQty		= 	0;
+						$totPenVal		= 	0;
+						$totComp		= 	0;
+						$totPercent		= 	0;	
+						$cusDisplay		=	(strlen($cus) > 20)?substr($cus,0,8)."....".substr($cus,-8): $cus;
+						$data			.=	"<grpData>";
+						$data			.=	"<cusName>".$cusDisplay."</cusName>";
+						$data			.=	"<row>";
+						foreach( $outputarr['data'] as $value ){						
+							$sqlave		=	"select if((sum(MonthQty)/count(schMonth ))>0,(sum(MonthQty)/count(schMonth)),0) as AvgMonthlySales, schname,schdesc
+												from (select schMonth, sum(schQty)as MonthQty, cpdName_cmpdName as schname,cpdDesc_cmpdDesc  as schdesc  
+														from tbl_scheduling 
+														where cusId='".$value['cusId']."' and cpdId_cmpdId ='".$value['cpdId_cmpdId']."' and schDate < '$datestart' and schDate >= '$dateend' and schOrder = '$sch_order' 
+														group by schMonth) as inv ";
+							if ($sch_order == 'component')
+								$sqlave	=	"select cmpdAMR as AvgMonthlySales,cmpdName as schname, left(cmpdRefNo,6) as schdesc,cmpdBlankWgt from tbl_component where cmpdid = '".$value['cpdId_cmpdId']."'";
+							$sql_avg 	= 	@getMySQLData($sqlave);
+							
+							if($cus==$value['cusName']){
+								$rate 			= 	$value['rate'];
+								$amr			=	$sql_avg['data'][0]['AvgMonthlySales'];
+								$preMonthQty	=	$value['preMonthQty'];	
+								$preMonthVal 	=	($preMonthQty * $rate);	
+								$schQty			=	$value['schQty'];
+								$schVal			= 	($schQty * $rate);
+								$disQty			=	$value['disQty'];
+								$disVal			=	($disQty * $rate);
+								$penQty			=	($schQty - $disQty);							
+								if($penQty > 0)
+									$penVal		=	($penQty * $rate);
+								else
+									$penVal		=	0;
+								if($sch_order == 'component' && $grouping == 'cpdwise')
+								{
+									$blankWgt		=	$sql_avg['data'][0]['cmpdBlankWgt'];								
+									$amr			=	($amr*$blankWgt/1000);
+									$preMonthQty	=	($preMonthQty*$blankWgt/1000);
+									$schQty			=	($schQty*$blankWgt/1000);
+									$disQty			=	($disQty*$blankWgt/1000);
+								}
+								$totPreSchQty 	+=	$preMonthQty;
+								$totPreSchVal 	+=	$preMonthVal;
+								$totSchQty		+=	$schQty;
+								$totSchVal		+=	$schVal;
+								$totDisQty		+=	$disQty;	
+								$totDisVal		+=	$disVal;
+								$penQty			=	($schQty - $disQty);							
+								if($penQty > 0)
+								{
+									$totPenQty	+=	$penQty;
+									$totPenVal	+=	$penVal;
+								}
+								if($amr > 0)
+									$totAvg 	+=	 $amr;
+								else
+									$amr		=	0;									
+								
+								$data			.=	"<customerData>";
+								$data			.=	"<preMonthQty>".$preMonthQty."</preMonthQty>";
+								$data			.=	"<preMonthVal>".$preMonthVal."</preMonthVal>";
+								$data			.=	"<avgMonthlySales>".$amr."</avgMonthlySales>";
+								$data			.=	"<sno>$sno</sno>";
+								$data			.=	"<schname>".$sql_avg['data'][0]['schname'].(($value['typeAbbr'])?"(".$value['typeAbbr'].getBlanksGroup($value['cmpdBlankWgt']).")" :"")."</schname>";
+								$data			.=	"<schdesc>".$sql_avg['data'][0]['schdesc']."</schdesc>";
+								$data			.=	"<schqty>".$schQty."</schqty>";
+								$data			.=	"<schval>".$schVal."</schval>";
+								$data			.=	"<disqty>".$disQty."</disqty>";
+								$data			.=	"<disval>".$disVal."</disval>";
+								$data			.=	"<penqty>".$penQty."</penqty>";
+								$data			.=	"<penval>".$penVal."</penval>";								
+								$data			.=	"</customerData>";
+							$sno++;
+							}
+						}
+						$data		.=	"</row>";
+						//Total Percentage Increase or Decrease
+						if($totSchVal !=0 && $totPreSchVal !=0){
+							$totPercent = ((($totSchVal - $totPreSchVal)/$totPreSchVal) * 100) ;
+						}
+						//Total Completion
+						if($totDisVal !=0 && $totSchVal !=0){
+							$totComp	=	(($totDisVal/$totSchVal) * 100);
+						}					
+						$data				.=	"<subTotalavg>".$totAvg."</subTotalavg>";
+						$data				.=	"<totPreSchQty>".$totPreSchQty."</totPreSchQty>";
+						$data				.=	"<totPreSchVal>".$totPreSchVal."</totPreSchVal>";
+						$data				.=	"<totSchQty>".$totSchQty."</totSchQty>";
+						$data				.=	"<totSchVal>".$totSchVal."</totSchVal>";
+						$data				.=	"<totDisQty>".$totDisQty."</totDisQty>";
+						$data				.=	"<totDisVal>".$totDisVal."</totDisVal>";
+						$data				.=	"<totPenQty>".$totPenQty."</totPenQty>";
+						$data				.=	"<totPenVal>".$totPenVal."</totPenVal>";
+						$data				.=	"<totComp>".$totComp."</totComp>";
+						$data				.=	"<totPercent>".$totPercent."</totPercent>";
+						$data				.=	"</grpData>";
+						$grpTotAvg 			+= 	$totAvg;
+						$grpTotPreSchQty 	+= 	$totPreSchQty;
+						$grpTotPreSchVal 	+= 	$totPreSchVal;
+						$grpTotSchQty 		+= 	$totSchQty;
+						$grpTotSchVal		+= 	$totSchVal;
+						$grpTotDisQty		+= 	$totDisQty;
+						$grpTotDisVal		+= 	$totDisVal;
+						$grpTotPenQty		+= 	$totPenQty;
+						$grpTotPenVal		+= 	$totPenVal;
+					}
+					$data		.=	"</row>";
+					//Group Total Percentage Increase or Decrease
+					if($grpTotSchVal !=0 && $grpTotPreSchVal !=0){
+						$grpTotPercent = ((($grpTotSchVal - $grpTotPreSchVal)/$grpTotPreSchVal) * 100) ;
+					}
+					//Group Total Completion
+					if($grpTotDisVal !=0 && $grpTotSchVal !=0){
+						$grpTotComp	=	(($grpTotDisVal/$grpTotSchVal) * 100);
+					}					
+					$data		.=	"<grpTotAvg>".$grpTotAvg."</grpTotAvg>";
+					$data		.=	"<grpTotPreSchQty>".$grpTotPreSchQty."</grpTotPreSchQty>";
+					$data		.=	"<grpTotPreSchVal>".$grpTotPreSchVal."</grpTotPreSchVal>";
+					$data		.=	"<grpTotSchQty>".$grpTotSchQty."</grpTotSchQty>";
+					$data		.=	"<grpTotSchVal>".$grpTotSchVal."</grpTotSchVal>";
+					$data		.=	"<grpTotDisQty>".$grpTotDisQty."</grpTotDisQty>";
+					$data		.=	"<grpTotDisVal>".$grpTotDisVal."</grpTotDisVal>";
+					$data		.=	"<grpTotPenQty>".$grpTotPenQty."</grpTotPenQty>";
+					$data		.=	"<grpTotPenVal>".$grpTotPenVal."</grpTotPenVal>";
+					$data		.=	"<grpTotComp>".$grpTotComp."</grpTotComp>";
+					$data		.=	"<grpTotPercent>".$grpTotPercent."</grpTotPercent>";
+					$data		.=	"</row>";	
+					$customer	=	null;
+				}
+				
+			}
+			
+			$output	= "<xmldata><root><count>".$outputarr['count']."</count><data>".$data."</data><status>".$outputarr['status']."</status></root></xmldata>";
+			if($_POST["conToHTML"] == 1)
+			{
+				//convert to HTML via server side XSLT
+				$xml = new DOMDocument;
+				$xml->loadXML($output);
+				$xsl = new DOMDocument;
+				$xsl->load($_SESSION['app']['iso_dir'].$_POST["xslfile"]);
+				$proc = new XSLTProcessor;
+				$proc->importStyleSheet($xsl);
+				echo $proc->transformToXML($xml);
+			}
+			else
+				echo $output;
+			exit();
+		break;
+		case "GETMONTHLYDETAILS":
+			$sch_order 		=	"component"; 
+			$curMonth		= 	$_REQUEST['value']; 
+			$condition		=	$_REQUEST['condition'];
+			$oper			=	($_REQUEST['oper'] == '1')?">=":"<=";
+			$percent		=	$_REQUEST['percent'];
+			$numMonth		=	$_REQUEST['nummonth'];
+			$penval			=	$_REQUEST["penval"];
+			$joincond		=	$_REQUEST["joincond"];			
+			$monthVar		= 	"";
+			$datestart 		= 	date("Y-m-01", strtotime($curMonth));
+			$sql			=	"";
+			for($mCount=1;$mCount<=$numMonth;$mCount++)
+			{				
+				$monthVar	=	date("F Y",  strtotime($datestart." -".$mCount." month"));
+				$mthDash	=	date("F_Y",  strtotime($datestart." -".$mCount." month"));
+				$sql 		.= "select * from(	select schMonth,cpdId_cmpdId,cpdName_cmpdName,schQty as schQty_".$mthDash.",tc.cusId,rate,cusName, sum(invQty) as disQty_".$mthDash."
+													from(	select ts.entry_on, invCode as cpdId_cmpdId, ifnull(schQty,0) as schQty, invCusId as cusId, invRate as rate,invQty,schMonth,cpdName_cmpdName
+																from tbl_invoice_sales_items tici
+																	inner join tbl_invoice_sales tic on tici.invId=tic.invId and tic.status > 0 and DATE_FORMAT(tic.invDate,'%M %Y')='$monthVar'
+																	inner join (select * from (select * from tbl_scheduling  where schOrder='$sch_order' and schMonth='$monthVar' and status>0 order by entry_on desc)tbl1  group by cusId,cpdId_cmpdId ) ts on tic.invCusId=ts.cusId and tici.invCode=ts.cpdId_cmpdId
+																where invtype = 'cmpd'
+															UNION ALL
+															select entry_on,cpdId_cmpdId,schQty,cusId,rate, 0 as invQty,schMonth,cpdName_cmpdName 
+																from tbl_scheduling ts
+																	left join (select invCode, invCusId	from tbl_invoice_sales_items tici
+																					inner join tbl_invoice_sales tic on tici.invId=tic.invId and tic.status > 0 and DATE_FORMAT(tic.invDate,'%M %Y')='$monthVar'
+																				where invtype = 'cmpd') ti on ti.invCusId=ts.cusId and ti.invCode=ts.cpdId_cmpdId
+																WHERE schOrder='$sch_order' and schMonth='$monthVar' and ts.status>0 and ti.invCode IS NULL 
+																order by entry_on desc
+														)as schedule 
+													inner join tbl_customer tc on tc.cusId=schedule.cusId 
+													group by cusId,cpdId_cmpdId 
+											)table1 
+									where ($percent * schQty_".$mthDash.") $oper disQty_".$mthDash." $joincond (schQty_".$mthDash."  - disQty_".$mthDash.") * rate >= $penval";
+										
+				if($mCount<$numMonth && $mCount == 1)
+					$sql	.=	") tbl1 INNER JOIN ( ";
+				else if ($mCount<$numMonth)
+					$sql	.=	" ) tbl".$mCount." on tbl1.cpdId_cmpdId = tbl".$mCount.".cpdId_cmpdId and tbl1.cusId = tbl".$mCount.".cusId INNER JOIN ( ";
+			}				
+			
+			$finalSql	=	"select tbl1.cpdName_cmpdName as 'Part Number',tbl1.cusName as Customer,";
+			for($mCnt=1;$mCnt<=$numMonth;$mCnt++)
+			{
+				$mthDash	=	date("F_Y",  strtotime($datestart." -".$mCnt." month"));
+				$finalSql	.=	" round(schQty_".$mthDash.") as schQty_".$mthDash.", round(schQty_".$mthDash." * tbl".$mCnt.".rate) as schVal_".$mthDash.",round(disQty_".$mthDash.") as disQty_".$mthDash.",round(disQty_".$mthDash." * tbl".$mCnt.".rate) AS disVal_".$mthDash.", round((disQty_".$mthDash."/schQty_".$mthDash.")*100) AS disPer_".$mthDash;
+				if($mCnt<$numMonth)
+					$finalSql	.=	",";				
+			}	
+			$finalSql	.=	" From (".$sql.") tbl".$numMonth." on tbl1.cpdId_cmpdId = tbl".$numMonth.".cpdId_cmpdId and tbl1.cusId = tbl".$numMonth.".cusId group by tbl1.cusId,tbl1.cpdId_cmpdId order by tbl1.cusName ";
+			//echo $finalSql; exit();
+			$output 		=	'';
+			$outSql 		=	@getMySQLData($finalSql);
+			$schedDetails 	=   $outSql['data']; 
+			if(count($schedDetails) > 0){
+				foreach($schedDetails as $keys=>$values){
+					// Get The Field Name
+					if($keys == 0)
+					{
+						foreach($values as $keyh=>$valueh) {
+							$output .= '"'.$keyh.'",';
+						}
+						$output .="\n";
+					}
+					// Get Records from the table
+					foreach($values as $key=>$value)  {
+						$output .='"'.$value.'",';
+					}
+					$output .="\n";					
+				}
+			}
+			else
+			{
+				$output = "No Such Records";
+			}
+			echo $output;			
+		break;	
+	}
+
+?>

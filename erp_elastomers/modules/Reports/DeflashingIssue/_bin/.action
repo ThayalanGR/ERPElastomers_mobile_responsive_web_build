@@ -1,0 +1,21 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	//echo $_POST["selecttype"]; exit();
+	
+	switch($_POST["selecttype"]){
+		case "MOULDLIST":	
+			//$datecutoff = date('Y-m-d',mktime(0, 0, 0, date("m")  , date("d")-30, date("Y")));
+			$sql_batch	=	"SELECT defissref,  DATE_FORMAT(issdate,'%d-%b-%Y') as issdate, operator FROM `tbl_deflash_issue` where status > 0 and issdate >= '".$_POST["startDate"]."' and  issdate <= '".$_POST["endDate"]."' group by defissref order by issdate,defissref  ";
+			$list		=	@getMySQLData($sql_batch,"xml","root","lower");
+			$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>
+				$list
+				$output
+			</xmldata>";
+		break;
+	}
+	
+?>

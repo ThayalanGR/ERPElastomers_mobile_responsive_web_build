@@ -1,0 +1,27 @@
+/* myDBR Theme */
+.cm-s-mydbr.CodeMirror { background: white; line-height: 1.1em;}
+.cm-s-mydbr .cm-keyword {color: #0040FD;}
+.cm-s-mydbr .cm-builtin {color: #0040FD;}
+.cm-s-mydbr .cm-number {color: black;}
+.cm-s-mydbr .cm-string {color: green;}
+.cm-s-mydbr .cm-string-2 {color: #f50;}
+.cm-s-mydbr .cm-variable-2 {color: #8f5403;}
+.cm-s-mydbr .cm-comment {color: #777777;}
+.cm-s-mydbr .cm-mydbr-cmd {color: red;}
+.cm-s-mydbr .cm-atom {color: #219;}
+.cm-s-mydbr .cm-def {color: #00f;}
+.cm-s-mydbr .cm-variable,
+.cm-s-mydbr .cm-punctuation,
+.cm-s-mydbr .cm-property,
+.cm-s-mydbr .cm-operator {}
+.cm-s-mydbr .cm-variable-3 {color: #085;}
+.cm-s-mydbr .cm-meta {color: #555;}
+.cm-s-mydbr .cm-qualifier {color: #555;}
+.cm-s-mydbr .cm-bracket {color: #997;}
+.cm-s-mydbr .cm-tag {color: #170;}
+.cm-s-mydbr .cm-attribute {color: #00c;}
+.cm-s-mydbr .cm-header {color: blue;}
+.cm-s-mydbr .cm-quote {color: #090;}
+.cm-s-mydbr .cm-hr {color: #999;}
+.cm-s-mydbr .cm-link {color: #00c;}
+.cm-s-mydbr .cm-error {color: #f00;}

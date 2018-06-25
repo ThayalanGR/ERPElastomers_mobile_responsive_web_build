@@ -1,0 +1,116 @@
+<?php
+
+	session_start();
+	global $complaints_upload_dir;
+	header('Content-Type: text/xml');
+	if ( isset($_FILES['file'])) {
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$complaints_upload_dir;
+		try {
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			 }
+
+			 // You should also check filesize here. 
+			 if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			 }
+
+			 if( 'application/pdf' == $_FILES['file']['type'] || 'image/jpeg' == $_FILES['file']['type'] ) 
+			 {
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					echo $_FILES['file']["name"] . " already exists. ";
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath.$_FILES['file']["name"]))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+					
+					echo insertComplaintRecord($_POST['custid'],$_POST['custname'],$_POST['partnum'],$_POST['compclass'],$_POST['compdesc'],$_POST['compnature'],$_POST['compmode'],$_POST['compresp'],$_POST['custcompref'],$_POST['custcompdate'],$_POST['retqty'],$_POST['retdocid'],$_POST['retdate'],$_POST['corrtardate'],$_POST['closetardate'],$_FILES['file']["name"]);
+				}
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			echo $e->getMessage();
+		}      
+    } 
+	else 
+	{ 		
+		switch($_REQUEST["selecttype"]){
+			case "CSTATLIST":
+				$output		=	getXML("select cusName, cusId from tbl_customer where status>0",false);
+				echo $output;
+				exit();
+			break;
+			case "CMPDLIST":
+				$output		=	getXML("select distinct t1.cmpdid, concat(t1.cmpdname,'(',cmpdrefno,')') as cmpdname from tbl_component t1
+											inner join tbl_customer_cmpd_po_rate t2 on t1.cmpdid = t2.cmpdid 
+										where cusId ='".$_POST['cusid']."' and t1.status>0 and t2.status>0",false);
+				echo $output;
+				exit();
+			break;
+			case "COMPINS":
+				echo insertComplaintRecord($_POST['custid'],$_POST['custname'],$_POST['partnum'],$_POST['compclass'],$_POST['compdesc'],$_POST['compnature'],$_POST['compmode'],$_POST['compresp'],$_POST['custcompref'],$_POST['custcompdate'],$_POST['retqty'],$_POST['retdocid'],$_POST['retdate'],$_POST['corrtardate'],$_POST['closetardate'],"");
+				exit();
+			break;
+			case "GETCOMPLIST":
+				$sql_comps	=	"select complaintId, date_format(complaintDate,'%d-%m-%Y') as compdate, date_format(corr_action_target,'%d-%m-%Y') as corr_action_target, date_format(closure_target,'%d-%m-%Y') as closure_target, substring(cusName,1,25) as cusName, cmpdName, description, responsibility, sketch_file_name, tc.status, date_format(LEAST( IF(tool_comments_on=0,NOW(),tool_comments_on), IF(cpd_comments_on=0,NOW(),cpd_comments_on),IF(prod_comments_on=0,NOW(),prod_comments_on) ),'%d-%m-%Y') as feedback_date, date_format(corr_action_on,'%d-%m-%Y') as corr_action_on, date_format(prev_action_on,'%d-%m-%Y') as prev_action_on, date_format(closure_on,'%d-%m-%Y') as closure_on, date_format(cusconfdate,'%d-%m-%Y') as cusconfdate,'/".$complaints_upload_dir."' as filepath
+									from tbl_complaint tc
+									inner join tbl_customer tcust on tcust.cusId = tc.cusId
+									left join tbl_component tcmpd on tcmpd.cmpdId = tc.cmpdId
+								where tc.status > 0	and isInternal = 0 order by complaintDate desc";
+				//echo $sql_comps; exit();		
+				$list		=	@getMySQLData($sql_comps,"xml","root","lower");			
+				$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+				echo "<xmldata>".$list."</xmldata>";			
+			break;							
+		}
+	}
+	
+	function insertComplaintRecord($cusid,$cusname,$cmpdid,$class,$desc,$nature,$mode,$responsibility,$custcompref,$custcompdate,$retqty,$retdocid,$retdate,$corrtardate,$closetardate,$sketch)
+	{
+		global $mgmt_grp_email,$dev_grp_email,$cmpd_grp_email,$cpd_grp_email,$quality_grp_email;
+		$codeArray			=	@getSettingsData("extcompcode");
+		$codeNo				=	@getRegisterNo($codeArray[0], $codeArray[1]);		
+		
+		$compsql			=	"insert into tbl_complaint(
+								complaintId, complaintDate, isInternal, cusId, compCusRef, compCusRefDate, cmpdId, retQty, retDocRef, retDate, class, nature, mode, description, sketch_file_name, responsibility, corr_action_target, closure_target, entry_by, entry_on
+							) values";
+		$compsql			.=	" ('$codeNo', now(), 0, '$cusid', '$custcompref', '$custcompdate', '$cmpdid', '$retqty', '$retdocid', '$retdate', '$class', '$nature', '$mode', '$desc','$sketch', '$responsibility', '$corrtardate', '$closetardate', '".$_SESSION['userdetails']['userId']."' , now()) ";
+
+		$sql_query = @getMySQLData($compsql);		
+				
+		if($sql_query['status'] != "success"){
+			return 'Insertion of Complaint data failed due to :'.$sql_query['status'];						
+		}
+		
+		@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='extcompcode'");
+		$output 			= 	"<compadd>
+									<sql>$compsql</sql>
+									<status>".$sql_query['status']."</status>
+									<compid>$codeNo</compid>
+								</compadd>";
+		$cmpd_query 		= 	@getMySQLData("select concat(cmpdname,'(',cmpdrefno,')') as cmpdname from tbl_component where cmpdId = '$cmpdid'","arr");
+		$cmpd_details		=	$cmpd_query['data'][0]['cmpdname'];
+		$pstatus			=	sendEmail(array_merge($mgmt_grp_email,$dev_grp_email,$cmpd_grp_email,$cpd_grp_email),$quality_grp_email,"New Complaint Added for Customer - ".$cusname.": ".$cmpd_details,"Kind Attn: Tool, Production & Compound Team !!! <br/> A New Complaint has been raised for: ".$cmpd_details." <br/> Please login to the <a href='http://".$_SERVER['SERVER_NAME']."/Quality/Appraise'>ERP here</a> and provide the feedback for the same. ","");		
+		
+		return $output;
+	
+	}
+
+?>

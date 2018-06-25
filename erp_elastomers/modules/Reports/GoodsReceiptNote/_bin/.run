@@ -1,0 +1,95 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+tableFilters.col_9				= 	"none";
+tableFilters.col_0				= 	"none";
+tableFilters.sort_config		=	{ sort_types:['None','string','date', 'string','string','string','us','us','us','None'] };
+var TF_01						=	null;
+var needRefresh					=	false;
+tableFilters.col_operation		=	{ 
+									   id: ["ord_qty_total","val_total"], 
+									   col: [7,9],
+									   operation: ["sum","sum"],
+									   decimal_precision: [3,2]
+									};
+tableFilters.on_after_operation	=	formatTotals;
+rowCount						=	0;
+
+function formatTotals()
+{
+	tf_Id('ord_qty_total').innerHTML 	= 	tf_Id('ord_qty_total').innerHTML.toCurrency(3);
+	tf_Id('val_total').innerHTML 		= 	tf_Id('val_total').innerHTML.toCurrency(2);
+}
+
+$(document).ready(function(){
+	updatePageBehaviour();
+	
+	$(".email_grndetails_button").click(function(){
+			if(rowCount > 0)
+			{
+				var resOut = postback(actionFile, "selecttype=SENDGRNDET&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST","XML");
+				if(resOut == 'success')
+					displayError($("#new_msg_row"), "highlight", "<strong>Info !</strong> - GRN Report Sent Sucessfully!!!!");
+				else
+					displayError($("#new_msg_row"), "error", "<strong>Error !</strong> - GRN Report Not sent due to error: " + resOut);
+			}
+			else
+				displayError($("#new_msg_row"), "error", "<strong>Error !</strong> - No GRNs available to send email!!!");
+	});	
+	
+	
+
+});
+
+function updatePageBehaviour(){
+	var XMLContent	=	postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST", "XML");	
+	xmlData			=	$(XMLContent);
+	rowCount		=	xmlData.find("root:eq(0) count:eq(0)").text();
+	listPageData($("#content_body"), XMLContent, XSLFile);	
+	if(rowCount > 0)
+	{
+		TF_01			=	setFilterGrid("resultTable",tableFilters);
+		if(needRefresh)
+			TF_01.RefreshGrid();
+		else
+			needRefresh	=	true;
+	}
+	
+	$('#input_select_all').click(function(event) {  
+		if(this.checked) { 
+			$('.checkbox1').each(function() { 
+				this.checked = true;                
+			});
+		}else{
+			$('.checkbox1').each(function() { 
+				this.checked = false;                        
+			});         
+		}
+	});
+	
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('invid');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});
+	
+}
+
+function submitPrint(){
+	invIds 		= 	new Array();
+	$('.checkbox1').each(function() { 
+		if(this.checked == true)
+		{
+			invIds.push(this.id);				
+		}
+	});		
+	
+	if(invIds == null || invIds.length <= 0 )
+	{
+		displayError($("#new_msg_row"), "error", "<strong>Error !</strong> - Please select atleast one GRN for sending email!!!");
+		return false;
+	}
+	else
+	{
+		openInvoice({mod:"manual", invID:invIds});
+	}
+}

@@ -1,0 +1,64 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	
+	switch($_POST["selecttype"]){
+		case "GETVAL":
+			$todate		=	$_POST["todate"];
+			$fromdate	=	$_POST["fromdate"];
+			$useperiod	= 	$_POST["useperiod"];
+			$sql_invoice	=	"select tc.cusname, tdr.part_number, tdr.part_description, tdr.status,DATE_FORMAT(tdr.entry_on, '%d-%b-%Y') as enquirydate,if(tdr.status = 2 and tdf.approval_status = 0,1,0) as notfeasible,if(tdr.status > 1,if(tdf.tl_entry_on > tdf.cpd_entry_on,if(tdf.tl_entry_on > tdf.prod_entry_on,DATE_FORMAT(tdf.tl_entry_on, '%d-%b-%Y'),DATE_FORMAT(tdf.prod_entry_on, '%d-%b-%Y')),if(tdf.cpd_entry_on > tdf.prod_entry_on,DATE_FORMAT(tdf.cpd_entry_on, '%d-%b-%Y'),DATE_FORMAT(tdf.prod_entry_on, '%d-%b-%Y'))),'NA') as feasdate,
+									if(tiq.status = 1,1,0) as quotesubmitted, if(tiq.status = 1,DATE_FORMAT(tiq.quotedate, '%d-%b-%Y'), 'NA') as quotesubdate,if(tdr.status > 3 ,1,0) as priceapproved,if(tdr.status > 3,DATE_FORMAT(tdr.approval_date, '%d-%b-%Y'),'NA') as approvaldate,if (ttp.status > 0,1,0) as toolordered,if (ttp.status > 0,DATE_FORMAT(ttp.purDate, '%d-%b-%Y'),'NA') as toolpodate,
+									if (ttp.status = 2,1,0) as toolreceived, if (ttp.status = 2,DATE_FORMAT(ttn.trnDate, '%d-%b-%Y'),'NA') as trndate, if (ttn.status = 2,1,0) as devcompleted, if (ttn.status = 2,DATE_FORMAT(ttn.tool_appr_date, '%d-%b-%Y'),'NA') as tool_appr_date,tdr.remarks
+								from  tbl_develop_request tdr 
+								inner join tbl_customer tc on tdr.cusId = tc.cusId
+								left join tbl_invoice_quote tiq on tiq.rfqid = tdr.drId 
+								left join  tbl_develop_feasibility tdf on tdf.prod_ref = tdr.sno 
+								left join ( select  * from (select rfqid, status, purDate from tbl_tool_purchase where isproto = 0 and status > 0  order by status desc)t1 group by rfqid)ttp on ttp.rfqid = tdr.sno
+								left join ( select  * from (select rfqid, status,trnDate,tool_appr_date from tbl_trn where isproto = 0 and status > 0  order by trnDate desc)t1 group by rfqid)ttn on ttn.rfqid = tdr.sno
+								".(($useperiod == 'yes')?" where tdr.entry_on between '$fromdate' and '$todate'":"")." order by notfeasible,quotesubmitted desc,priceapproved desc,toolordered desc,toolreceived desc,devcompleted desc, cusname,tdr.entry_on desc";
+			//echo $sql_invoice; exit();		
+			$list	=	@getMySQLData($sql_invoice,"xml","root","lower");			
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>".$list."</xmldata>";			
+		break;
+		case "GETTOP":
+			$todate		=	$_POST["todate"];
+			$fromdate	=	$_POST["fromdate"];
+			for($rownum=0;$rownum<2;$rownum++){
+				$sql_invoice	=	"select sum(newrfqraised) as newrfqraised, sum(notfeasible) as notfeasible, sum(quotesubmitted) as quotesubmitted, sum(pendingrfqs) as pendingrfqs, sum(priceapproved) as priceapproved, sum(toolordered) as toolordered, sum(toolreceived) as toolreceived, sum(devcompleted) as devcompleted, sum(pendingtools) as pendingtools
+										 from (	select if(tdr.sno > 0 ".(($rownum == 0)?" and tdr.entry_on between '$fromdate' and '$todate'":"").", 1,0) as newrfqraised,
+													if(tdr.status = 2 and tdf.approval_status = 0 ,1,0) as notfeasible,
+													if(tiq.status = 1,1,0) as quotesubmitted, 
+													if(tdr.status > 3".(($rownum == 0)?" and tdr.approval_date between '$fromdate' and '$todate'":"").",1,0) as priceapproved,
+													if((tdr.status = 1 or (tdr.status = 2 and tdf.approval_status = 1)) ".(($rownum == 0)?" and tdr.entry_on between '$fromdate' and '$todate'":"").",1,0) as pendingrfqs,
+													if (ttp.status > 0,1,0) as toolordered,
+													if (ttp.status = 2 ".(($rownum == 0)?" and ttn.trnDate between '$fromdate' and '$todate'":"").",1,0) as toolreceived,
+													if (ttn.status = 2 ".(($rownum == 0)?" and ttn.tool_appr_date between '$fromdate' and '$todate'":"").",1,0) as devcompleted,
+													if(tdr.status > 0 and ttp.status  is null ".(($rownum == 0)?" and tdr.entry_on between '$fromdate' and '$todate'":"").", 1,0) as pendingtools
+												from  tbl_develop_request tdr 
+												left join tbl_invoice_quote tiq on tiq.rfqid = tdr.drId ".(($rownum == 0)?" and tiq.quotedate between '$fromdate' and '$todate' ":"")."
+												left join  tbl_develop_feasibility tdf on tdf.prod_ref = tdr.sno ".(($rownum == 0)?" and (tdf.tl_entry_on between '$fromdate' and '$todate' or tdf.cpd_entry_on between '$fromdate' and '$todate') ":"")."
+												left join ( select  * from (select rfqid, status from tbl_tool_purchase where isproto = 0 and status > 0 ".(($rownum == 0)?" and purDate between '$fromdate' and '$todate'":"")." order by status desc)t1 group by rfqid)ttp on ttp.rfqid = tdr.sno
+												left join ( select  * from (select rfqid, status,trnDate,tool_appr_date from tbl_trn where isproto = 0 and status > 0  order by trnDate desc)t1 group by rfqid)ttn on ttn.rfqid = tdr.sno) finaltable"; 
+			//echo $sql_invoice; exit();
+			
+				$querydata		=	@getMySQLData($sql_invoice);
+				$devdata		=	$querydata['data'][0];
+				$data			.=	"<row>";
+				$data			.=	"<newrfqraised>".$devdata['newrfqraised']."</newrfqraised>";
+				$data			.=	"<notfeasible>".$devdata['notfeasible']."</notfeasible>";
+				$data			.=	"<quotesubmitted>".$devdata['quotesubmitted']."</quotesubmitted>";
+				$data			.=	"<priceapproved>".$devdata['priceapproved']."</priceapproved>";
+				$data			.=	"<pendingrfqs>".$devdata['pendingrfqs']."</pendingrfqs>";
+				$data			.=	"<toolordered>".$devdata['toolordered']."</toolordered>";	
+				$data			.=	"<toolreceived>".$devdata['toolreceived']."</toolreceived>";			
+				$data			.=	"<devcompleted>".$devdata['devcompleted']."</devcompleted>";
+				$data			.=	"<pendingtools>".$devdata['pendingtools']."</pendingtools>";
+				$data			.=	"</row>";
+			}
+			$output	= "<xmldata><root><count>2</count><data>".$data."</data><status>".$querydata['status']."</status></root></xmldata>";
+			echo $output;
+	}	
+
+?>

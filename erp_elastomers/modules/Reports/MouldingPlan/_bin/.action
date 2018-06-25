@@ -1,0 +1,26 @@
+<?php
+	session_start();
+	
+	header("Content-Type: text/xml");
+	
+	switch($_POST["selecttype"]){
+		case "GETPLANIDS":
+               $pSQL	=	"select planid from tbl_moulding_plan WHERE planDate ='".$_REQUEST['plandate']."' and operator = '".$_REQUEST['operator']."' order by planid";
+			   $res     =   @getMySQLData($pSQL, "xml");
+               echo $res;
+               break;
+		case "MOULDLIST":	
+			$sql_batch	=	"SELECT tmp.planDate, sum(tmp.liftPlanned) as totLifts, count(tmp.planid ) as noofkeys,  sum(tmp.liftPlanned * no_of_active_cavities * cmpdBlankWgt )/1000 as totcpdadv, sum(cpdqtyused) as cpdqtyused, sum(actualLifts) as actualLifts, tmp.operator
+							FROM tbl_moulding_plan tmp
+								inner join tbl_invoice_mould_plan timp on timp.planid = tmp.planid
+								inner join (select planref,sum(actualLifts) as actualLifts, sum(cpdqtyused) as cpdqtyused from tbl_moulding_receive group by planref) tmr on tmr.planref = tmp.planid
+							where tmp.status > 0 and tmp.planDate  >= '".$_POST["startDate"]."' and  tmp.planDate  <= '".$_POST["endDate"]."'  group by tmp.operator,tmp.planDate  order by tmp.planDate   DESC";
+			$list		=	@getMySQLData($sql_batch,"xml","root","lower");
+			$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>
+				$list
+				$output
+			</xmldata>";
+		break;
+	}	
+?>

@@ -1,0 +1,410 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+cmpdList		= 	new Array();
+cmpdData		= 	new Array();
+var TF_01		=	null;
+var XSLFile		=	[XSLPath + "_1.design", XSLPath + "_2.design"];
+needRefresh		=	false;
+function updatePageData(){
+	var objCompList=postback(actionFile,"plan_date="+$("#planDate").val()+"&operator="+$("#operator").val(),"POST","XML");
+	//alert(objCompList);
+	listPageData($("#content_body"), objCompList, XSLFile[0]);		
+	getBaseCMPDList();
+	$(".view_button").click(function(){
+		cmpdId	=	$(this).attr('cmpdid');
+		getStock(cmpdId);
+	});		
+}
+
+function getBaseCMPDList(){
+	objClassList	=	postback(actionFile, "selecttype=CMPDPLANLIST&outtype=xml", "POST", "XML");
+	classXML		=	parseXMLdoc(objClassList);
+	cmpdList		=	new Array();
+	cmpdData		=	new Array();
+	$(classXML).find("row").each(function(index, element) {
+		cmpdId		=	$.trim(element.childNodes[0].firstChild.nodeValue);
+		cmpdName	=	$.trim(element.childNodes[1].firstChild.nodeValue);
+		blankWgt	=	$.trim(element.childNodes[2].firstChild.nodeValue);
+		cpdName		=	$.trim(element.childNodes[3].firstChild.nodeValue);
+		cmpdList.push(cmpdName);
+		cmpdData[cmpdName]	= {
+						'id':cmpdId,
+						'cpdname':cpdName,
+						'blankwgt':blankWgt
+					};
+    });
+}
+
+function getNewItem(){	
+	
+	objList		=	$('#content_body table tr');
+	ol			=	objList.length;
+	nextRow		=	ol + 1;
+	newRow		=	"<tr class='" + ((ol%2)?'content_rows_light':'content_rows_dark') + "' id='" + nextRow + "'>" +
+						"<td width='5%'>"+ nextRow +"</td>" +
+						"<td width='18%' ><input id='input_cmpd_"+ nextRow +"' rowcount='"+ nextRow +"' style='width:75%' onblur='getTools(this);'></input></td>" +
+						"<td width='12%' id='cpdref_" + nextRow +"'>-</td>" +
+						"<td width='10%' id='toolref_" + nextRow +"'>-</td>" +
+						"<td width='10%' id='actcav_" + nextRow +"' align='right'>-</td>" +
+						"<td width='15%' id='lifts_" + nextRow +"' align='right'>-</td>" +
+						"<td width='10%' id='planqty_" + nextRow +"' align='right'>-</td>" +
+						"<td width='10%' id='cpdreq_" + nextRow +"' align='right'>-</td>" +						
+						"<td width='5%' id='numshifts_" + nextRow +"' align='right'>-</td>" +
+						"<td align='center'>" +
+							"<div class='removebtn' id='delrm_" + nextRow + "' target='absmiddle' />" +
+						"</td>" +						
+					"</tr>"	;	
+	
+	if(ol > 0)
+	{	
+		$('#content_body table tr:last').after(newRow);			
+	}
+	else
+	{	
+		$('.window_error').html("");
+		newTable	=	"<table border='0' cellpadding='6' cellspacing='0' width='100%'>"+newRow+"</table>";
+		$('#content_body').html(newTable);
+		
+	}
+	
+	$("#delrm_" + nextRow).click(new Function("$(\"#"+nextRow+"\").remove(); updateAllItems();"));
+
+	$("#input_cmpd_"+ nextRow).autocomplete({
+		source:cmpdList,
+		close:function(event, ui){
+			getTools(this);
+			cmpdName 	= 	$(this).val();
+			id			=	$(this).attr('rowcount');	
+			cmpdId		=	(cmpdData[cmpdName])?cmpdData[cmpdName]['id']:'';			
+			getStock(cmpdId);
+		}		
+	});	
+}
+
+function updateAllItems(){
+	$("#content_body table tr").each(function(index, element) {
+		$(element).removeClass((index%2)?'content_rows_dark':'content_rows_light');
+        $(element).addClass((index%2)?'content_rows_light':'content_rows_dark');
+		$(element).find("td:first").text((index+1));
+    });
+}
+
+function clearToolDetails(id){
+	$("#"+id).removeAttr('cmpdid');
+	$("#cpdref_" + id).html('-');
+	$("#toolref_" + id).html('-');
+	$("#actcav_" + id).html('-');
+	$("#lifts_" + id).html('-');
+	$("#planqty_" + id).html('-');
+	$("#cpdreq_" + id).html('-');
+	$("#numshifts_" + id).html('-');
+}
+
+function getTools(obj){
+	cmpdName 	= 	$(obj).val();
+	id			=	$(obj).attr('rowcount');	
+	if(cmpdName != null && cmpdName != ''){
+		cmpdId		=	(cmpdData[cmpdName])?cmpdData[cmpdName]['id']:'';
+		if(cmpdId != null && cmpdId != '')
+		{
+			blankWgt		=	(cmpdData[cmpdName])? cmpdData[cmpdName]['blankwgt']:'';
+			$("#cpdref_"+id).html(cmpdData[cmpdName]['cpdname']);
+			$("#"+id).attr('cmpdid',cmpdId);
+			operator		=	$("#operator").val();
+			var objToolList	=	postback(actionFile,"selecttype=GETTOOLS&operator="+operator+"&cmpdId="+cmpdId+"&outtype=xml","POST","XML");
+			toolXML			=	parseXMLdoc(objToolList);
+			toolRefList		=	new Array();
+			$(toolXML).find('row').each(function(index, element) {
+				if($(this).find('jobworkcontrol').text() == 1 && operator != 'In-House')
+				{
+					displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Component "+ cmpdName +" is under job work control, hence can be moulded only in In-House");
+					$(obj).focus();
+					return false;				
+				}
+				toolRef		=	$(this).find('tool_ref').text();
+				toolRefList.push(toolRef);
+			});
+			if(toolRefList.length > 0)
+			{
+				$("#toolref_"+id).html(toolRefList.toSelectWithValue(toolRefList,"toolRef"+id, "toolRef"+id, toolRefList[0], "width:90%;", "tabindex=5", " onchange=getToolDetails('"+id+"',this.value,'"+blankWgt+"')", false));			
+				getToolDetails(id,toolRefList[0],blankWgt);				
+			}
+		}
+		else{
+			clearToolDetails(id);
+		}
+	}
+	else{
+		clearToolDetails(id);
+	}
+}
+
+function getStock(cmpdId){
+			param			=	"selecttype=" + "GETCMPDSTOCK" +
+								"&cmpdId=" + cmpdId ;
+			//alert(param); return false;
+			var XMLContent	=	postback(actionFile,param,"POST","XML");
+			xmlData			=	parseXMLdoc(XMLContent);
+			$(xmlData).find("row").each(function(index, element) {
+				cmpdawtcpdiss	=	$.trim(element.childNodes[0].firstChild.nodeValue);
+				cmpdawtmldrec	=	$.trim(element.childNodes[1].firstChild.nodeValue);
+				cmpdawtdefiss	=	$.trim(element.childNodes[2].firstChild.nodeValue);
+				cmpdawtdefrec	=	$.trim(element.childNodes[3].firstChild.nodeValue);
+				cmpdawtqualrec	=	$.trim(element.childNodes[4].firstChild.nodeValue);
+				schQty			=	$.trim(element.childNodes[5].firstChild.nodeValue);
+				cmpdStock		=	$.trim(element.childNodes[6].firstChild.nodeValue);
+				cmpdAwtPlan		=	$.trim(element.childNodes[7].firstChild.nodeValue);
+				despatchQty		=	$.trim(element.childNodes[8].firstChild.nodeValue);
+				cpdStock		=	$.trim(element.childNodes[9].firstChild.nodeValue);
+				awtPlan			=	$.trim(element.childNodes[10].firstChild.nodeValue);
+			});
+			confirmCont ='<table width="100%" border="1" >' +
+							'<tr><th colspan="2">Stock Level List</th></tr>' +
+							'<tr><th>Item</th><th>Quantity</th></tr>' +
+							'<tr><td align="left">Scheduled Qty.</td><td align="right"><b>'+schQty+'</b></td></tr>' +
+							'<tr><td align="left">Despatched Qty.</td><td align="right"><b>'+despatchQty+'</b></td></tr>' +
+							'<tr><td align="left">Balance Plan Qty.</td><td align="right"><b>'+awtPlan+'</b></td></tr>' +
+							'<tr><td align="left">Pend. Cpd. Issue Qty.</td><td align="right"><b>'+cmpdawtcpdiss+'</b></td></tr>' +
+							'<tr><td align="left">Pend. Mould. Reciept Qty.</td><td align="right"><b>'+cmpdawtmldrec+'</b></td></tr>' +
+							'<tr><td align="left">Pend. Trim. Issue Qty.</td><td align="right"><b>'+cmpdawtdefiss+'</b></td></tr>' +
+							'<tr><td align="left">Pend. Trim. Receipt Qty.</td><td align="right"><b>'+cmpdawtdefrec+'</b></td></tr>' +
+							'<tr><td align="left">Pend. Quality Qty.</td><td align="right"><b>'+cmpdawtqualrec+'</b></td></tr>' +
+							'<tr><td align="left">Stores Stock Qty.</td><td align="right"><b>'+cmpdStock+'</b></td></tr>' +
+							'<tr><td align="left">Total WIP Qty.</td><td align="right"><b>'+cmpdAwtPlan+'</b></td></tr>' +				
+						'</table>'	;		
+			$("#stock_dialog").html(confirmCont).dialog({
+													title:'Component Stock Issue',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons: [
+														{
+															text: "Ok",
+															click: function(){
+																$(this).dialog("close");
+															}
+														}
+													],
+													open: function() {
+														jQuery('.ui-widget-overlay').bind('click', function() {
+															jQuery('#stock_dialog').dialog('close');
+														})
+													},
+													close: function(event, ui) {
+															$(this).dialog("destroy");
+														} 
+													});
+}
+
+
+function getToolDetails(id,toolRef,blankWgt){
+	var objToolList	=	postback(actionFile,"selecttype=GETTOOLDETAILS&toolRef="+toolRef+"&outtype=xml","POST","XML");
+	toolXML			=	parseXMLdoc(objToolList);
+	actCavs			=	$(toolXML).find('row no_of_active_cavities').text();
+	stdLifts		=	$(toolXML).find('row std_lifts_per_plan').text();
+	nextValid		=	$(toolXML).find('row next_validation').text();
+	liftsRun		=	$(toolXML).find('row lifts_run').text();	
+	$("#actcav_"+id).html(actCavs);
+	$("#planqty_"+id).html(getCurrency(Number(stdLifts) * Number(actCavs), 0));
+	$("#cpdreq_"+id).html(getCurrency(((Number(stdLifts) * Number(blankWgt) * Number(actCavs))/1000), 3));	
+	liftInputHtml	=	"<input id='input_"+id+"' type='text' style='text-align:right;width:70%' value='" + (stdLifts * 2) + "' onkeyup='getExpectedOutput("+id+")' actCavs='"+actCavs+"' blankWgt ='" + blankWgt+"' rowcount='"+id + "' toolRef ='" + toolRef+"' nxtValid='"+nextValid+ "' liftsRun ='" + liftsRun+"'></input>"
+	$("#lifts_"+id).html(liftInputHtml);
+	getExpectedOutput(id);	
+	$("#numshifts_"+id).html("<select id='input_numshifts_"+id+"' style='width:100%' onchange='updateLifts("+id+")'><option value='1'>1</option><option value='2' selected>2</option></select>");
+}
+
+function updateLifts(id)
+{
+	numShifts	=	$("#input_numshifts_"+id).val().toNumber();
+	currVal		=	$("#input_"+id).val().toNumber();
+	if(numShifts == 1)
+	{		
+		$("#input_"+id).val(Math.round(currVal/2));		
+	}
+	else
+	{
+		$("#input_"+id).val(Math.round(currVal * 2));
+	}
+	getExpectedOutput(id);
+}
+
+function getExpectedOutput(id){
+	obj			=	"#input_"+id;
+	noOfActCav	=	Number($(obj).attr('actCavs')); 
+	blankwgt 	=	Number($(obj).attr('blankWgt')); 
+	rowcount	=	$(obj).attr('rowcount');   
+	$("#planqty_"+rowcount).html(getCurrency(Number($(obj).val()) * Number(noOfActCav), 0));
+	$("#cpdreq_"+rowcount).html(getCurrency(((Number($(obj).val()) * Number(blankwgt) * Number(noOfActCav))/1000), 3));
+}
+
+function viewChild(toolId,view){	
+	openMvmt({toolId:toolId, view:view});	
+}
+
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+
+	$("#button_add").button().click(function(){getNewItem();});	
+	
+	
+	$("#button_view").button().click(function(){
+		openMvmt({toolId:null, view:'stock'});
+	});
+	
+	$("#button_view_tl").button().click(function(){
+		var XMLContent	=	postback("/modules/Masters/Tool/_bin/.action","selecttype=CUSVIEW&outtype=xml","POST","XML");
+		listPageData($("#tool_dialog"), XMLContent, XSLFile[1]);
+		$("#tool_dialog").dialog({
+									title:'Tool List',
+									width:'900',
+									height:'500',
+									resizable:true,
+									modal:true,
+									buttons: [
+										{
+											text: "Ok",
+											click: function(){
+												$(this).dialog("close");
+											}
+										}
+									],
+									open: function() {
+										jQuery('.ui-widget-overlay').bind('click', function() {
+											jQuery('#tool_dialog').dialog('close');
+										})
+									},
+									close: function(event, ui) {
+											$(this).dialog("destroy");
+										} 
+		});	
+		TF_01	=	setFilterGrid("resultTable",tableFilters);
+		if(needRefresh)
+			TF_01.RefreshGrid();
+		else
+			needRefresh = true;	
+	});	
+	
+	$("#button_submit").button().click(function(){
+
+		planDate	= 	$("#planDate").val();			
+		cmpdIds 	= 	new Array();
+		toolIds		=	new Array();
+		numLifts	= 	new Array();
+		numShifts	= 	new Array();
+		planList	=	$('#content_body table tr');
+		for(rl=0; rl<planList.length; rl++){
+			fetchId		=	$("#"+planList[rl].id).attr("id");			
+			cmpdId		=	$("#"+planList[rl].id).attr("cmpdid");			
+			numLift		=	$("#input_" + fetchId).val();
+			numShift	=	$("#input_numshifts_" + fetchId).val();
+			toolId		=	$("#input_" + fetchId).attr('toolRef');
+			nxtValid	=	$("#input_" + fetchId).attr('nxtValid');
+			liftsRun	=	$("#input_" + fetchId).attr('liftsRun');
+			//alert(Number(ramQty));
+			//alert(grnId);
+			if(numLift == "" || numLift == null || isNaN(numLift)  || Number(numLift) <= 0 )
+			{
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Please enter correct Lifts for Item no: "+fetchId+".");
+				$("#input_"+fetchId).focus();
+				return false;
+			}
+			else if( (numLift.toNumber() + liftsRun.toNumber()) > nxtValid.toNumber())
+			{
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Lifts Planned + Lifts Run on this Tool is greater than the next validation due lifts");
+				$("#input_"+fetchId).focus();
+				return false;
+			}
+			else if (numLift.toNumber() > 0)
+			{
+				cmpdIds.push(cmpdId);
+				toolIds.push(toolId);
+				numLifts.push(numLift);
+				numShifts.push(numShift);
+			}
+		}
+		if(cmpdIds.length > 0)
+		{
+			param			=	"selecttype=" + "CREATEPLAN" +
+								"&plan_date=" + planDate +
+								"&operator="+$("#operator").val() ;
+			arrParams		=	"";
+			for(rm=0; rm<cmpdIds.length; rm++){
+				arrParams = arrParams + "&cmpdIds[]=" + cmpdIds[rm] ;
+				arrParams = arrParams + "&toolIds[]=" + toolIds[rm] ;
+				arrParams = arrParams + "&numLifts[]=" + numLifts[rm] ;
+				arrParams = arrParams + "&numShifts[]=" + numShifts[rm] ;
+			}
+			param	= param + arrParams;
+			//alert(param); return false;
+			confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Update?</b></td></tr>' +
+				'</table>'	;		
+			$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Stores Issue',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons: [
+														{
+															text: "Yes",
+															click: function(){
+																$(this).dialog("close");
+																var toolAvlList	=	postback(actionFile,"selecttype=CHECKTOOLUSAGE"+arrParams+"&plan_date=" + planDate +"&outtype=xml","POST","XML");
+																avlToolXML		=	parseXMLdoc(toolAvlList);
+																var bestToolsUsed	=	avlToolXML.getElementsByTagName("root")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+																if(bestToolsUsed == "no"){
+																	dispMessage = "The following part numbers have more productive tools as follows: \n";
+																	$(avlToolXML).find("row").each(function(index, element) {
+																		cmpdName	=	$.trim(element.childNodes[0].firstChild.nodeValue);
+																		toolref		=	$.trim(element.childNodes[1].firstChild.nodeValue);
+																		actCavs		=	$.trim(element.childNodes[2].firstChild.nodeValue);
+																		dispMessage	=	dispMessage + cmpdName + " - " + toolref + "(" + 	actCavs + ")\n";
+																	});																
+																	if(!(confirm(dispMessage + " Do you want to continue?" )))
+																	{
+																		return false;
+																	}
+																}
+																var XMLContent=postback(actionFile,param,"POST","XML");
+																//$("#content_body").html(XMLContent); return false;
+																xmlData				=	parseXMLdoc(XMLContent);
+																error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+																if(error == "success"){
+																	alert("Moulding Plans Created Successfully" );
+																}
+																else{
+																	displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Failed to Create Plans - " + error );
+																	return false;
+																}	
+																listPageData($("#content_body"), XMLContent, XSLFile[0]);		
+															}
+														},
+														{
+															text: "No",
+															click: function() { $(this).dialog("close"); }
+														}
+													],
+													close: function(event, ui) {
+															$(this).dialog("destroy");
+														} 
+													});
+		}
+		else	
+		{
+			displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Please enter values for atleast one item for creating the Moulding Plan!");
+			return false;			
+		}
+	});	
+
+	//Cancel Items
+	$("#button_cancel").button().click(function(){
+		updatePageData();
+	});
+	
+	updatePageData();
+
+});

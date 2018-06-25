@@ -1,0 +1,40 @@
+<div id="window_list_wrapper" class="filter-table" style="overflow-x:auto; padding-top:65px;">
+    <div id="window_list_head">
+        <strong>Tool Sample Plan</strong>
+    </div>
+    <form action="" onsubmit="return false;">
+		<table border="0" cellspacing="0" cellpadding="6" class="new_form_table">
+			<tr>
+				<th align="right" width="25%">
+					From:
+				</th>
+				<th align="left" width="25%">
+					<input type="date"  tabindex="1" id="from_date" style="width:40%" value="<?php echo date('Y-m-d',mktime(0, 0, 0, date("m")  , 1, date("Y"))); ?>" onchange="updatePageBehaviour();" />
+				</th>
+				<th align="right" width="5%">
+					To:
+				</th>
+				<th align="left">
+					<input type="date" tabindex="2" id="to_date" style="width:22%" value="<?php echo date("Y-m-d"); ?>" onchange="updatePageBehaviour();" />
+				</th>				
+			</tr>			
+		</table>
+	</form>
+    <div id="window_list_head">
+        <strong>Tool List</strong>
+    </div>
+	<div class="window_error">
+		<div class="loading_txt"><span>Loading Data . . .</span></div>
+	</div>
+	<div id="window_list">
+		<div id="content_body">
+		</div>	
+		<table border="0" cellpadding="6" cellspacing="0" width="100%">
+			<tr>
+				<th align="right"  width="83%">Grand Total</th>
+				<th align="right" width="8%" id="inv_val_total">0.00</th>
+				<th>&nbsp;</th>
+			</tr>
+		</table>
+	</div>	
+</div>

@@ -1,0 +1,20 @@
+
+.ui-tooltip{
+	min-width:100px;
+	max-width:500px;
+	position:absolute;
+	display:none;
+}
+
+.ui-tooltip .ui-tooltip-text{
+	background:#000;
+	color:#fff;
+	font-size:11px;
+	text-align:left;
+	padding:5px 8px 5px 8px;
+}
+
+.ui-tooltip .ui-tooltip-arrow{
+	background:url(../images/tooltipArrow.png) center top no-repeat;
+	height:12px;
+}

@@ -1,0 +1,15 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$sql_rmlist		=	"select *, DATE_FORMAT(sanDate,'%d-%b-%Y')as sanDate,sum(bookQty)as bookqty, sum(physicalQty)as phyqty,sum(exc_shrt)as exorshrt 
+						from tbl_purchase_san group by sanId";
+	$list	=	getMySQLData($sql_rmlist,'xml','root','lower');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+
+?>

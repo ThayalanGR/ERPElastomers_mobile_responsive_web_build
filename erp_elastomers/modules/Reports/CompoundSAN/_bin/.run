@@ -1,0 +1,437 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+batchList		=	new Array();
+addXSL			=	new Array();
+editXSL			=	new Array();
+compHTML		=	'';
+isSelectable	=	true;
+
+function getPageData(){
+	var objRMList	= postback(actionFile,"selecttype=COMLIST&type=select&outtype=xml","POST","XML");
+	objRMList		= objRMList.split("&lt;br/&gt;").join(" ");
+	listPageData($("#content_body"), objRMList, XSLFile);
+	XMLContent		=	objRMList;
+	
+	bookQtyTot	=	0;
+	phyTot		=	0;
+	exShrtTot	=	0;
+	$("#content_body table tr").each(function(index, element) {
+        bTot	=	($(this).find("td:eq(4)").html())?Number($(this).find("td:eq(4)").html().split(",").join("")):0;
+		pTot	=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+		eTot	=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().split(",").join("")):0;
+		bookQtyTot	=	bookQtyTot + (isNaN(bTot)?	0 :	bTot);
+		phyTot		=	phyTot + (isNaN(pTot)?0 :	pTot);
+		exShrtTot	=	exShrtTot + (isNaN(eTot)?	0 :	eTot);
+		
+    });
+	$("#book_qty_total").html(bookQtyTot.toCurrency(3));
+	$("#phy_qty_total").html(phyTot.toCurrency(3));
+	$("#ex_shrt_total").html(exShrtTot.toCurrency(3));
+	
+	$(".filter-table").filters({
+		onUpdate:function(){
+			$(".view_button").click(function(){
+				mRecId	=	$(this).attr('invoiceid');
+				if(mRecId != null && mRecId != ""){
+					openInvoice({invID:mRecId});
+				}
+			});
+			
+			bookQtyTot	=	0;
+			phyTot		=	0;
+			exShrtTot	=	0;
+			$("#content_body table tr").each(function(index, element) {
+				bTot	=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+				pTot	=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().split(",").join("")):0;
+				eTot	=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+				bookQtyTot	=	bookQtyTot + (isNaN(bTot)?	0 :	bTot);
+				phyTot		=	phyTot + (isNaN(pTot)?0 :	pTot);
+				exShrtTot	=	exShrtTot + (isNaN(eTot)?	0 :	eTot);
+				
+			});
+			$("#book_qty_total").html(bookQtyTot.toCurrency(3));
+			$("#phy_qty_total").html(phyTot.toCurrency(3));
+			$("#ex_shrt_total").html(exShrtTot.toCurrency(3));
+	}
+	});
+	
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('invoiceid');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});
+	
+/*	$(".delete_button").click(function(){
+		mRecId	=	$(this).attr('purid');
+		if(mRecId != null && mRecId != ""){
+			deleteForm(mRecId);
+		}
+	});*/
+}
+
+
+
+function getBatchList(bat, cpd){
+	batWeight		=	$("#edit_BatchWeight");
+	compVal			=	$("#edit_Compound");
+	compList		=	$("#edit_CompList");
+	editError		=	$("#edit_item_error");
+	editXSL			=	new Array();
+	
+	addCompData		=	postback(scriptPath+"mixingPlan.php","selecttype=MIXCPDDETAIL&BATID="+bat+"&CPDID="+cpd+"&outtype=xml","POST","XML");
+	supXML			=	parseXMLdoc(addCompData);
+	rowXML			=	supXML.getElementsByTagName("row");
+	
+	compList.html(compHTML);
+	for(rxl=0; rxl<rowXML.length; rxl++){
+		row			=	rowXML[rxl].childNodes;
+		compData	=	new Array();
+		for(cx=0; cx<row.length; cx++){
+			compData[row[cx].nodeName]	=	row[cx].firstChild.nodeValue;
+		}
+		
+		// Add Data to Table
+		tabClass		=	(rxl%2)?'content_rows_light':'content_rows_dark';
+		tabData			=	"<tr class='"+tabClass+"' id='addrm_"+compData['ramid']+"'>" +
+								"<td>"+compData['ramid']+"</td>" +
+								"<td>"+compData['ramname']+"</td>" +
+								"<td>"+compData['ramclass']+"</td>" +
+								"<td>"+compData['ramgrade']+"</td>" +
+								"<td>"+compData['ramparts']+" %</td>" +
+								"<td>"+compData['planqty']+ " " + compData['ramunit'] + "</td>" +
+							"</tr>";
+		$("#edit_CompList table tr:last").after(tabData);
+		editXSL.push(compData);
+	}
+}
+
+function removeNewBatch(bid){
+	batchList.push(bid);
+	$('#new_Batch').autocomplete({
+		source:batchList
+	});
+	
+	for(ax=0; ax<addXSL.length; ax++){
+		if(bid.indexOf(addXSL[ax].batid) > -1){
+			addXSL.splice(ax, 1);
+			break;
+		}
+	}
+}
+
+function updateListTable(c){
+	paramTR	=	$("#"+c+"_BatchList table tr");
+	for(ptr=1; ptr<paramTR.length; ptr++){
+		tabClass	=	(ptr%2)?'content_rows_dark':'content_rows_light';
+		$("#"+paramTR[ptr].id).removeClass().addClass(tabClass);
+	}
+}
+
+function getSubmitButton(fid){
+	if(fid != null){
+		fid			=	(typeof fid == "object")?fid:document.getElementById(fid);
+		if(fid){
+			nsib		=	fid.nextSibling;
+			if(nsib){
+				buttons		=	nsib.getElementsByTagName("button");
+				if(buttons.length > 0){
+					buttons[0].click();
+				}
+			}
+		}
+	}
+}
+
+function editForm(no){
+	$("#edit_item_form").css('visibility', 'visible');
+	$("#edit_item_form").dialog("open");
+	EditNo		=	(no)?no:null;
+	
+	if(typeof setEditFunc == "function")
+	setEditFunc();
+}
+
+function deleteForm(no){
+	$("#del_item_form").css('visibility', 'visible');
+	$("#del_item_form").dialog("open");
+	DeleteNo	=	(no)?no:null;
+}
+
+function addItemFunc(){
+	newBatch		=	$('#new_Batch');
+	newBatchList	=	$('#new_BatchList');
+	newError		=	$('#new_item_error');
+	totalCount		=	0;
+	
+	if(addXSL.length > 0){
+		param				=	"selecttype=" + "MIXRECADD";
+		
+		for(ax=0; ax<addXSL.length; ax++){
+			batQty		=	$("#batqty_"+addXSL[ax].batid);
+			if(batQty.val() != null && batQty.val() != "" && Number(batQty.val()) > 0){
+				param		+=	"&batid[]=" + addXSL[ax].batid +
+								"&batqty[]=" + batQty.val();
+			}
+			else{
+				displayError(newError, "error", "<strong>Error !</strong> - Invalid Batch Quantity at Row "+(ax+1)+".");
+				batQty.focus();
+				return false;
+			}
+		}
+		
+		displayError(newError, "highlight", "<img src='"+imagePath+"loader_16.gif' align='absmiddle' /> <strong>Adding Data to Server . . .</strong>");
+		XMLContent			=	postback(actionFile, param, "POST", "XML");
+		xmlData				=	parseXMLdoc(XMLContent);
+		error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			$("#content_body").html(xslTranform(XMLContent, XSLPath+"rawMateial.xsl"));
+			newBatch.val('');
+			addXSL	=	new Array();
+			$("#new_item_form").dialog("close");
+			$(".edit_button").click(function(){
+				mRecId	=	$(this).attr('mrecid');
+				if(mRecId != null && mRecId != ""){
+					editForm(mRecId);
+				}
+			});
+			
+			$(".delete_button").click(function(){
+				mRecId	=	$(this).attr('mrecid');
+				if(mRecId != null && mRecId != ""){
+					deleteForm(mRecId);
+				}
+			});
+		}
+		else{
+			displayError(newError, "error", error);
+		}
+	}
+	else{
+		displayError(newError, "error", "<strong>Error !</strong> - No Batch Selected.");
+		newBatch.focus();
+	}
+}
+
+function setEditFunc(){
+	editMixRecID		=	$('#edit_MixRecId');
+	editBatchWeight		=	$('#edit_BatchWeight');
+	editCompound		=	$('#edit_Compound');
+	editError			=	$('#edit_item_error');
+	
+	if(EditNo != null && EditNo != ""){
+		addCompData		=	postback(actionFile,"selecttype=MIXRECDATA&mixrecid="+EditNo+"&outtype=xml","POST","XML");
+		supXML			=	parseXMLdoc(addCompData);
+		rowXML			=	supXML.getElementsByTagName("row");
+		
+		//compList.html(compHTML);
+		row			=	rowXML[0].childNodes;
+		compData	=	new Array();
+		for(cx=0; cx<row.length; cx++){
+			compData[row[cx].nodeName]	=	row[cx].firstChild.nodeValue;
+		}
+		
+		// Add Data to Table
+		tabClass		=	(addXSL.length%2)?'content_rows_light':'content_rows_dark';
+		tabData			=	"<tr class='"+tabClass+"' id='editbat_"+EditNo+"'>" +
+								"<td>"+compData['batid']+"</td>" +
+								"<td>"+compData['cpdid']+"</td>" +
+								"<td>"+compData['cpdname']+"</td>" +
+								"<td>"+compData['batplanwgt']+"</td>" +
+								"<td><input type='text' value='"+compData['batrecvwgt']+"' id='ebatqty_"+EditNo+"' style='width:85%' /></td>" +
+							"</tr>";
+		$("#edit_BatchList table tr:last").after(tabData);
+		
+		editMixRecID.html(EditNo);
+	}
+}
+
+function editItemFunc(){
+	editBatchQty	=	$('#ebatqty_'+EditNo);
+	editError		=	$('#edit_item_error');
+	totalCount		=	0;
+	
+	if(editBatchQty.val() != null && editBatchQty.val() != "" && Number(editBatchQty.val()) > 0){
+		param				=	"selecttype=" + "MIXRECEDIT" +
+								"&mixrecid=" + EditNo +
+								"&batwgt=" + editBatchQty.val();
+		
+		displayError(editError, "highlight", "<img src='"+scriptPath+"images/loader_16.gif' align='absmiddle' /> <strong>Adding Data to Server . . .</strong>");
+		XMLContent			=	postback(actionFile, param, "POST", "XML");
+		xmlData				=	parseXMLdoc(XMLContent);
+		error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			$("#content_body").html(xslTranform(XMLContent, XSLPath+"rawMateial.xsl"));
+			editBatchQty.val('');
+			editXSL	=	new Array();
+			$("#edit_item_form").dialog("close");
+			$(".edit_button").click(function(){
+				mRecId	=	$(this).attr('mrecid');
+				if(mRecId != null && mRecId != ""){
+					editForm(mRecId);
+				}
+			});
+			
+			$(".delete_button").click(function(){
+				mRecId	=	$(this).attr('mrecid');
+				if(mRecId != null && mRecId != ""){
+					deleteForm(mRecId);
+				}
+			});
+		}
+		else{
+			displayError(editError, "error", error);
+		}
+	}
+	else{
+		displayError(editError, "error", "<strong>Error !</strong> - Invalid Batch Quantity.");
+	}
+}
+
+function delItemFunc(){
+	delError	=	$('#del_item_error');
+	if(DeleteNo != null && DeleteNo != ""){
+		displayError(delError, "highlight", "<img src='"+scriptPath+"/images/loader_16.gif' align='absmiddle' /> <strong>Removing Data From Server . . .</strong>");
+		param			=	"selecttype=DELETEPURINV"+"&purid=" + DeleteNo;
+		XMLContent		=	postback(actionFile, param, "POST", "XML");
+		if(XMLContent == "success"){
+			Content	=	postback(actionFile,"selecttype=MIXLIST","POST","XML");
+			Content	=	Content.split("&lt;br&gt;").join(" ");
+			$("#content_body").html(xslTranform(Content, XSLPath+"rawMateial.xsl"));
+			$("#del_item_form").dialog("close");
+			
+			$(".view_button").click(function(){
+				mRecId	=	$(this).attr('purid');
+				if(mRecId != null && mRecId != ""){
+					openInvoice({invID:mRecId});
+				}
+			});
+			
+			$(".edit_button").click(function(){
+				mRecId	=	$(this).attr('purid');
+				if(mRecId != null && mRecId != ""){
+					editForm(mRecId);
+				}
+			});
+			
+			$(".delete_button").click(function(){
+				mRecId	=	$(this).attr('purid');
+				if(mRecId != null && mRecId != ""){
+					deleteForm(mRecId);
+				}
+			});
+		}
+		else{
+			displayError(delError, "error", error);
+			setTimeout(function(){
+				$("#del_item_form").dialog("close");
+			}, 2000);
+		}
+	}
+}
+
+
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+	// Add Item Dialog
+	$("#del_item_form").dialog({ autoOpen: false ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 400,
+									buttons: [
+										{
+											text: "Yes",
+											click: function(){
+												if(typeof delItemFunc == "function"){
+													delItemFunc();
+												}else{
+													$(this).dialog("close");
+												}
+											}
+										},
+										{
+											text: "No",
+											click: function() { $(this).dialog("close"); }
+										}
+									],
+									close: function(event, ui) {
+											$("#del_item_error").html("");
+											$("#del_item_error").css("display", "none");
+										} 
+									});
+	
+	$("#button_add").button().click(function(){
+		window.location		=	window.location.href.split("?")[0] + "?module=List/PurchaseOrder/New";
+	});
+	
+	$("#new_BatchButton").button().click(function(){
+		batchVal		=	$("#new_Batch");
+		batList			=	$("#new_BatchList");
+		newError		=	$("#new_item_error");
+		
+		if(batchVal.val() != ""){
+			newError.html("");
+			newError.css("display", "none");
+			
+			batchSplit		=	batchVal.val().split(" - ");
+			addCompData		=	postback(actionFile,"selecttype=MIXBATDATA&batid="+batchSplit[0]+"&outtype=xml","POST","XML");
+			supXML			=	parseXMLdoc(addCompData);
+			rowXML			=	supXML.getElementsByTagName("row");
+			
+			//compList.html(compHTML);
+			row			=	rowXML[0].childNodes;
+			compData	=	new Array();
+			for(cx=0; cx<row.length; cx++){
+				compData[row[cx].nodeName]	=	row[cx].firstChild.nodeValue;
+			}
+			
+			// Add Data to Table
+			tabClass		=	(addXSL.length%2)?'content_rows_light':'content_rows_dark';
+			tabData			=	"<tr class='"+tabClass+"' id='addbat_"+compData['batid']+"'>" +
+									"<td>"+compData['batid']+"</td>" +
+									"<td>"+compData['cpdid']+"</td>" +
+									"<td>"+compData['cpdname']+"</td>" +
+									"<td>"+compData['batplanwgt']+"</td>" +
+									"<td><input type='text' value='0' id='batqty_"+compData['batid']+"' style='width:85%' /></td>" +
+									"<td align='middle'><img src='"+imagePath+"cross-black.png' id='delbat_"+compData['batid']+"' /></td>" +
+								"</tr>";
+			$("#new_BatchList table tr:last").after(tabData);
+			eval("$(\"#delbat_"+compData['batid']+"\").click(function(){ "+
+					"$(\"#addbat_"+compData['batid']+"\").remove(); "+
+					"removeNewBatch('"+batchVal.val()+"'); " +
+					"updateListTable('new'); " +
+				"});");
+			addXSL.push(compData);
+			
+			// Remove from batchList
+			for(bl=0; bl<batchList.length; bl++){
+				if(batchList[bl] == batchVal.val()){
+					batchList.splice(bl, 1);
+					break;
+				}
+			}
+			$('#new_Batch').autocomplete({
+				source:batchList
+			});
+			batchVal.val('');
+		}
+		else{
+			if(batWeight.val() == null || batWeight.val() == "" || Number(batWeight.val()) <= 0){
+				displayError(newError, "error", "<strong>Error !</strong> - Batch Weight Missing.");
+			}
+			else if(isNaN(Number(batWeight.val()))){
+				displayError(newError, "error", "<strong>Error !</strong> - Please enter Numbers for Batch Weight.");
+			}
+			else if(compVal.val() == null || compVal.val() == ""){
+				displayError(newError, "error", "<strong>Error !</strong> - Compound Id Missing.");
+			}
+		}
+	});
+
+	getPageData();
+	
+});

@@ -1,0 +1,268 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+var TF_01						=	null;
+needRefresh						= 	false;
+tableFilters.default_date_type 	= 	'YMD';
+tableFilters.sort_config		=	{ sort_types:['string', 'string','us','us','string','none','none','none'] };
+tableFilters.col_operation		=	{ 
+								   id: ["val_total1","val_total2"], 
+								   col: [2,3],
+								   operation: ["sum","sum"],
+								   decimal_precision: [3,3]
+								};
+tableFilters.on_after_operation	=	formatTotals;
+
+function formatTotals()
+{
+	for( var count=1; count < 3; count++)
+	{
+		tf_Id('val_total' + count).innerHTML 	= 	tf_Id('val_total' + count).innerHTML.toCurrency(3);			
+	}
+}
+
+function updatePageData(){
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;
+	calculateTotbatches();
+	
+	$(".delete_button").click(function(e){	
+		batId		= $(this).attr('batid');
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Delete the Batch?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+ 														title:'Delete Batch',
+														width:450,
+														height:'auto',
+														resizable:false,
+														modal:true,
+														buttons:{
+															'Ok':function(){
+																$(this).dialog('close');
+																delItemFunc(batId);										
+															},
+															'Cancel':function(){
+																$(this).dialog('close');
+															}
+														},
+														close:function(){
+															$(this).html('').dialog('destroy');
+														}
+													});		
+	});
+	
+	$(".add_button").click(function(e){
+		batId		= $(this).attr('batid');
+		expWgt		=	$(this).attr('planqty');
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Update the Batch?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+ 														title:'Update Batch',
+														width:450,
+														height:'auto',
+														resizable:false,
+														modal:true,
+														buttons:{
+															'Ok':function(){
+																$(this).dialog('close');
+																updateFunc(batId,expWgt);										
+															},
+															'Cancel':function(){
+																$(this).dialog('close');
+															}
+														},
+														close:function(){
+															$(this).html('').dialog('destroy');
+														}
+													});	
+	});
+}
+
+function calculateTotbatches() {
+	totqty 		= 	0;
+	batList		=	$('#content_body table tbody tr');
+	for(rc=0; rc<batList.length; rc++){
+		batId	=	$("#"+batList[rc].id).attr("id");
+		totqty 	= 	Number(totqty)+Number($("#input_"+batId).val());
+	}
+	$("#val_total3").html(getCurrency(Number(totqty), 3));	
+}
+
+function updateFunc(Id,expWeight) {
+		newError	=	$('#error_msg');
+		batIds 		= 	new Array();
+		batWgts		= 	new Array();
+		batDTemps	= 	new Array();
+		if(Id != null && Id != "")
+		{
+			batIds.push(Id);
+			masterQty	=	$("#input_" + Id).val();
+			dumpTemp	=	$("#input_dt_" + Id).val();
+			if(Number(dumpTemp) == null || Number(dumpTemp) <= 0 )
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Please enter Dump Temperature for Batch No: "+Id);
+				$("#input_dt_"+Id).focus();
+				return false;
+			}					
+			else if(Number(masterQty) == null || Number(masterQty) <= 0 )
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Please enter Master weight for Batch No: "+Id);
+				$("#input_"+Id).focus();
+				return false;
+			}
+			else if(Number(masterQty) > Number(expWeight) * 1.10 )
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Master weight for Batch No: "+Id+" is More than 10% of Expected Weight!!!");
+				$("#input_"+Id).focus();
+				return false;		
+			}
+			batWgts.push(masterQty);
+			batDTemps.push(dumpTemp);
+		}
+		else
+		{
+			batList		=	$('#content_body table tbody tr');
+			for(rl=0; rl<batList.length; rl++){
+				batId		=	$("#"+batList[rl].id).attr("id");
+				expWgt		=	$("#"+batList[rl].id).attr("planqty");				
+				masterQty	=	$("#input_" + batId).val();
+				dumpTemp	=	$("#input_dt_" + batId).val();				
+				if(Number(masterQty) > 0 )
+				{
+					batIds.push(batId);
+					if(Number(dumpTemp) == null || Number(dumpTemp) <= 0 )
+					{
+						displayError(newError, "error", "<strong>Error !</strong> - Please enter Dump Temperature for Batch No: "+batId);
+						$("#input_dt_"+batId).focus();
+						return false;
+					}
+					else if(Number(masterQty) > Number(expWgt) * 1.10 )
+					{
+						displayError(newError, "error", "<strong>Error !</strong> - Master weight for Batch No: "+batId+" is More than 10% of Expected Weight!!!");
+						$("#input_"+batId).focus();
+						return false;		
+					}					
+					batWgts.push(masterQty);					 						
+					batDTemps.push(dumpTemp);					
+				}
+			
+			}
+		}
+		
+		if(batIds.length > 0)
+		{
+			param			=	"selecttype=" + "MASTERUPDATE" +
+								"&master_date=" + $("#masterDate").val() ;
+			for(rm=0; rm<batIds.length; rm++){
+				param = param + "&batids[]=" + batIds[rm] ;
+				param = param + "&batchMasterWgts[]=" + batWgts[rm] ;
+				param = param + "&batDTemps[]=" + batDTemps[rm] ;
+			}
+			var XMLContent=postback(actionFile,param,"POST","XML");
+			xmlData				=	parseXMLdoc(XMLContent);		
+			error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+			if(error == "success"){
+				listPageData($("#content_body"), XMLContent, XSLFile);
+				updatePageData();
+			}
+			else{
+				displayError(newError, "error", "<strong>Error !</strong> - Failed to update Master Data - " + error);
+			}
+		}
+		else
+		{
+			displayError(newError, "error", "<strong>Error !</strong> - Nothing to Update!!! ");
+		}
+	}
+
+
+function delItemFunc(Id){
+	newError	=	$('#error_msg');
+	if(Id != null && Id != ""){
+		param			=	"selecttype=MIXDEL" + "&batid=" + Id + "&master_date="+$("#masterDate").val();
+		XMLContent		=	postback(actionFile, param, "POST", "XML");
+		xmlData			=	parseXMLdoc(XMLContent);
+		error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			listPageData($("#content_body"), XMLContent, XSLFile);
+			updatePageData();
+		}
+		else{
+			displayError(newError, "error", "<strong>Error !</strong> - Unable to delete the batch due to : " + error);
+		}
+	}
+}
+
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+
+	var objCompList=postback(actionFile,"selecttype=MIXLIST","POST","XML");
+	listPageData($("#content_body"), objCompList, XSLFile);	
+	updatePageData();
+
+	$("#button_submit").button().click(function(){
+
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Update the Plan?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+ 														title:'Update Plan',
+														width:450,
+														height:'auto',
+														resizable:false,
+														modal:true,
+														buttons:{
+															'Ok':function(){
+																$(this).dialog('close');
+																updateFunc();										
+															},
+															'Cancel':function(){
+																$(this).dialog('close');
+															}
+														},
+														close:function(){
+															$(this).html('').dialog('destroy');
+														}
+													});	
+	});
+
+	$("#button_cancel").button().click(function(){
+	
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Clear all the details you have entered?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+ 														title:'Update Plan',
+														width:450,
+														height:'auto',
+														resizable:false,
+														modal:true,
+														buttons:{
+															'Ok':function(){
+																$(this).dialog('close');
+																batList			=	$('#content_body table tr');
+																for(rc=0; rc<batList.length; rc++){
+																	batId		=	$("#"+batList[rc].id).attr("id");
+																	$("#input_" + batId).val(0);
+																	$("#input_dt_" + batId).val(0);
+																}
+															},
+															'Cancel':function(){
+																$(this).dialog('close');
+															}
+														},
+														close:function(){
+															$(this).html('').dialog('destroy');
+														}
+													});		
+
+	});
+	
+
+});

@@ -1,0 +1,46 @@
+<?php
+
+	session_start();
+	
+	switch($_POST["selecttype"]){
+		case "VALIDATE":
+			$userNo		=	$_POST['user'];
+			$user	=	'';
+			$passmd5 = '';
+			$sql = "select * from tbl_users where status>0 and userNo=$userNo";
+			$res = @getMySQLData($sql);
+
+			if($res['status'] == "success"){
+				//$user	=	$res['data'][0]['userName'];
+				//$passmd5	=	$res['data'][0]['password'];
+				//echo $passmd5;
+				// $sql = "select * from tbl_users where status>0 and userName='$user' and password='$passmd5'";
+				// $result = @getMySQLData($sql);
+				// if($res['count'] > 0 && $res['status'] == "success"){
+				echo $res['status'];
+				$_SESSION['login']			=	1;
+				$_SESSION['userdetails']	=	$res['data'][0];
+	
+				// User Permisssion
+				$_SESSION['userdetails']['userPermissions']		=	($_SESSION['userdetails']['userPermissions'])
+																		?@preg_split("/[,]/", $_SESSION['userdetails']['userPermissions'], -1, PREG_SPLIT_NO_EMPTY)
+																		:'';
+				$_SESSION['userdetails']['userSubPermissions']	=	($_SESSION['userdetails']['userSubPermissions'])
+																		?@preg_split("/[,]/", $_SESSION['userdetails']['userSubPermissions'], -1, PREG_SPLIT_NO_EMPTY)
+																		:'';
+				//}
+				//else{
+				//	echo ($res['status'] != "success")?$res['status']:'invalid';
+				//}
+			}
+			else{
+					echo ($result['status'] != "success")?$result['status']:'invalid';
+			}
+		break;
+		
+		case "CHECK":
+			echo ($_SESSION['login'] == 1)?"true":"false";
+		break;
+	}
+	
+?>

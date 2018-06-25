@@ -1,0 +1,20 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$sql_inv	=	"select DATE_FORMAT(t2.qualitydate,'%d-%b-%Y') as issudate, t2.inspector as user, t2.qualityref as invref, t2.mdlrref, t2.planref, t4.cmpdId, t4.cmpdRefNo, t4.cmpdName,
+							t2.appqty, sum(if(t2.rejcode!='REWORK',t2.rejval,0)) as rejval, t2.receiptqty as inspQty,sum(if(t2.rejcode='REWORK',t2.rejval,0)) as rewrkval,
+							(sum(if(t2.rejcode!='REWORK',t2.rejval,0))/t2.receiptqty *100) as rejper,(sum(if(t2.rejcode='REWORK',t2.rejval,0))/t2.receiptqty *100) as rewrkper
+						from tbl_moulding_quality t2
+							left join tbl_component t4 on t2.cmpdid=t4.cmpdId
+						where is_open_stock = 0 and qualitydate >= '".$_POST["startDate"]."' and  qualitydate <= '".$_POST["endDate"]."' 
+						group by t2.qualityref order by t2.qualitydate desc";
+	$list		=	@getMySQLData($sql_inv,"xml","root","lower");
+	$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

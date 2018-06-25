@@ -1,0 +1,274 @@
+tableFilters.default_date_type 	= 	'DDMMMYYYY';
+tableFilters.col_5				=	"none";
+tableFilters.sort_config		=	{ sort_types:['string', 'ddmmmyyyydate', 'string','string', 'us', 'None'] };	
+tableFilters.col_operation		=	{ 
+									   id: ["val_total1"], 
+									   col: [4],
+									   operation: ["sum"],
+									   decimal_precision: [0]
+									};
+var TF_01						=	null;
+var rejarr						=	new Array();
+//$(document).ready(function(){
+//	createAutoComplete();
+//	TF_01		=	setFilterGrid("resultTable",tableFilters);
+//	$("#button_view").button().click(function(){
+//		openMvmt({});
+//	});	
+//});
+
+
+
+function waitAndCall()
+{
+	setTimeout(function(){createAutoComplete();}, 1000);
+}
+
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function createAutoComplete(){
+	invRef			=	$("#invRef").val();
+
+	if(invRef != "" && invRef != null)
+	{
+		var mouldList   =	postback(actionFile,"type=GETDEFREC&invref="+invRef,"POST","XML");
+		//alert(mouldList);
+		mouldListArr = [];
+		mouldListArr = mouldList.split(',');
+		//alert(mouldListArr[0]);
+
+		//var mouldList       =	postback(actionFile,"type=GETDEFREC","POST","XML");
+		// //listPageData($("#content_body"), mouldList, XSLFile);
+		// $('a').click(function(){
+		// 	job         =   $(this).attr('job');
+		// 	if(job == 'issue'){
+		if(mouldListArr[0] == 'Success'){
+			//alert('done');
+			componentid =   mouldListArr[1];
+			keyid       =   mouldListArr[2];
+			//operator    =   $(this).attr('operator');
+			mdlrref		=	mouldListArr[3];
+			isexternal	=	mouldListArr[4];
+			currrec		=	mouldListArr[5];
+			userList		=	"";
+			userData       	=   postback(actionFile,"type=GETUSERS","POST","XML");
+			username		=	[];
+			$(userData).find('row').each(function(){
+				username.push($(this).find('fullname').text());
+			});
+
+			userList	=	username.toSelectWithValue(username, "userlist", "userlist", null, "width:75%;");				
+
+			var rejection	=	postback(actionFile,"type=GETREJ&cmpdid="+componentid,"POST","XML");
+			issueCont   	=   '<div class="container-fluid text-primary justify-content-center" style="font-size:13px;">'+   
+								'<div class="row bg-light" style="diplay:none"  id="new_item_error"></div>'+
+								'<div class="row justify-content-center"><b>Quality Receipt</b></div>'+
+								'<form action="form-control-sm" onsubmit="return false;">' +	
+									'<div class="row bg-light text-success justify-content-center" style="font-weight: bold;"><span class="text-left">Plan Reference</span> &nbsp; ' +keyid+ '</div>' +
+									'<div class="row"><span class="text-left">Inpector</span>  &nbsp;'+userList+'</div>' +
+									'<div class="row bg-light"><span class="text-left">Inspection Date</span><input type="date" name="inspDate" id="inspDate" onChange="closeDate(this);" value="<?php echo date("Y-m-d",mktime(0, 0, 0, date("m")  , date("d"), date("Y"))); ?>" /></div>'  + 								
+									'<div class="row text-success"><span class="text-left mr-2">Receipt Quantity</span><span id=\"receiptqty\" >'+getCurrency(currrec, 0)+'</span></div>' +
+									'<div class="row bg-light"><span class="text-left">Inspected Qty</span><input type=text id="inspqty" onkeyup=calcApproved() style="" value='+getCurrency(currrec, 0)+' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></div>';							
+			rejarr			=	[];
+			$(rejection).find('row').each(function(index, element) {
+				issueCont	+=			'<div class="row bg-light">'+
+											'<span class="text-left">'+$(this).find('rej_type').text()+' ('+$(this).find('rej_short_name').text()+')</span>'+
+											'<span><input type=text id="rj_'+$(this).find('rej_short_name').text()+'"" onkeyup=calcApproved()  value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></span>'+
+										'</div>';
+				rejarr.push($(this).find('rej_short_name').text());
+			});
+			issueCont	+=			'<div class="row">'+
+										'<span class="text-left">Shortage (SHORT)</span>'+
+										'<span><input type=text id="rj_SHORT" onkeyup=calcApproved()  value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></span>'+
+									'</div>';
+			rejarr.push('SHORT');						
+			issueCont	+=			'<div class="row">'+
+										'<span class="text-left">Deflashing - Rework (REWORK)</span>'+
+										'<span><input type=text id="rj_REWORK" onkeyup=calcApproved()  value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></span>'+
+									'</div>';
+			rejarr.push('REWORK');				
+			issueCont	+=				'<div class="row bg-light text-success"><span class="text-left mr-2">Approved Quantity</span><span id="appqty" >'+getCurrency(currrec, 0)+'</span></div>' +
+									'<input class="row" type="submit" onclick="getSubmitButton(\'issue_dialog\');" style="visibility: hidden; width: 1px; height: 1px; "/>'+	
+									'</form>'+
+									'</div>' ;
+
+			// listPageData($("#content_body"), issueCont);
+			$('#issue_dialog').html(issueCont).dialog({
+				width:300,
+				resizable:false,
+				autoOpen: true ,
+				modal:true,
+				buttons:{
+					'Generate':function(){
+						confirmCont =  '<div class="container">' +
+						'<div class="row justify-content-center"><b>Quality Receipt</b></div><div class="row">Are you Sure to Update the Quality Receipt?</div>' +
+						'</div>';
+				
+						$('#confirm_dialog').html(confirmCont).dialog({
+							width:230,
+							resizable:false,
+							modal:true,
+							buttons:{
+								'Ok':function(){
+									$(this).dialog('close');									
+									receiveQuality(keyid,mdlrref,componentid);
+								},
+								'Cancel':function(){
+									$(this).dialog('close');
+								}
+							},
+							close:function(){
+								$(this).html('').dialog('destroy');
+							}
+						});	 $('#confirm_dialog').prev('.ui-dialog-titlebar').hide();	                           
+					},
+					'Cancel':function(){
+						$(this).dialog('close');
+					}
+				},
+				close:function(){
+					$(this).html('').dialog('destroy');
+				}
+			}); $('#issue_dialog').prev('.ui-dialog-titlebar').hide();
+			// if(rejarr.length == 0)
+			// 		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Rejection List Not Available.");
+		}
+		else{
+			//alert('failed')
+			displayError($("#new_item_error"), "error", "<strong>Error !</strong> - No Such Item "+invRef );		
+		}
+	}else{
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - No Such Item "+invRef+" or Item Already Despatched!!!" );	
+	}
+}
+
+
+
+				// $('#issue_dialog').html(issueCont).dialog({
+				// 	width:230,
+				// 	resizable:false,
+				// 	modal:true,
+				// 	buttons:{
+				// 		'Generate':function(){
+				// 			confirmCont =  '<div class="container">' +
+				// 			'<div class="row justify-content-center"><b>Quality Receipt</b></div><div class="row">Are you Sure to Update the Quality Receipt?</div>' +
+				// 			'</div>';
+					
+				// 			$('#confirm_dialog').html(confirmCont).dialog({
+				// 				width:230,
+				// 				resizable:false,
+				// 				modal:true,
+				// 				buttons:{
+				// 					'Ok':function(){
+				// 						$(this).dialog('close');									
+				// 						receiveQuality(keyid,mdlrref,componentid);
+				// 					},
+				// 					'Cancel':function(){
+				// 						$(this).dialog('close');
+				// 					}
+				// 				},
+				// 				close:function(){
+				// 					$(this).html('').dialog('destroy');
+				// 				}
+				// 			});	 $('#confirm_dialog').prev('.ui-dialog-titlebar').hide();	                           
+				// 		},
+				// 		'Cancel':function(){
+				// 			$(this).dialog('close');
+				// 		}
+				// 	},
+				// 	close:function(){
+				// 		$(this).html('').dialog('destroy');
+				// 	}
+				// }); $('#issue_dialog').prev('.ui-dialog-titlebar').hide();	   
+				// if(rejarr.length == 0)
+				// 	displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Rejection List Not Available.");
+				// }
+		//});
+
+function calcApproved(){
+	total		=	0;	
+	inspqty		=	$("#inspqty").val().toNumber();
+	if(!isNaN(Number(inspqty))){
+		$(rejarr).each(function(index, element) {
+			vvl		=	$("#rj_"+element).val();
+			total	=	total	+	Number(vvl);
+		});
+		total		=	inspqty - total;	
+		if(isNaN(Number(total))){
+			total	=	0;
+		}
+		$("#appqty").html(getCurrency(total, 0));
+		$("#appqty").css('color', (total>0)?'#000000':'#ff0000');
+	}
+	
+}
+
+function receiveQuality(keyid,mdlrref,cmpdid){
+    var	submitval	=	true;
+	var receiptQty	=	$("#receiptqty").html();
+	var inspQty		=	$("#inspqty").val().toNumber();
+	var appQty		=	$("#issue_dialog #appqty").html();
+	var	inspector	=	$("#userlist").val();
+
+	$("#issue_dialog input:text").each(function(index, element){
+		if(index > 0)
+		{
+			val = $(element).val();
+			if(val == null || val == "" || isNaN(val) == true || Number(val) <0){
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Rejection Quantity ! ! !");
+				$(element).focus();
+				submitval	=	false;
+				return false;
+			}
+		}
+    });
+	if(inspQty < 0 || inspQty > receiptQty.toNumber()){
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Inspected Quantity ! ! !");
+		submitval	=	false;
+		return false;
+	}	
+	else if(appQty.toNumber() < 0){
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Approved Quantity cannot be Negative ! ! !");
+		submitval	=	false;
+		return false;
+	}
+	else if(inspector == null || inspector == ""){
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Please select the Inspector ! ! !");
+		submitval	=	false;
+		return false;
+	}	
+	if(submitval == true){
+		inspdate	=	$("#inspDate").val();
+		appqty		=	appQty.toNumber();		
+		
+		getString	=	"type=INSQUALITY" +
+						"&cmpdid=" + cmpdid +
+						"&mdlrref=" + mdlrref +
+						"&isexternal=" + isexternal +
+						"&inspdate=" + inspdate +
+						"&recqty=" + inspQty +
+						"&appqty=" + appqty +
+						"&inspector=" + inspector +
+						"&planid=" + keyid;
+		$(rejarr).each(function(index, element) {
+            vvl	=	$("#rj_"+element).val();
+			if(vvl.toNumber() > 0)
+				getString	+=	"&rejname[]="+element+"&rejval[]="+vvl;
+        });
+		//alert(getString); return false;
+		$("#issue_dialog").dialog('close');
+
+		var mouldquality	=	postback(actionFile,getString,"POST","XML");
+		if(mouldquality == 'fail'){
+			displayError($("#new_item_error"), "error", "Component Quality Entry Failed!");
+			//alert('Component Quality Entry Failed!');
+		}			
+		//createAutoComplete();
+		displayError($("#new_item_error"), "Successfully created!");
+		//TF_01		=	setFilterGrid("resultTable",tableFilters);
+		//TF_01.RefreshGrid();		
+	}
+}
+
+

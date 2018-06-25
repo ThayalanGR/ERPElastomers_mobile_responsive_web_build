@@ -1,0 +1,73 @@
+body {
+	font-family:Verdana;
+	font-size:11px;
+}
+
+.watermark
+{
+	background:url(/images/company_logo.png) no-repeat right top;
+	background-size: 40px 40px;	
+	filter: alpha(opacity=60);  
+	opacity: 0.8;        
+}
+			
+.content_bold{
+	font-weight:bold;
+}
+
+.cellpadding{
+	padding:0px 0px 0px 0px;
+}
+
+.content_center{
+	text-align:center;
+}
+
+.content_left{
+	text-align:left;
+}
+			
+.content_right{
+	text-align:right;
+}
+
+.uppercase{
+	text-transform:uppercase;
+}
+
+#print_out{
+	width:100%;
+	border-left:1px solid black;
+	border-top:1px solid black;
+}
+
+#print_out td, #print_out th{
+	border-right:1px solid black;
+	border-bottom:1px solid black;
+}
+
+
+#inner_print_out{
+	width:100%;
+	border-left:1px solid black;
+}
+
+#inner_print_out td, #inner_print_out th{
+	border-right:1px solid black;
+	border-bottom:1px solid black;
+}
+
+.content_normal{
+	font-weight:normal;
+}
+
+.float_right{
+	float:right;
+}
+.float_left{
+	float:left;
+}
+
+.page_break{
+	page-break-before: always;
+}

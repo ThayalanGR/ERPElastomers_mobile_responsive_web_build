@@ -1,0 +1,245 @@
+var recvQty			= '';
+var ramarr			=	new Array();
+
+$(document).ready(function(){
+	//create buttons 					   
+	$("#cancel_receiptnote").button();
+	$("#create_receiptnote").button();
+	$("#create_print_receiptnote").button();
+	
+	$("#grn_popup").dialog({
+		autoOpen:false, 
+		width:600,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				text:"Generate",
+				tabindex:13,
+				click: function(){
+					if(typeof createReceiptNote == 'function')
+					createReceiptNote();
+				}
+			},
+			{ 
+				text: "Generate & Print",
+				tabindex:14,
+				click:function(){
+					if(typeof createReceiptNote == 'function')
+					createReceiptNote(true);
+				}
+			},
+			{ 
+				text: "Cancel",
+				tabindex:15,
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});	
+
+	getPageData();
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=PODET","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	$("#grn_toolsize").change(function(){
+		if($(this).val()=='Non-Standard'){
+			$("#grn_tool_size").show();
+		}else{
+			$("#grn_tool_size").hide();
+		}								 
+	});		
+	
+	$(".grn_button").click(function(e) {
+        GRN($(this).attr('purid'));
+    });
+	
+	$(".delete_button").click(function(e) {
+	purId		=	$(this).attr('purid');
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Delete this Purchase Order?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Delete PO',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															delstat 	= postback(actionFile, "type=DELETE&pur="+purId, "POST", "XML");
+															xmlData		=	parseXMLdoc(delstat);
+															error		=	$(xmlData).find("status").text();
+															if(error == 'success')
+																alert("Purchase Order: " + purId + " deleted Successfully");
+															else
+																alert("Deletion of Purchase Order: " + purId + " failed due to : " + $(xmlData).find("errtxt").text());
+															getPageData();
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+    });
+}
+
+function cancelReceiptNote(){
+	$("#grn_popup").dialog('close');
+}
+
+
+function GRN(purid){
+	$("#grn_popup").dialog('open');
+	getString		=	"type=PODETAILS&purId="+purid;
+	objPurRmList	=	postback(actionFile, getString, "POST", "XML");
+	$("#grn_supname").html($(objPurRmList).find("supname").text());
+	$("#grn_supname").attr("supid",$(objPurRmList).find("supid").text());
+	$("#grn_supname").attr("rfqid",$(objPurRmList).find("rfqid").text());
+	$("#grn_supname").attr("isproto",$(objPurRmList).find("isproto").text());	
+	$("#grn_partnum").html($(objPurRmList).find("part_number").text());
+	$("#grn_partdesc").html($(objPurRmList).find("part_description").text());
+	$("#po_purid").html($(objPurRmList).find("purid").text());
+	$("#po_purdate").html($(objPurRmList).find("purdate").text());
+	$("#po_toolamount").html(getCurrency($(objPurRmList).find("povalue").text(),2));
+	$("#po_expdate").html($(objPurRmList).find("exprecvdate").text());
+	$("#po_toolsize").html($(objPurRmList).find("toolsize").text());
+	$("#po_cavities").html($(objPurRmList).find("toolcavities").text());
+	$("#po_moldmatl").html($(objPurRmList).find("moldmaterial").text());
+	$("#po_moldproc").html($(objPurRmList).find("moldprocess").text());
+	$("#po_moldtype").html($(objPurRmList).find("moldtype").text());
+	$("#po_cavengrave").html((($(objPurRmList).find("cavengravement").text() == 1)?"Yes":"No"));
+	$("#po_remarks").html($(objPurRmList).find("remarks").text());
+}
+
+function createReceiptNote(toPrint){
+	grnError		=	$("#raise_error");
+	grnPurId		=	$("#po_purid").html();
+	grnInvRef		=	$("#grn_invref");
+	grnToolAmount	=	$("#grn_toolamount");
+	grnInvAmount	=	$("#grn_invamount");
+	grnToolSizeCntl	=	$("#grn_toolsize");
+	grnToolSize		=	((grnToolSizeCntl.val() == "Non-Standard")?$("#grn_tool_size").val():grnToolSizeCntl.val())	
+	grnCavities		=	$("#grn_cavities");
+	grnMoldMatl		=	$("#grn_moldmatl");
+	grnMoldProc		=	$("#grn_moldproc");
+	grnMoldType		=	$("#grn_moldtype");	
+	
+	if(grnInvRef.val() == null || grnInvRef.val().trim() == ""){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invoice Ref. Missing.");
+		grnInvRef.focus();
+		return false;
+	}
+	else if(isNaN(Number(grnToolAmount.val())) || Number(grnToolAmount.val()) <= 0){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid Tool Cost.");
+		grnToolAmount.focus();
+		return false;
+	}
+	else if(isNaN(grnInvAmount.val().toNumber()) || grnInvAmount.val().toNumber() < 0){
+		displayError(grnError, "error", "<strong>Error !</strong> - Invalid Invoice Amount.");
+		grnInvAmount.focus();
+		return false;
+	}
+	else if(Number(grnCavities.val()) <= 0){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please enter the Tool Cavity Details");
+		grnCavities.focus();
+		return false;
+	}
+	else if(grnToolSize == null || grnToolSize == ""){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please enter the Tool Size Details");
+		grnToolSizeCntl.focus();
+		return false;
+	}	
+	else if(grnMoldProc.val() == null || grnMoldProc.val() == ""){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please select Mold Process");
+		grnMoldProc.focus();
+		return false;
+	}	
+	else if(grnMoldType.val() == null || grnMoldType.val() == ""){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please select Mold Type");
+		grnMoldType.focus();
+		return false;
+	}	
+	else if(grnMoldMatl.val() == null || grnMoldMatl.val() == ""){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please select Mold Material");
+		grnMoldMatl.focus();
+		return false;
+	}		
+	
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Create the Tool Receipt Note?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Raise TRN',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															param		=	"type=" + "TRNINS" +
+																			"&supplier=" + $("#grn_supname").attr("supid") +
+																			"&rfqid=" + $("#grn_supname").attr("rfqid") +
+																			"&purid=" + grnPurId +
+																			"&grndate=" + $("#grn_recvdate").val() +
+																			"&invoiceno=" + grnInvRef.val() +
+																			"&invoicedate=" + $("#grn_invdate").val() +
+																			"&toolamount=" + grnToolAmount.val() +
+																			"&invamount=" + grnInvAmount.val() +
+																			"&toolsize=" + grnToolSize +
+																			"&toolcavs=" + grnCavities.val() +
+																			"&moldproc=" + grnMoldProc.val() +
+																			"&moldtype=" + grnMoldType.val() +
+																			"&moldmatl=" + grnMoldMatl.val() +
+																			"&cavengrave=" + (($('#engrave_yes').attr("checked") == true)?1:0) +
+																			"&isproto=" + $("#grn_supname").attr("isproto") +
+																			"&remarks=" + $("#grn_remarks").val();																			
+															//alert(param);	
+															$("#grn_popup").dialog("close");															
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															alert(XMLContent); //return false;
+															xmlData				=	parseXMLdoc(XMLContent);
+															error				=	$(xmlData).find("mysql:first status:first").text();
+															if(error == "success"){
+																$(xmlData).find('result_set').each(function(index, element) {
+																	trnCode		=	$(this).find('trn').text();
+																});																
+																alert("The TRN for Tool PO (" + grnPurId + ") is " + trnCode);																
+																if(toPrint == true)
+																	openInvoice({invID:trnCode});
+															}
+															else{
+																alert("The TRN for Tool PO (" + grnPurId + ") failed due to:" + error);
+															}
+															getPageData();
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+}
+
+

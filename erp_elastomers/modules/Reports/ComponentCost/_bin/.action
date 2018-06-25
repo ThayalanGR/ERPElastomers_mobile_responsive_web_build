@@ -1,0 +1,119 @@
+<?php
+
+	session_start();
+	
+	header('Content-Type: text/xml');
+	$compconvcost	=	$_REQUEST["compconvcost"];
+	$cpdConvCost	=	( ($compconvcost) && is_numeric($compconvcost))?$compconvcost:30.00;
+	$insprocrate	=	$_REQUEST["insprocrate"];
+	$insProcRate	=	( ($insprocrate) && is_numeric($insprocrate))?$insprocrate:0.10;	
+	
+	$sql			=	"select DISTINCT cmpdCpdId from tbl_component where status>0 ";	
+	$outputarr		=  @getMySQLData($sql);
+	$cpdRates		=	array();	
+	if( ($outputarr['errno'] == 0)&&($outputarr['count'] > 0) ){	
+		foreach($outputarr['data'] as $cpd){
+			$cmpdCpdId				=	$cpd['cmpdCpdId'];
+			$cpdRates[$cmpdCpdId]	=	@getCompoundCost($cmpdCpdId);
+		}
+	}		
+
+	$sql			=	"select t1.cmpdId, concat(t1.cmpdName,'(', t1.cmpdRefNo,')') as cmpdName, t1.cmpdCpdId, t2.cpdName as cmpdCpdName, t1.cmpdBlankWgt, t1.cmpdAMR, t1.cmpdInspRate
+						from tbl_component t1
+						left outer join tbl_compound t2 on t1.cmpdCpdId=t2.cpdId
+						where t1.status>0 order by cmpdName";
+	
+	$outputarr		=  @getMySQLData($sql);	
+	$data 			= "";
+	
+	if( ($outputarr['errno'] == 0)&&($outputarr['count'] > 0) ){
+		foreach($outputarr['data'] as $cmpd){
+			$cmpdId			=	$cmpd['cmpdId'];
+			$insCost		=	0;
+			$insName		=	"-";
+			$sellPrice		=	0;
+			$cusGroup		=	"";
+			$noActCav		=	1;
+			$countTool		=	1;
+			$toolRef		=	"";
+			$mconvCost		=	0;
+			$inspRate		=	$cmpd['cmpdInspRate'];
+			$cpdCost		=	$cpdRates[$cmpd['cmpdCpdId']] + $cpdConvCost;
+			$cmpdBlkWgt		=	$cmpd['cmpdBlankWgt'];
+			$rmCost			=	($cpdCost*$cmpdBlkWgt)/1000;
+			$tooldet_sql 	= 	@getMySQLData("select count( * ) as countItem,group_concat(concat(tool_ref,'(',no_of_active_cavities,')') order by ABS(no_of_active_cavities) desc separator ':') as tool_ref,group_concat(no_of_active_cavities order by ABS(no_of_active_cavities) desc separator ':') as no_of_active_cavities, group_concat(lift_rate order by ABS(no_of_active_cavities) desc separator ':') as lift_rate, group_concat(trim_rate order by ABS(no_of_active_cavities) desc separator ':') as trim_rate  from tbl_tool where compId ='$cmpdId' and status1 = 1 group by compId");
+			if(($tooldet_sql['errno'] == 0)&&($tooldet_sql['count'] > 0))
+			{
+				$countTool	=	$tooldet_sql['data'][0]['countItem'];
+				$actCav		=	$tooldet_sql['data'][0]['no_of_active_cavities'];
+				$toolRef	=	$tooldet_sql['data'][0]['tool_ref'];
+				$liftRates	=	$tooldet_sql['data'][0]['lift_rate'];
+				$trimRates	=	$tooldet_sql['data'][0]['trim_rate'];				
+				if($countTool > 1 )
+				{
+					$actCavArray	=	explode( ':', $actCav );
+					$liftRatesArray	=	explode( ':', $liftRates );
+					$trimRatesArray	=	explode( ':', $trimRates );
+					if($actCavArray[0] > 0)
+						$noActCav	=	$actCavArray[0];
+					$liftRate		=	$liftRatesArray[0];
+					$trimRate		=	$trimRatesArray[0];					
+				}
+				else 
+				{
+					if($actCav > 1)
+					{
+						$noActCav		=	$actCav;
+					}
+					$liftRate		=	$liftRates;
+					$trimRate		=	$trimRates;						
+				}
+				$noActCav	=	@preg_replace("/[,]/", "", $noActCav);	
+				$liftRate	=	@preg_replace("/[,]/", "", $liftRate);
+				$trimRate	=	@preg_replace("/[,]/", "", $trimRate);
+			}			
+						
+			$insertdet_sql 	= 	@getMySQLData("select group_concat(ramName) as ramName,sum(ramApprovedRate) as insertRate, count(*) as noofinserts from tbl_rawmaterial t1
+												inner join tbl_component_insert t2 on t2.ramId = t1.ramId
+												where cmpdId='$cmpdId' group by cmpdId");
+			if(($insertdet_sql['errno'] == 0)&&($insertdet_sql['count'] > 0))
+			{
+				$insCost	=	$insertdet_sql['data'][0]['insertRate'] + ($insertdet_sql['data'][0]['noofinserts'] * $insProcRate);
+				$insName	=	$insertdet_sql['data'][0]['ramName'];
+			}
+			$selldet_sql	=	@getMySQLData("SELECT poRate, cusGroup FROM tbl_customer_cmpd_po_rate t1 inner join tbl_customer t2 on t1.cusId = t2.cusId where t1.cmpdId  = '$cmpdId' and t1.status  > 0 ORDER BY t1.update_on DESC LIMIT 1");			
+			if(($selldet_sql['errno'] == 0)&&($selldet_sql['count'] > 0))
+			{
+				$sellPrice	=	$selldet_sql['data'][0]['poRate'];
+				$cusGroup	=	$selldet_sql['data'][0]['cusGroup'];
+			}
+			$mconvCost		=	round($liftRate/$noActCav,2);
+			$data			.=	"<row>";
+			$data			.=	"<cmpdid>".$cmpdId."</cmpdid>";
+			$data			.=	"<cmpdname>".$cmpd['cmpdName']."</cmpdname>";
+			$data			.=	"<cmpdrefno>".$cmpd['cmpdRefNo']."</cmpdrefno>";
+			$data			.=	"<cusgroup>".$cusGroup."</cusgroup>";
+			$data			.=	"<toolcount>".$countTool."</toolcount>";	
+			$data			.=	"<toolref>".$toolRef."</toolref>";	
+			$data			.=	"<toolactcavs>".$actCav."</toolactcavs>";			
+			$data			.=	"<cmpdcpdname>".$cmpd['cmpdCpdName']."</cmpdcpdname>";
+			$data			.=	"<cmpdinserts>".$insName."</cmpdinserts>";			
+			$data			.=	"<cmpdblankwgt>".$cmpdBlkWgt."</cmpdblankwgt>";
+			$data			.=	"<cpdcost>".$cpdCost."</cpdcost>";
+			$data			.=	"<rmcost>".round($rmCost,2)."</rmcost>";
+			$data			.=	"<inscost>".$insCost."</inscost>";
+			$data			.=	"<liftrate>".$liftRates."</liftrate>";
+			$data			.=	"<trimrate>".$trimRates."</trimrate>";
+			$data			.=	"<insprate>".$inspRate."</insprate>";
+			$data			.=	"<mconvcost>".$mconvCost."</mconvcost>";
+			$data			.=	"<cmpdcost>".round($rmCost+$insCost+$mconvCost+$trimRate+$inspRate,2)."</cmpdcost>";
+			$data			.=	"<sellprice>".$sellPrice."</sellprice>";
+			$data			.=	"<cmpdamr>".$cmpd['cmpdAMR']."</cmpdamr>";
+			$data			.=	"</row>";
+		}
+	}
+
+	$output	= "<xmldata><root><count>".$outputarr['count']."</count><data>".$data."</data><status>".$outputarr['status']."</status></root></xmldata>";
+	echo $output;
+	
+?>

@@ -1,0 +1,40 @@
+$(document).ready(function(){
+
+	//MonthPicker
+	$('#to_date').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	}).bind('monthpicker-click-month', function (e, month) {
+    	updatePageBehaviour();
+	})
+
+	updatePageBehaviour();	
+	
+});
+
+function updatePageBehaviour(){
+	
+	var val				=	$("#to_date").val(); 			
+	space_pos 			= 	val.indexOf(' ');
+	month 				= 	val.substring(0,space_pos);
+	cur_year 			= 	val.substring(space_pos+1,val.length);
+	var monthsArray 	= [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+	var LastDaysArray 	= [ 31,28,31,30,31,30,31,31,30,31,30,31 ];
+	monthIndex 			= 	monthsArray.indexOf(month);
+	cur_month			=	monthIndex + 1;
+	cur_month 			= 	(cur_month>9)?cur_month:'0'+cur_month;
+	start_day 			=	cur_year + "-" + cur_month +"-01";
+	last_day 			= 	(Number(cur_year)%4!=0)?LastDaysArray[monthIndex]:LastDaysArray[monthIndex]+1;
+	end_day				=	cur_year + "-" + cur_month +"-" + last_day;	
+	param				=	"selecttype=MOULDLIST&startDate="+start_day+"&endDate="+end_day;	
+	//alert(param); 					
+	var objCompList		=	postback(actionFile, param, "POST", "XML");
+	//alert(objCompList);
+	listPageData($("#content_body"), objCompList, XSLFile);	
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('dcref') ;
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});	
+}

@@ -1,0 +1,91 @@
+<?php
+	session_start();
+	global $tlvalidfiles_upload_dir;
+	header('Content-Type: text/xml');
+	if ( isset($_FILES['tl_file'])) {	
+		$codeNo			=	@getRegisterData("toolValidationNote");			
+		$custFiles 		= 	$_FILES['tl_file'];
+		$numFiles		=	count($custFiles["name"]);
+		if($numFiles > 0)
+		{
+			try 
+			{
+				$uploadPath 	= 	$_SESSION['app']['iso_dir'].$tlvalidfiles_upload_dir.$codeNo."/";
+				if(!(is_dir($uploadPath)))
+					mkdir($uploadPath);
+				$custFiles 		= 	$_FILES['tl_file'];
+				$numFiles		=	count($custFiles["name"]);
+				for($fileCount=0;$fileCount < $numFiles;$fileCount++)
+				{
+					 switch ($custFiles['error'][$fileCount]) {
+						 case UPLOAD_ERR_OK:
+							 break;
+						 case UPLOAD_ERR_NO_FILE:
+							 throw new RuntimeException('No file sent.');
+						 case UPLOAD_ERR_INI_SIZE:
+						 case UPLOAD_ERR_FORM_SIZE:
+							 throw new RuntimeException('Exceeded filesize limit.');
+						 default:
+							 throw new RuntimeException('Unknown errors.');
+					 }
+
+					 // You should also check filesize here. 
+					 if ($custFiles['size'][$fileCount] > $max_upload_filesize) {
+						 throw new RuntimeException('Exceeded filesize limit.');
+					 }
+				
+					if(!move_uploaded_file($custFiles["tmp_name"][$fileCount], $uploadPath.$custFiles["name"][$fileCount]))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+				}
+			} 
+			catch (RuntimeException $e) {
+				array_map('unlink', glob("$uploadPath/*.*"));
+				echo $e->getMessage(); 
+				exit();
+			}     				
+		}
+		createToolValidNote($codeNo,$_POST['valid_date'],$_POST['tool_ref'],$_POST['lifts_run'],$_POST['complaint'],$_POST['observation'],$_POST['action_taken'],$_POST['remarks'],$_POST['next_valid']);
+	} 
+	else 
+	{ 			
+		switch($_POST["selecttype"]){
+			case "TOOLREFLIST":
+				$output =@getMySQLData("select tool_ref,comp_part_ref from tbl_tool where status1='1' and tool_ref != '' and compId != ''", 'xml');
+				echo $output;
+				exit();
+			break;
+			case "TOOLLIFTSRUN":
+				$toolRef = $_POST['toolRef'];
+				$output = @getMySQLData("select sum(actualLifts)as lifts_run from tbl_moulding_receive where toolRef = '$toolRef'", 'xml');
+				echo $output;
+				exit();
+			break;
+			case "ADDTOOLVALIDATION":					
+				if($_POST['tool_ref'] !="" && $_POST['lifts_run'] !="" && $_POST['complaint'] !="" && $_POST['observation'] !="" && $_POST['action_taken'] !="" && $_POST['next_valid'] !=""){
+					$codeNo			=	@getRegisterData("toolValidationNote");	
+					createToolValidNote($codeNo,$_POST['valid_date'],$_POST['tool_ref'],$_POST['lifts_run'],$_POST['complaint'],$_POST['observation'],$_POST['action_taken'],$_POST['remarks'],$_POST['next_valid']);			
+				}
+			break;
+		}
+	}
+	
+	function createToolValidNote($codeNo,$validDate,$toolRef,$liftsRun,$complaint,$observation,$actionTaken,$remarks,$nextValid){ 
+		$sql = " insert into tbl_tool_validation(tvn_ref, tvn_date, tool_ref, lifts_run, complaint, observation, action_taken, remarks, next_validation, entry_on, status, entry_by) 
+							values('$codeNo', '$validDate', '$toolRef', '$liftsRun', '$complaint', '$observation','$actionTaken','$remarks','$nextValid',now(),1,'".$_SESSION['userdetails']['userId']."')";
+					
+		$sql_query = @getMySQLData($sql);
+		
+		$output		=	"<toolvalidationadd>
+							<sql>$sql</sql>
+							<status>".$sql_query['status']."</status>
+							<tvnref>$codeNo</tvnref>
+						</toolvalidationadd>";
+		if($sql_query['status'] == "success"){
+			@getMySQLData("update tbl_settings set auto_inc=auto_inc+1 where name='toolValidationNote'");
+			@getMySQLData("update tbl_tool set next_validation='$nextValid' where tool_ref='$toolRef'");
+		}
+		echo $output;	
+	}
+?>

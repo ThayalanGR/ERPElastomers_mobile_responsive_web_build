@@ -1,0 +1,57 @@
+<?php
+	session_start();
+	global $compRejPer;
+	header('Content-Type: text/xml');
+	switch($_POST["type"]){
+		case 'GETREC':
+			$sql	=	"select tms.planref, CONCAT( SUBSTRING_INDEX( tms.planref,  '_', 1 ) ,'-', SUBSTRING_INDEX( tms.planref,  '-' , -1 ) ) AS dispplanref, avlQty, cmpdName, cmpdRefno, tms.cmpdId
+							from tbl_mould_store tms
+								inner join tbl_component tc on tc.cmpdId = tms.cmpdId
+							where tms.status = 1 and tms.dimComplete = 0  
+						order by planref ";
+							
+			$list	=	@getMySQLData($sql,"xml","root","lower");
+			echo "<xmldata>".$list."</xmldata>";
+			break;
+		case 'GETDIM':
+			$sql	=	"select cmpdDim,paramName,uom_short_name,paramTestMethod,cmpdDimSpec,cmpdDimLLimit,cmpdDimULimit from tbl_component_dim_param t1 
+													left outer join tbl_param t3 on t3.sno = t1.cmpdDim
+													left outer join tbl_uom t4 on t4.sno = t3.paramUOM 
+													where t1.cmpdId='".$_POST['cmpdid']."' and t3.status > 0 limit 5";
+			echo getMySQLData($sql,"xml","root","lower");
+			break;
+		case 'INSDIM':
+			$cmpdid		=	$_POST['cmpdid'];
+			$planId		=	$_POST['planid'];
+			$dimDate	=	$_POST['dimdate'];
+			$dimrefs	=	$_POST['dimref'];
+			$dimval1s	=	$_POST['dimval1'];
+			$dimval2s	=	$_POST['dimval2'];
+			$dimval3s	=	$_POST['dimval3'];
+			$dimval4s	=	$_POST['dimval4'];
+			$dimval5s	=	$_POST['dimval5'];			
+			$usrId		=	$_SESSION['userdetails']['userId'];
+			
+			$sql		=   " insert into tbl_component_dim(planId, cmpdDim, sample1, sample2, sample3, sample4, sample5, dimDate, entry_on, entry_by) values ";
+			if(count($dimrefs) > 0){
+				foreach($dimrefs as $key=>$val){
+					$sql	.=	 " ( '$planId', '$val', '".str2num($dimval1s[$key])."', '".str2num($dimval2s[$key])."', '".str2num($dimval3s[$key])."', '".str2num($dimval4s[$key])."', '".str2num($dimval5s[$key])."', '$dimDate' , now(), '$usrId' ) ";
+					if($key < count($dimrefs)-1){
+						$sql	.=	" , ";
+					}
+				}
+			}
+			
+			$res	=	@getMySQLData($sql);		
+			
+			if($res['status'] == 'success'){
+				@getMySQLData("update tbl_mould_store set dimComplete=1 where planref='$planId' and cmpdId = '$cmpdid'");
+				echo 'success' ;
+			}
+			else
+			{
+				echo $res['errtxt'];
+			}
+			break;
+	}        
+?>

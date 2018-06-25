@@ -1,0 +1,48 @@
+/*
+	Outputted reports header row
+*/
+.row_header, .cell_ct, .pageview_cell1, .drill_header {
+	background-color: #FFFF00;
+}
+
+.odd:hover td, .even:hover td, .popuprow:hover, .autocomplete ul li.selected {
+	background-color: #F5F5F5 !important; 
+}
+
+td.nobottom {
+	border-bottom: none;
+}
+
+.summary_level0 {
+	border-top: 1px solid #AAA;
+}
+
+th.pager_row > div.pager {
+	border-top: 1px solid black;
+}
+
+.pw_reset_link, .pw_reset_link:visited {color:black;}
+
+.even, .odd {
+  background-color: #FFFFFF;
+}
+.cell_header {
+border-color: #d6dd85;
+border-top: 1px solid #a4aa88;
+border-bottom: 1px solid #a4a967;
+}
+
+.fc-head, .fc-head-container.fc-widget-header {
+  border-top: 1px solid #a4aa88; 
+  border-bottom: 1px solid #a4a967;
+}
+.dbr_calendar .fc-day-header {
+  border-top: 1px solid #a4aa88; 
+  background: #FFFF00;
+  color: black;
+} 
+.dbr_calendar .fc-basic-view th.fc-week-number, .dbr_calendar .fc-head-container.fc-widget-header, .dbr_calendar .fc-week-number.fc-widget-header {
+  background: #FFFF00;
+  color: black;
+  font-weight: bold;
+}

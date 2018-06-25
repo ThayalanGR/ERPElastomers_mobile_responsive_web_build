@@ -1,0 +1,165 @@
+<?php
+	session_start();
+	global $rfqdrawings_upload_dir,$mgmt_grp_email;
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "NEWPRODLIST":
+			$sql	=	"select sno,drId, isNew, tdr.status, tdr.cmpdId, ifnull(tcomp.cmpdCpdName,'') as cmpdCpdName, ifnull(tcomp.cmpdRejPer,0) as cmpdRejPer, ifnull(tcomp.cmpdInspRate,0) as cmpdInspRate, ifnull(tt.lift_rate,0) as lift_rate, ifnull(tt.trim_rate,0) as trim_rate, part_number,part_description,tc.cusName,compound_spec,ave_monthly_req,target_price,drawing_file_name,DATE_FORMAT(target_date, '%d-%m-%Y') as target_date,tdr.remarks,tl_status as tstatus, cpd_status as cstatus, prod_status as pstatus, ifnull(tl_toolref,'') as tl_status,ifnull(cpd_cpdid,'') as cpd_status,ifnull(prod_lift_rate,0) as prod_status,'/".$rfqdrawings_upload_dir."' as filepath
+						from tbl_develop_request tdr
+							inner join tbl_customer tc on tc.cusId=tdr.cusId
+							left join tbl_component tcomp on tcomp.cmpdId=tdr.cmpdId
+							left join tbl_develop_feasibility tdf on tdf.prod_ref=tdr.sno 
+							left join tbl_tool tt on tdf.tl_toolref=tt.tool_ref
+						order by tdr.sno desc";
+			echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+		break;
+		case "TOOLLIST":
+			$cmpdId	=	$_POST['cmpdid'];
+			$sql	=	"select tool_ref, concat (comp_part_ref, '(',tool_ref,')',' - ',no_of_active_cavities) as toolname from tbl_tool where status1 = 1 ";
+			$sql	.=	(($cmpdId)?" and compId = '$cmpdId'":"");
+			echo @getXML($sql, false);
+			break;
+		case "TOOLDETAILS":
+			$sql	=	"select no_of_active_cavities,cmpdProdWgt,cmpdBlankWgt from tbl_tool tt
+							inner join tbl_component tc on tt.compId = tc.cmpdId
+						where tool_ref = '".$_POST['toolid']."'";
+			echo @getXML($sql, false);
+			break;
+		case "CPDLIST":
+			$sql	=	"select cpdid, cpdname from tbl_compound where status = 1";
+			echo @getXML($sql, false);
+			break;
+		case "CPDDETAILS":
+			$cmpdId	=	$_POST['cmpdid'];
+			if($cmpdId != null && $cmpdId != "")
+				$sql	=	"select cpdpolymer, cmpdcurtime, cmpdtemperature, cmpdpressure from tbl_compound tc	
+								inner join tbl_component tt on tt.cmpdCpdId = tc.cpdId 
+							where tt.cmpdId = '$cmpdId' ";
+			else
+				$sql	=	"select cpdpolymer from tbl_compound where cpdId = '".$_POST['cpdid']."'";
+			echo @getXML($sql, false);
+			break;		
+		case "FEASINS":			
+			$rfqid			=	$_POST['rfqid'];
+			$type			=	$_POST['updatetype'];
+			$approval		=	$_POST['approval'];
+			$toolref		=	$_POST['toolref'];
+			$platavail		=	$_POST['platavail'];
+			$insused		=	$_POST['insused'];
+			$toolsize		=	$_POST['toolsize'];
+			$toolcavs		=	@preg_replace("/[,]/", "", $_POST['toolcavs']);
+			$toolprodwgt	=	@preg_replace("/[,]/", "", $_POST['prodwgt']);
+			$toolblankwgt	=	@preg_replace("/[,]/", "", $_POST['blankwgt']);	
+			$toolmouldproc	=	$_POST['toolmouldproc'];			
+			$toolmouldtype	=	$_POST['toolmouldtype'];			
+			$toolremarks	=	$_POST['toolremarks'];
+			$cpdref			=	$_POST['cpdref'];
+			$inhousetest	=	$_POST['inhousetest'];
+			$cpdpolymer		=	$_POST['cpdpolymer'];
+			$cpdcurtime		=	@preg_replace("/[,]/", "", $_POST['curetime']);
+			$cpdcurtemp		=	@preg_replace("/[,]/", "", $_POST['curetemp']);
+			$cpdcurpress	=	@preg_replace("/[,]/", "", $_POST['curepress']);	
+			$cpdremarks		=	$_POST['cpdremarks'];
+			$prodliftrate	=	@preg_replace("/[,]/", "", $_POST['liftrate']);			
+			$prodtrimrate	=	@preg_replace("/[,]/", "", $_POST['trimrate']);
+			$prodinsprate	=	@preg_replace("/[,]/", "", $_POST['insprate']);
+			$prodrejrate	=	@preg_replace("/[,]/", "", $_POST['rejper']);	
+			$prodremarks	=	$_POST['prodremarks'];
+			$appremarks		=	$_POST['appremarks'];
+			$userId			=	$_SESSION['userdetails']['userId'];
+			if($rfqid != ""){
+				$updOrInsSql	=	@getMySQLData("select count(*) as updrec from  tbl_develop_feasibility where prod_ref='$rfqid'");
+				$needToUpdate	= 	$updOrInsSql['data'][0]['updrec'];				
+				if($type == 'tl' && $needToUpdate == 0)
+				{
+					$sql_feas		=	"insert into tbl_develop_feasibility(prod_ref, tl_toolref, tl_platten_avail,tl_tool_size,tl_cavs,tl_prod_wgt,tl_blank_wgt, tl_mould_proc, tl_mould_type, tl_insert_used, tl_remarks, tl_status, tl_entry_on, tl_entry_by) values";
+					$sql_feas		.=	"('$rfqid', '$toolref', '$platavail','$toolsize', '$toolcavs', '$toolprodwgt', '$toolblankwgt', '$toolmouldproc', '$toolmouldtype', '$insused', '$toolremarks', '$approval', now(), '$userId')";
+				}
+				else if($type == 'cpd' && $needToUpdate == 0)
+				{
+					$sql_feas		=	"insert into tbl_develop_feasibility(prod_ref, cpd_cpdid, cpd_base_polymer,cpd_inhouse_test,cpd_cure_time,cpd_cure_temp,cpd_cure_press,cpd_remarks,cpd_status, cpd_entry_on, cpd_entry_by) values";
+					$sql_feas		.=	"('$rfqid', '$cpdref', '$cpdpolymer','$inhousetest','$cpdcurtime','$cpdcurtemp','$cpdcurpress','$cpdremarks','$approval', now(), '$userId')";
+				}
+				else if($type == 'prod' && $needToUpdate == 0)
+				{
+					$sql_feas		=	"insert into tbl_develop_feasibility(prod_ref, prod_lift_rate, prod_trim_rate,prod_insp_rate,prod_rej_rate,prod_remarks,prod_status, prod_entry_on, prod_entry_by) values";
+					$sql_feas		.=	"('$rfqid', '$prodliftrate', '$prodtrimrate','$prodinsprate','$prodrejrate','$prodremarks','$approval', now(), '$userId')";
+				}				
+				else if($type == 'tl' && $needToUpdate == 1)
+				{
+					$sql_feas		=	"update tbl_develop_feasibility
+											set tl_toolref = '$toolref', tl_platten_avail = '$platavail', tl_tool_size = '$toolsize', tl_cavs = '$toolcavs',
+											tl_prod_wgt = '$toolprodwgt', tl_blank_wgt = '$toolblankwgt', tl_mould_proc = '$toolmouldproc', tl_mould_type = '$toolmouldtype', tl_insert_used = '$insused',
+											tl_remarks = '$toolremarks', tl_status = '$approval', tl_entry_on = now(), tl_entry_by = '$userId'
+										where prod_ref = '$rfqid'";
+				}
+				else if($type == 'cpd' && $needToUpdate == 1)
+				{
+					$sql_feas		=	"update tbl_develop_feasibility
+											set cpd_cpdid = '$cpdref', cpd_base_polymer = '$cpdpolymer',cpd_inhouse_test = '$inhousetest',
+											cpd_cure_time = '$cpdcurtime', cpd_cure_temp = '$cpdcurtemp', cpd_cure_press = '$cpdcurpress',cpd_remarks = '$cpdremarks',
+											cpd_status = '$approval', cpd_entry_on = now(), cpd_entry_by = '$userId'
+										where prod_ref = '$rfqid'";
+				}
+				else if($type == 'prod' && $needToUpdate == 1)
+				{
+					$sql_feas		=	"update tbl_develop_feasibility
+											set prod_lift_rate = '$prodliftrate', prod_trim_rate = '$prodtrimrate',prod_insp_rate = '$prodinsprate',prod_rej_rate = '$prodrejrate',
+											prod_remarks = '$prodremarks',	prod_status = '$approval', prod_entry_on = now(), prod_entry_by = '$userId'
+										where prod_ref = '$rfqid'";
+				}	
+				
+				if($type == 'final'){
+					$output		=	@getMySQLData("update tbl_develop_feasibility set approval_status = '$approval', approval_remarks = '$appremarks', approval_on = now(), approval_by = '$userId' where prod_ref='$rfqid'", "xml");
+					@getMySQLData("update tbl_develop_request set status=2 where sno='$rfqid'");
+					if($approval == 1)
+					{
+						$feasCheckSql	=	@getMySQLData("select tl_tool_size,tl_cavs,tl_mould_proc,tl_mould_type,tl_toolref,isnew from  tbl_develop_feasibility tdf
+																inner join tbl_develop_request tdr on tdr.sno=tdf.prod_ref
+															where prod_ref='$rfqid'");
+						$feasCheckData	=	$feasCheckSql['data'][0];
+						$toolRef		=	$feasCheckData['tl_toolref'];
+						//For existing tool, we will create TRN straight away for taking sample
+						if($toolRef != 'NA' && $feasCheckData['isnew'] == 1)
+						{
+							$codeArray		=	@getSettingsData("trncode");
+							$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+							$sql_trn		=	"insert into tbl_trn(trnId, trnDate, purId, supId,rfqid, invoiceId, toolSize, toolCavities,  
+													moldProcess, moldType, moldMaterial, remarks, toolId, entry_on, entry_by) values";
+							$sql_trn		.=	"('$codeNo', now(),'NA','NA','$rfqid','NA','".$feasCheckData['tl_tool_size']."', '".$feasCheckData['tl_cavs']."', 
+													'".$feasCheckData['tl_mould_proc']."', '".$feasCheckData['tl_mould_type']."', 'NA', 'Auto Created Tool Receipt Note for Existing Tool :".$toolRef."', '$toolRef',now(), '$userId')";
+							//echo $sql_trn ; exit();
+							$output1		=	@getMySQLData($sql_trn, "xml");
+							if($output1 != ""){
+								$status		=	split("<status>", $output1);
+								$status		=	split("</status>", $status[1]);
+								$status		=	$status[0];
+								if($status == "success")
+								{							
+									@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='trncode'");
+								}
+							}
+						}
+					}
+				}	
+				else
+				{
+					//echo $sql_feas ; exit();
+					$output			=	@getMySQLData($sql_feas, "xml");	
+					$feasOverSql	=	@getMySQLData("select count(*) as feasOver,drId,part_number,part_description from  tbl_develop_feasibility tdf
+																inner join tbl_develop_request tdr on tdr.sno=tdf.prod_ref
+															where prod_ref='$rfqid' and tl_toolref != '' and cpd_cpdid != '' and prod_lift_rate > 0");
+					$feasOverData	=	$feasOverSql['data'][0];
+					$feasOver		=	$feasOverData['feasOver'];
+					if($feasOver > 0)
+					{
+						sendEmail($mgmt_grp_email,"","Development Approval Required for : ".$feasOverData['drId'],"Kind Attn: Development Approval Team !!! <br/> A Development Request has finished checking for feasibility: ".$feasOverData['part_number']."(".$feasOverData['part_description'].") <br/> Please login to the <a href='http://".$_SERVER['SERVER_NAME']."/NPD/CheckFeasibility'>ERP here</a> and Approve the Development for the same. ","");	
+					}
+				}
+				echo "<root>$output</root>";
+			}
+			break;
+
+	}
+
+?>

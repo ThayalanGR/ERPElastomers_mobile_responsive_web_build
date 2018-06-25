@@ -1,0 +1,154 @@
+<?php
+
+	session_start();
+	global $rfqdrawings_upload_dir, $cmpd_grp_email,$cpd_grp_email,$dev_grp_email;
+	header('Content-Type: text/xml');
+	if ( isset($_FILES['file'])) {
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$rfqdrawings_upload_dir;
+		try {
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			 }
+
+			 // You should also check filesize here. 
+			 if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			 }
+
+			 if( 'application/pdf' == $_FILES['file']['type'] ) 
+			 {
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					echo $_FILES['file']["name"] . " already exists. ";
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath.$_FILES['file']["name"]))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+					$codeNo		=	@getRegisterData("developreq");
+					$isNew		=	$_POST['isnew'];
+					$codeNo		=	(($isNew == 1)?"N":"E").$codeNo;
+					$part_num	=	$_POST['partnum'];
+					$part_desc	=	$_POST['partdesc'];
+					$rfqsql		=	"insert into tbl_develop_request(
+										drId, isNew, cusId, part_number, part_description, compound_spec, ave_monthly_req, application, end_customer,  
+										target_price, drawing_file_name, drawing_revision, drawing_date, target_date, remarks,status".((isNew == 0)?", cmpdId":"").", entry_by, entry_on
+									) values";
+					$rfqsql	.=	" ('$codeNo','$isNew','".$_POST['custid']."', '$part_num', '$part_desc', '".$_POST['compoundspec']."', '".@preg_replace("/[,]/", "", $_POST['amr'])."', '".$_POST['application']."','".$_POST['endcust']."',
+									'".@preg_replace("/[,]/", "", $_POST['targetprice'])."','".$_FILES['file']["name"]."','".$_POST['drawingrev']."','".$_POST['drawingdate']."','".$_POST['targetdate']."', '".$_POST['remarks']."', 1".((isNew == 0)?", '".$_POST['cmpdid']."'":"").", '".$_SESSION['userdetails']['userId']."' , now()) ";
+			
+					$sql_query = @getMySQLData($rfqsql);
+					
+					$output = "<rfqadd>
+									<sql>$rfqsql</sql>
+									<status>".$sql_query['status']."</status>
+									<codeno>$codeNo</codeno>
+								</rfqadd>";
+					if($sql_query['status'] != "success"){
+						throw new RuntimeException('Insertion of RFQ data failed due to :'.$sql_query['status']);						
+					}
+					
+					@getMySQLData("update tbl_settings set auto_inc=auto_inc + 1 where name='developreq'");
+					sendEmail(array_merge($cmpd_grp_email,$cpd_grp_email),$dev_grp_email,"Development Request Added for Customer - ".$_POST['custname'].": ".$part_num."(".$part_desc.")","Kind Attn: Production, Tool & Compound Development Team !!! <br/> A Development Request has been Added for: ".$part_num."(".$part_desc.") <br/> Please login to the <a href='http://".$_SERVER['SERVER_NAME']."/NPD/CheckFeasibility'>ERP here</a> and check feasibility for the same. ","");		
+					echo $output;
+				}
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			echo $e->getMessage();
+		}      
+    } 
+	else 
+	{ 		
+		switch($_REQUEST["selecttype"]){
+			case "CSTATLIST":
+				$output		=	getXML("select cusId, cusName from tbl_customer where status>0",false);
+				echo $output;
+				exit();
+			break;
+			case "CSTDTLLIST":
+				$output		=	getXML("select * from tbl_customer where cusName='".$_POST['cusid']."' and status>0",false);
+				echo $output;
+				exit();
+			break;
+			case "CMPDLIST":
+				$output		=	getXML("select concat(cmpdId,' - ', cmpdName) as cmpdName from tbl_component where status>0",false);
+				echo $output;
+				exit();
+			break;
+			case "CMPDETAILS":
+				$output		=	getXML("select t1.cmpdId,t2.cusId,t3.cusName,t3.cusAdd1, t3.cusAdd2, t3.cusPlace, t3.cusPincode,t2.poRate, t1.cmpdName, t1.cmpdRefNo, t1.cmpdApp, t1.cmpdAMR, t1.cmpdDrawRev, DATE_FORMAT(t1.cmpdDrawDate, '%d-%m-%Y') as cmpdDrawDate from tbl_component t1
+											inner join (select cusID, cmpdId,poRate from tbl_customer_cmpd_po_rate where cmpdId = '".$_POST['cmpdid']."' and status > 0 order by update_on desc limit 1) t2 on  t1.cmpdId = t2.cmpdId
+											inner join tbl_customer t3 on t3.cusId = t2.cusId
+										where t1.status>0",false);
+				echo $output;
+				exit();
+			break;
+			case "UPDREMARKS":
+				$output		=	@getMySQLData("update tbl_develop_request set remarks = '".$_POST['remarks']."' where sno = '".$_POST['rfqid']."'","xml");
+				echo $output;
+				exit();
+			break;
+			case "ABANDONRFQ":
+				$output		=	@getMySQLData("update tbl_develop_request set status = 0, remarks = '".$_POST['remarks']."', approval_date = now() where sno = '".$_POST['rfqid']."'","xml");
+				echo $output;
+				exit();
+			break;			
+			case "GETRFQLIST":
+				$sql_rfqs	=	"select tdr.sno,tdr.drId, tc.cusname, tdr.part_number, tdr.part_description, tdr.remarks, DATE_FORMAT(tdr.entry_on, '%d-%m-%Y') as enquirydate,tdr.ave_monthly_req, tdr.isnew,tdr.status as commstatus,ttp.isproto,
+									if(tdr.status = 2,if(tdf.tl_entry_on > tdf.cpd_entry_on,if(tdf.tl_entry_on > tdf.prod_entry_on,DATE_FORMAT(tdf.tl_entry_on, '%d-%m-%Y'),DATE_FORMAT(tdf.prod_entry_on, '%d-%m-%Y')),if(tdf.cpd_entry_on > tdf.prod_entry_on,DATE_FORMAT(tdf.cpd_entry_on, '%d-%m-%Y'),DATE_FORMAT(tdf.prod_entry_on, '%d-%m-%Y'))),'N.A.') as feasdate, 
+									if(tiq.quotedate != '0000-00-00' and tiq.quotedate is not null,DATE_FORMAT(tiq.quotedate, '%d-%m-%Y'),'N.A.') as quotesubdate,
+									if(tdr.approval_date != '0000-00-00' and tdr.approval_date is not null,DATE_FORMAT(tdr.approval_date, '%d-%m-%Y'),'N.A.') as approvaldate,
+									if (ttp.status IS NULL and ttn.status IS NULL,1,0) as notstarted,
+									if (ttp.status = 1,1,0) as toolordered,DATE_FORMAT(ttp.purDate, '%d-%m-%Y') as toolpodate,	
+									if (ttp.status = 2 and tsp.status IS NULL and tas.status is NULL,1,0) as toolreceived, DATE_FORMAT(ttn.trnDate, '%d-%m-%Y') as trndate, 
+									if (ttn.status != 2 and tas.status is NULL and tsp.status = 1 ,1,0) as sampleplanned, DATE_FORMAT(tsp.plandate, '%d-%m-%Y') as plandate, 
+									if (ttn.status != 2 and tas.status is NULL and tsp.status = 2,1,0) as samplereceived, DATE_FORMAT(tsp.plandate, '%d-%m-%Y') as recvdate,
+									if (ttn.status != 2 and tas.status > 0,1,0) as submitforapp, DATE_FORMAT(tas.subdate, '%d-%m-%Y') as subdate,
+									if (ttn.status = 2,1,0) as devcompleted, if(tdr.approval_date != '0000-00-00' and tdr.approval_date is not null,DATE_FORMAT(ttn.tool_appr_date, '%d-%m-%Y'),'N.A.') as tool_appr_date
+								from  tbl_develop_request tdr 
+								inner join tbl_customer tc on tdr.cusId = tc.cusId
+								left join tbl_invoice_quote tiq on tiq.rfqid = tdr.drId 
+								left join tbl_develop_feasibility tdf on tdf.prod_ref = tdr.sno 
+								left join ( select  * from (select purId,rfqid, status, purDate,isproto from tbl_tool_purchase where status > 0  order by purDate desc)t1 group by rfqid)ttp on ttp.rfqid = tdr.sno
+								left join tbl_trn ttn on ttn.purId = ttp.purId
+								left join ( select  * from (select rfqid,status,toolref,plandate from tbl_sample_plan where status > 0  order by plandate desc)t1 group by toolref)tsp on ttn.trnid = tsp.toolref
+								left join ( select  *, count(*) as status from (select subid,subdate,toolref from tbl_approval_submit order by subdate desc)t1 group by toolref)tas on ttn.trnid = tas.toolref
+								order by tdr.sno desc";
+				//echo $sql_rfqs; exit();		
+				$list	=	@getMySQLData($sql_rfqs,"xml","root","lower");			
+				$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+				$output		=	"<xmldata>$list</xmldata>";
+				if($_POST["conToHTML"] == 1)
+				{
+					//convert to HTML via server side XSLT
+					$xml = new DOMDocument;
+					$xml->loadXML($output);
+					$xsl = new DOMDocument;
+					$xsl->load($_SESSION['app']['iso_dir'].$_POST["xslfile"]);
+					$proc = new XSLTProcessor;
+					$proc->importStyleSheet($xsl);
+					echo $proc->transformToXML($xml);
+				}
+				else
+					echo $output;		
+			break;			
+		}
+	}
+
+?>

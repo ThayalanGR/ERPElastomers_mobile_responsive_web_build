@@ -1,0 +1,215 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+errMsg			=	null;
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+function getToolRefList(){
+	var objTRList	=	postback(actionFile,"selecttype=TOOLREFLIST&outtype=xml","POST","XML");
+	trlXML			=	parseXMLdoc(objTRList);
+	rowXML			=	trlXML.getElementsByTagName("row");
+	trlList 		= 	new Array();
+	for(ul=0; ul<rowXML.length; ul++){
+		trlList[ul]	=	rowXML[ul].childNodes[0].firstChild.nodeValue+" ("+rowXML[ul].childNodes[1].firstChild.nodeValue+")";
+	}
+}
+function getToolLiftsRun(toolRef){
+	if(toolRef != null && toolRef != ""){
+		XMLContent 	=	postback(actionFile, "selecttype=TOOLLIFTSRUN&toolRef="+toolRef+"&outtype=xml", "POST", "XML");
+		xmlData		=	$(XMLContent);   
+		LiftsRun	=	xmlData.find("lifts_run");
+		$("#new_Lift").html(LiftsRun.text());
+	}}
+
+function handleFormSubmit(){	
+	ToolRef			= 	$("#new_ToolRef");
+	Lifts_Run		= 	$("#new_Lift");
+	Complaint 		= 	$("#new_Complaint");
+	Observation 	= 	$("#new_Observation");
+	Action_Taken 	= 	$("#new_Action");
+	Next_Valid 		= 	$("#new_Nextvalid");
+	newError		=	$("#error_msg");
+	
+	
+	if(errMsg != null)
+	clearTimeout(errMsg);
+	errMsg			=	setTimeout(function(){
+							newError.css("display", "none");
+						}, 2500);
+		
+	if(ToolRef.val() == null || ToolRef.val() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Tool Reference is Missing.");
+		ToolRef.focus();
+		return false;
+	}
+	else if(Lifts_Run.text() == null || Lifts_Run.text() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Lifts Run Missing.");
+		Lifts_Run.focus();
+		return false;
+	}
+	else if(Complaint.val() == null || Complaint.val() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Complaint Missing.");
+		Complaint.focus();
+		return false;
+	}
+	else if(Observation.val() == null || Observation.val() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Observation Missing.");
+		Observation.focus();
+		return false;
+	}
+	else if(Action_Taken.val() == null || Action_Taken.val() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Action Taken Missing.");
+		Action_Taken.focus();
+		return false;
+	}
+	else if(Next_Valid.val() == null || Next_Valid.val() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Next Validation Missing.");	
+		Next_Valid.focus();
+		return false;
+	}	
+	if(isNaN(Next_Valid.val())){
+		displayError(newError, "error", "<strong>Error !</strong> - Next Validation should contain Numbers.");
+		Next_Valid.focus();
+		return false;
+	}
+	
+	toolref 	= ToolRef.val();
+	startPos 	= toolref.indexOf("(");
+	toolref 	= toolref.substring(0,startPos-1);	
+	liftsrun 	= Lifts_Run.text();
+	complaint 	= Complaint.val();
+	observation = Observation.val();
+	action_taken= Action_Taken.val();
+	next_valid 	= Number(liftsrun)+Number(Next_Valid.val()); 
+	
+	formdata 		= 	new FormData();
+	if (formdata) {	
+		formdata.append("tool_ref", toolref);
+		formdata.append("valid_date", $("#new_TVNDate").val());
+		formdata.append("remarks", $("#new_Remark").val());
+		formdata.append("lifts_run", liftsrun);
+		formdata.append("complaint", complaint);
+		formdata.append("observation", observation);
+		formdata.append("action_taken", action_taken);
+		formdata.append("next_valid", next_valid);		
+		formdata.append("selecttype","ADDTOOLVALIDATION");
+	}	
+
+	var files 	= 	document.getElementById("tl_file").files;
+	if(files[0])
+	{
+		for (var i = 0, fl; fl = files[i]; i++) {
+			 formdata.append("tl_file["+i+"]", fl,fl.name);
+		}		
+	}
+	else
+	{
+		if(!(confirm("No Validation Files are added. Do you want to continue?" )))
+		{
+			return false;
+		}	
+	}	
+
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to commit the Tool Validation Note?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+												title:'Tool Validation',
+												width:450,
+												height:'auto',
+												resizable:false,
+												modal:true,
+												buttons:{
+													'Ok':function(){														
+														$(this).dialog('close');
+														$("#button_add").attr("disabled","true");
+														// Set up the request.
+														var xhr = new XMLHttpRequest();
+														// Open the connection.
+														xhr.open('POST', actionFile, true);
+														// Set up a handler for when the request finishes.
+														xhr.onload = function () {
+															if (xhr.status === 200) {
+																// File(s) uploaded.
+																var printObj	=	xhr.response;
+																printData		=	$(printObj);
+																error			=	printData.find("status").html();
+																tvnRef			=	printData.find("tvnref").html();
+																if(error == "success"){
+																	alert("Tool Validation Note No: " +tvnRef+ " has been created successfully");
+																	window.location.reload();															
+																}
+																else{
+																	displayError(newError, "error", printObj);
+																	$("#button_add").removeAttr("disabled");					
+																}			
+															} 
+															else {
+																displayError(newError, "error", "Unable to upload the file, Please retry again");
+																$("#button_add").removeAttr("disabled");				
+															}
+														};															
+														// Send the Data.
+														xhr.send(formdata);
+													},
+													'Cancel':function(){
+														$(this).dialog('close');
+													}
+												},
+												close:function(){
+													$(this).html('').dialog('destroy');
+												}
+											});
+}
+
+function handleFormCancel(){
+	$("#new_ToolRef").val('');
+	$("#new_Lift").html('');
+	$("#new_Complaint").val('');
+	$("#new_Remark").val('');
+	$("#new_Action").val('');
+	$("#new_Observation").val('');
+	$("#new_Nextvalid").val('');
+	$("#tl_file").val('');
+}
+
+$(document).ready(function(e) {
+	getToolRefList();
+
+	$("#new_ToolRef").autocomplete({
+		source:trlList,
+		select:function(event, ui){
+			selected_toolRefObj = ui.item;
+			selected_toolRef = selected_toolRefObj.value;
+			startPos = selected_toolRef.indexOf("(");
+			getToolLiftsRun(selected_toolRef.substring(0,startPos-1));			
+			}
+	});
+	
+	$("#button_add").button().click(function(){handleFormSubmit();});
+	
+	$("#button_cancel").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to clear the Form? All details will be cleared</b></td></tr>' +
+					'</table>'
+		$('#confirm_dialog').html(confirmCont).dialog({
+			title:'Tool Validation',
+			width:450,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					handleFormCancel();					
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	
+	});    
+
+});
+	

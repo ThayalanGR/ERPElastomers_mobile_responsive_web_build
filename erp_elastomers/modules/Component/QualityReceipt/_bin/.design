@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+<div style="overflow-x:auto;">
+<table id="resultTable" class="table table-sm table-light text-success"  border="0" cellpadding="6" cellspacing="0">
+		<thead>
+			<tr>
+				<th align="left" title="Key Reference">Key Ref.</th>
+				<th align="left" title="Deflash receipt date">Def. Rec. Date</th>
+				<th align="left" title="Part Number">Part No</th>
+				<th align="left" title="Part Description">Part Desc.</th>
+				<th align="right">Received Qty.</th>
+				<th align="right"  class="text-center">Quality Entry</th>
+			</tr>	
+		</thead>
+		<tbody>
+		<xsl:for-each select="xmldata/root/data/row">
+			<tr>
+				<xsl:if test="position() mod 2 != 0">
+					<xsl:attribute name="class">content_rows_light</xsl:attribute>
+				</xsl:if>
+				<xsl:if test="position() mod 2 != 1">
+					<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+				</xsl:if>
+				<td align="left"><xsl:value-of select="issref" /></td>
+				<td align="left"><xsl:value-of select="defrecdatef" /></td>
+				<td align="left"><xsl:value-of select="cmpdname" /></td>
+				<td align="left"><xsl:value-of select="cmpdrefno" /></td>
+				<td align="right"><xsl:value-of select='format-number(currrec,"###,###,##0")' /></td>
+				<td align="right" class="text-center">
+					<a>
+						<xsl:attribute name="href">javascript:void(0)</xsl:attribute>
+						<xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+						<xsl:attribute name="planid"><xsl:value-of select="issref" /></xsl:attribute>
+						<xsl:attribute name="mdlrref"><xsl:value-of select="sno" /></xsl:attribute>
+						<xsl:attribute name="isexternal"><xsl:value-of select="isexternal" /></xsl:attribute>
+						<xsl:attribute name="currrec"><xsl:value-of select="currrec" /></xsl:attribute>
+						<xsl:attribute name="job">issue</xsl:attribute>
+						<i class="fas fa-plus-circle"></i>
+					</a>
+				</td>
+			</tr>
+		</xsl:for-each>
+		</tbody>	
+	</table>
+	<table border="0" cellpadding="6" cellspacing="0" width="100%">
+		<tr>
+		  <th width="60%" align="right">Total</th>
+		  <th width="15%" align="right" id="val_total1">0</th>
+		  <th align="center">&nbsp;</th>
+		</tr>				
+	</table>	
+	</div>	
+    </xsl:template>
+</xsl:stylesheet>

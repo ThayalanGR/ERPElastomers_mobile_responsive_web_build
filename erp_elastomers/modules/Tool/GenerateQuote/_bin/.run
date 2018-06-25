@@ -1,0 +1,537 @@
+tableFilters.col_0			=	"none";
+tableFilters.sort_config	=	{ sort_types:['none','string','string', 'string','us','us','date','none','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+maxLiftsHour				=	15;
+
+$(document).ready(function(){
+		$("#quote_popup").dialog({
+		autoOpen:false, 
+		resizable: true,
+		width: 850,
+		height:700,
+		modal:true,		
+		buttons:[
+			{ 
+				text:"Create/Update Quote",
+				tabindex:28,
+				click: function(){
+					generateQuote();
+				}
+			},
+			{ 
+				text: "Cancel",
+				tabindex:29,
+				click: function(){
+					$(this).dialog('close');
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$(this).find("form")[0].reset();
+			$(this).removeAttr("action");
+			$(this).removeAttr("rfqid");
+			$(this).removeAttr("quoteno");
+			$("#gq_matl_cost").html('0.00');
+			$("#gq_mold_cost").html('0.00');
+			$("#gq_trim_cost").html('0.00');
+			$("#gq_insp_cost").html('0.00');
+			$("#gq_ins_prep_cost").html('0.00');
+			$("#gq_adh_cost").html('0.00');			
+			$("#gq_manu_cost").html('0.00');
+			$("#gq_rej_cost").html('0.00');
+			$("#gq_invent_cost").html('0.00');
+			$("#gq_admin_cost").html('0.00');
+			$("#gq_profit_cost").html('0.00');
+			$("#gq_misc_cost").html('0.00');
+			$("#gq_amort_cost").html('0.00');
+			$("#gq_final_cost").html('0.00');
+			$("#gq_tool_cavs").val(0);
+			$("#gq_insert_opt").selectedIndex = 0;
+			$("#gq_tooldev_opt").selectedIndex = 0;			
+		}
+	});	
+	getPageData();
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function setSelectedIndex(s, v) {
+    for ( var i = 0; i < s.options.length; i++ ) {
+        if ( s.options[i].text == v ) {
+            s.options[i].selected = true;
+            return;
+        }
+    }
+}
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=NEWPRODLIST","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function setSuggData(rfqNo, action)
+{
+	objFeasList	=	postback(actionFile,"type=GETFEASDATA&rfqno="+rfqNo,"POST","XML");
+	feasXML		=	parseXMLdoc(objFeasList);
+	compCost	=	0.00;
+	noOfCavs	=	0;
+	compName	=	'';
+	basePolymer	=	'';
+	prodWeight	=	0.0000;
+	blankWeight	=	0.0000;
+	liftRate	=	0.00;
+	trimRate	=	0.00;
+	inspRate	=	0.00;
+	rejRate		=	0.00;
+	polyCost	=	0.00;
+	$(feasXML).find('row').each(function(index, element) {
+		compName	=	$(this).find('cpdname').text();
+		basePolymer	=	$(this).find('cpd_base_polymer').text();
+		prodWeight	=	$(this).find('tl_prod_wgt').text();
+		blankWeight	=	$(this).find('tl_blank_wgt').text();
+		insertUsed	=	$(this).find('tl_insert_used').text();
+		liftRate	=	$(this).find('prod_lift_rate').text();
+		trimRate	=	$(this).find('prod_trim_rate').text();
+		inspRate	=	$(this).find('prod_insp_rate').text();
+		rejRate		=	$(this).find('prod_rej_rate').text();	
+		compCost	=	$(this).find('compcost').text();
+		polyCost	=	$(this).find('polycost').text();
+		noOfCavs	=	$(this).find('tl_cavs').text();			
+	});
+	if(action == 'new'){
+		$("#gq_comp_cost").val(polyCost);
+		$("#gq_tool_cavs").val(((noOfCavs>0)?noOfCavs:1));
+		$("#gq_prod_wgt").val(getCurrency(prodWeight/1000,4));
+		$("#gq_blank_wgt").val(getCurrency(blankWeight/1000,4));
+		$("#gq_rej_per").val(rejRate);
+	}	
+	$("#gq_sugg_compound").html(compName);
+	$("#gq_sugg_polymer").html(basePolymer);
+	$("#gq_sugg_prod_wgt").html(getCurrency(prodWeight/1000,4));
+	$("#gq_sugg_blank_wgt").html(getCurrency(blankWeight/1000,4));
+	if(insertUsed == 1)
+		$("#gq_insert_used").html("Yes");
+	moldCost		=	liftRate/noOfCavs;
+	$("#gq_sugg_mold_cost").html(getCurrency(moldCost,2));
+	$("#gq_sugg_trim_cost").html(trimRate);
+	$("#gq_sugg_insp_cost").html(inspRate);
+	$("#gq_sugg_rej_per").html(rejRate);
+	$("#gq_cpd_cost_act").html(((compName != 'NA')?compCost:polyCost));
+	$("#gq_sugg_tool_cavs").html(noOfCavs);
+}
+
+function updatePageBehaviour(){
+	$(".generate_button").click(function(e) {	
+		rfqNo		=	$(this).attr('prodref')
+		$("#quote_popup").dialog('open');
+		$("#quote_popup").attr("action","new");
+		$("#quote_popup").attr("rfqid",rfqNo);
+		setSuggData(rfqNo, "new");
+		calculateCost('matl');
+    });	
+	
+	$(".edit_button").click(function(){
+		quoteNo		=	$(this).attr('quoteid')
+		rfqNo		=	$(this).attr('prodref')
+		$("#quote_popup").dialog('open');		
+		$("#quote_popup").attr("action","edit");
+		$("#quote_popup").attr("quoteno",quoteNo);
+		setSuggData(rfqNo, "edit");
+		objQuote	=	postback(actionFile,"type=GETQUOTEDATA&quoteno="+quoteNo,"POST","XML");		
+		quoteXML	=	parseXMLdoc(objQuote);
+		$(quoteXML).find('row').each(function(index, element) {
+			$("#gq_comp_cost").val($(this).find('compcost').text());
+			$("#gq_mix_cost").val($(this).find('mixcost').text());
+			$("#gq_prod_wgt").val($(this).find('prodwgt').text());
+			$("#gq_blank_wgt").val($(this).find('blankwgt').text());
+			setSelectedIndex(document.getElementById('gq_insert_opt'), $(this).find('insertopt').text());
+			$("#gq_ins_cost").val($(this).find('inscost').text());
+			$("#gq_matl_cost").html($(this).find('matlcost').text());
+			moldOutput	=	$(this).find('moldoutput').text();
+			toolCavs	=	$(this).find('toolcavs').text();
+			$("#gq_mold_hr_lifts").val(Math.round(moldOutput/toolCavs));
+			$("#gq_mold_output").val(moldOutput);
+			$("#gq_mold_hr_cost").val($(this).find('moldhrcost').text());
+			$("#gq_mold_cost").html($(this).find('moldcost').text());	
+			$("#gq_trim_output").val($(this).find('trimoutput').text());
+			$("#gq_trim_hr_cost").val($(this).find('trimhrcost').text());
+			$("#gq_trim_cost").html($(this).find('trimcost').text());
+			$("#gq_insp_output").val($(this).find('inspoutput').text());
+			$("#gq_insp_hr_cost").val($(this).find('insphrcost').text());
+			$("#gq_insp_cost").html($(this).find('inspcost').text());
+
+			$("#gq_ins_prep_output").val($(this).find('insprepoutput').text());
+			$("#gq_ins_prep_hr_cost").val($(this).find('insprephrcost').text());
+			$("#gq_ins_prep_cost").html($(this).find('insprepcost').text());
+			$("#gq_adh_output").val($(this).find('adhoutput').text());
+			$("#gq_adh_hr_cost").val($(this).find('adhhrcost').text());
+			$("#gq_adh_cost").html($(this).find('adhcost').text());
+			
+			$("#gq_manu_cost").html($(this).find('manucost').text());
+
+			$("#gq_invent_per").val($(this).find('inventper').text());
+			$("#gq_invent_cost").html($(this).find('inventcost').text());			
+			$("#gq_rej_per").val($(this).find('rejper').text());
+			$("#gq_rej_cost").html($(this).find('rejcost').text());
+			$("#gq_admin_per").val($(this).find('adminper').text());
+			$("#gq_admin_cost").html($(this).find('admincost').text());
+			$("#gq_freight_cost").val($(this).find('freightcost').text());
+			
+			$("#gq_profit_per").val($(this).find('profitper').text());
+			$("#gq_profit_cost").html($(this).find('profitcost').text());
+			$("#gq_misc_cost").html($(this).find('misccost').text());
+			$("option[value='10']").attr('selected','selected');
+			setSelectedIndex(document.getElementById('gq_tooldev_opt'), $(this).find('tooldevopt').text());
+			$("#gq_tool_cost").val($(this).find('toolcost').text());			
+			$("#gq_tool_cavs").val(toolCavs);
+			$("#gq_tool_life").val($(this).find('toollife').text());
+			$("#gq_amort_cost").html($(this).find('amortcost').text());
+			$("#gq_final_cost").html($(this).find('finalcost').text());
+			$("#gq_matl_sample").val($(this).find('matlsample').text());
+			$("#gq_comp_sample").val($(this).find('compsample').text());
+			$("#gq_pilot_lot").val($(this).find('pilotlot').text());
+			$("#gq_reg_supply").val($(this).find('regsupply').text());
+			$("#gq_remarks").val($(this).find('quoteremarks').text());
+		});
+	});
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+}
+
+function calculateCost(costType){
+	if(costType == "matl")
+		calculateMaterialCost();
+	else if (costType == "amor")
+		calculateAmortCost();
+	else if (costType == "manu")
+		calculateManufactCost();
+	calculateMiscCost();
+	calculateGrandTotal();
+}
+
+function calculateMaterialCost(){
+	compCost	=	$("#gq_comp_cost").val().toNumber() + $("#gq_mix_cost").val().toNumber();
+	prodCost	=	$("#gq_blank_wgt").val().toNumber() * compCost;
+	insertCost	=	0.00;
+	if($("#gq_insert_opt").val() == 2)
+		insertCost	=	$("#gq_ins_cost").val().toNumber();
+	$("#gq_matl_cost").html(getCurrency(prodCost+insertCost,2));
+}
+
+function calculateAmortCost(){
+	toolCost	=	$("#gq_tool_cost").val().toNumber();
+	toolLife	=	$("#gq_tool_life").val().toNumber();
+	if($("#gq_tooldev_opt").val() == 2 && toolCost > 0 && toolLife > 0)
+	{
+		amortCost	=	toolCost / ($("#gq_tool_cavs").val().toNumber() * toolLife);		
+		$("#gq_amort_cost").html(getCurrency(amortCost,2));
+	}
+}
+
+function calculateManufactCost(){
+	manufactCost=	0.00;
+	manuType	=	new Array('mold','trim','insp');
+	if($("#gq_insert_opt").val() > 0)
+		manuType	=	new Array('mold','trim','insp','ins_prep','adh');
+	for(count=0;count<manuType.length;count++)
+	{
+		calculateManuCost(manuType[count]);
+		manufactCost	+=	$("#gq_"+manuType[count]+"_cost").html().toNumber();		
+	}
+	$("#gq_manu_cost").html(getCurrency(manufactCost,2));
+}
+
+function calculateManuCost(type){
+	manuCost	= 	0.00;
+	output		=	$("#gq_"+type+"_output").val().toNumber();
+	costHr		=	$("#gq_"+type+"_hr_cost").val().toNumber();
+	if(output > 0)
+	{
+		manuCost	=	costHr / output;		
+		$("#gq_"+type+"_cost").html(getCurrency(manuCost,2));
+	}
+}
+
+function calculateMiscCost(){
+	rmCost		=	$("#gq_matl_cost").html().toNumber();
+	total		=	rmCost + $("#gq_manu_cost").html().toNumber();
+	inventPer	=	$("#gq_invent_per").val().toNumber();
+	inventCost	=	(rmCost * inventPer)/100;
+	$("#gq_invent_cost").html(getCurrency(inventCost,2));	
+	rejPer		=	$("#gq_rej_per").val().toNumber();
+	rejCost		=	(total * rejPer)/100;
+	$("#gq_rej_cost").html(getCurrency(rejCost,2));
+	adminPer	=	$("#gq_admin_per").val().toNumber();
+	adminCost	=	(total * adminPer)/100;
+	$("#gq_admin_cost").html(getCurrency(adminCost,2));
+	freightCost	=	$("#gq_freight_cost").val().toNumber();
+	profitPer	=	$("#gq_profit_per").val().toNumber();
+	profitCost	=	(total * profitPer)/100;
+	$("#gq_profit_cost").html(getCurrency(profitCost,2));
+	total		=	inventCost+ rejCost+ adminCost+freightCost+profitCost;
+	$("#gq_misc_cost").html(getCurrency(total,2));		
+}
+
+function calculateGrandTotal(){
+	grandtotal	=	$("#gq_matl_cost").html().toNumber() + $("#gq_amort_cost").html().toNumber() + $("#gq_manu_cost").html().toNumber()+ $("#gq_misc_cost").html().toNumber();
+	$("#gq_final_cost").html(getCurrency(grandtotal, 2));
+}
+
+function calculateMoldOutput()
+{
+	liftsHr		=	$("#gq_mold_hr_lifts").val().toNumber();
+	if(liftsHr > maxLiftsHour)
+	{
+		$("#gq_mold_hr_lifts").val(maxLiftsHour);
+		liftsHr	= maxLiftsHour;
+	}
+		
+	$("#gq_mold_output").val( liftsHr * $("#gq_tool_cavs").val());
+	calculateCost('manu');	
+}
+
+function generateQuote(){
+	
+	feasError		=	$("#raise_error");
+	action			=	$("#quote_popup").attr('action');
+	if(action == 'edit')
+	{
+		quoteNo			=	$("#quote_popup").attr('quoteno');
+		param			=	"type=" + "QUOTEUPDATE&quoteno=" + quoteNo ;	
+	}
+	else
+	{
+		rfqId			=	$("#quote_popup").attr('rfqid');
+		param			=	"type=" + "QUOTEINS&rfqid=" + rfqId ;
+	}
+	quoteCompCost	=	$("#gq_comp_cost");
+	quoteMixCost	=	$("#gq_mix_cost");
+	quoteProdWgt	=	$("#gq_prod_wgt");
+	quoteBlankWgt	=	$("#gq_blank_wgt");
+	quoteInsOpt		=	$("#gq_insert_opt");
+	quoteInsCost	=	$("#gq_ins_cost");
+	quoteTlDevOpt	=	$("#gq_tooldev_opt");
+	quoteToolCost	=	$("#gq_tool_cost");
+	quoteToolLife	=	$("#gq_tool_life");
+	quoteToolCavs	=	$("#gq_tool_cavs");
+	quoteMoldLiftsHr=	$("#gq_mold_hr_lifts");
+	quoteMoldOutput	=	$("#gq_mold_output");
+	quoteMoldHrCost	=	$("#gq_mold_hr_cost");
+	quoteTrimOutput	=	$("#gq_trim_output");
+	quoteTrimHrCost	=	$("#gq_trim_hr_cost");
+	quoteInspOutput	=	$("#gq_insp_output");
+	quoteInspHrCost	=	$("#gq_insp_hr_cost");
+	quoteInsPrOutput=	$("#gq_ins_prep_output");
+	quoteInsPrHrCost=	$("#gq_ins_prep_hr_cost");
+	quoteAdhOutput	=	$("#gq_adh_output");		
+	quoteAdhHrCost	=	$("#gq_adh_hr_cost");
+	quoteInventPer	=	$("#gq_invent_per");
+	quoteRejPer		=	$("#gq_rej_per");
+	quoteAdminPer	=	$("#gq_admin_per");
+	quoteProfitPer	=	$("#gq_profit_per");
+	quoteRemarks	=	$("#gq_remarks");	
+	
+	if(!(quoteCompCost.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Compound Cost!!!");
+		quoteCompCost.focus();
+		return false;
+	}
+	else if(!(quoteMixCost.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Mixing Cost!!!");
+		quoteMixCost.focus();
+		return false;
+	}
+	else if(!(quoteProdWgt.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Product Weight!!!");
+		quoteProdWgt.focus();
+		return false;
+	}
+	else if(!(quoteBlankWgt.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Blank Weight!!!");
+		quoteBlankWgt.focus();
+		return false;
+	}
+	else if(quoteInsOpt.val() == 2 && !(quoteInsCost.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Insert Cost!!!");
+		quoteInsCost.focus();
+		return false;
+	}
+	else if(quoteTlDevOpt.val() != 1 && !(quoteToolCost.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Tool Cost!!!");
+		quoteToolCost.focus();
+		return false;
+	}
+	else if(!(quoteToolCavs.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Tool cavities!!!");
+		quoteToolCavs.focus();
+		return false;
+	}		
+	else if(quoteTlDevOpt.val() == 2 && !(quoteToolLife.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Tool Life!!!");
+		quoteToolLife.focus();
+		return false;
+	}
+	else if(!(quoteMoldOutput.val().toNumber() > 0) || !(quoteMoldLiftsHr.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Lifts Per Hour!!!");
+		quoteMoldLiftsHr.focus();
+		return false;
+	}	
+	else if(!(quoteMoldHrCost.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Moulding Hourly Cost!!!");
+		quoteMoldHrCost.focus();
+		return false;
+	}
+	else if(!(quoteTrimOutput.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Trim Output!!!");
+		quoteTrimOutput.focus();
+		return false;
+	}	
+	else if(!(quoteTrimHrCost.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Trimming Hourly Cost!!!");
+		quoteTrimHrCost.focus();
+		return false;
+	}
+	else if(!(quoteInspOutput.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Inspection Output!!!");
+		quoteInspOutput.focus();
+		return false;
+	}	
+	else if(!(quoteInspHrCost.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Inspection Hourly Cost!!!");
+		quoteInspHrCost.focus();
+		return false;
+	}
+	else if(quoteInsOpt.val() > 0 && !(quoteInsPrOutput.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Insert Preparation Output!!!");
+		quoteInsPrOutput.focus();
+		return false;
+	}	
+	else if(quoteInsOpt.val() > 0 && !(quoteInsPrHrCost.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Insert Preparation Hourly Cost!!!");
+		quoteInsPrHrCost.focus();
+		return false;
+	}	
+	else if(quoteInsOpt.val() > 0 && !(quoteAdhOutput.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Adhesive Application Output!!!");
+		quoteAdhOutput.focus();
+		return false;
+	}	
+	else if(quoteInsOpt.val() > 0 && !(quoteAdhHrCost.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Adhesive Application Hourly Cost!!!");
+		quoteAdhHrCost.focus();
+		return false;
+	}
+	else if(!(quoteInventPer.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Inventory Carrying Cost Percentage!!!");
+		quoteInventPer.focus();
+		return false;
+	}		
+	else if(!(quoteRejPer.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Rejection Percentage!!!");
+		quoteRejPer.focus();
+		return false;
+	}
+	else if(!(quoteAdminPer.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Administration Percentage!!!");
+		quoteAdminPer.focus();
+		return false;
+	}	
+	else if(!(quoteProfitPer.val().toNumber() > 0)){
+		displayError(feasError, "error", "<strong>Error !</strong> - Invalid Profit Percentage!!!");
+		quoteProfitPer.focus();
+		return false;
+	}
+
+	
+	 param	+=	"&compcost=" + quoteCompCost.val().toNumber()+
+				"&mixcost=" + quoteMixCost.val().toNumber() +
+				"&prodwgt=" + quoteProdWgt.val().toNumber() +
+				"&blankwgt=" + quoteBlankWgt.val().toNumber() +
+				"&insertopt=" +$("#gq_insert_opt option:selected" ).text() +
+				"&inscost=" + quoteInsCost.val().toNumber()+
+				"&matlcost="+ $("#gq_matl_cost").html().toNumber() +
+				"&tooldevopt=" +$("#gq_tooldev_opt option:selected" ).text() +
+				"&toolcost=" + quoteToolCost.val().toNumber()+
+				"&toollife=" + quoteToolLife.val().toNumber() +
+				"&toolcavs=" + quoteToolCavs.val().toNumber() +	
+				"&amortcost="+ $("#gq_amort_cost").html().toNumber() +
+				"&moldliftshr="+ quoteMoldLiftsHr.val().toNumber()+
+				"&moldoutput=" + quoteMoldOutput.val().toNumber()+
+				"&moldhrcost=" + quoteMoldHrCost.val().toNumber() +
+				"&moldcost=" +  $("#gq_mold_cost").html().toNumber() +
+				"&trimoutput=" + quoteTrimOutput.val().toNumber()+
+				"&trimhrcost=" + quoteTrimHrCost.val().toNumber() +
+				"&trimcost=" +  $("#gq_trim_cost").html().toNumber() +
+				"&inspoutput=" + quoteInspOutput.val().toNumber()+
+				"&insphrcost=" + quoteInspHrCost.val().toNumber() +
+				"&inspcost=" +  $("#gq_insp_cost").html().toNumber() +
+				"&insprepoutput=" + ((quoteInsOpt.val() > 0)?quoteInsPrOutput.val().toNumber():"0") +
+				"&insprephrcost=" + ((quoteInsOpt.val() > 0)?quoteInsPrHrCost.val().toNumber():"0.00") +
+				"&insprepcost=" + ((quoteInsOpt.val() > 0)?$("#gq_ins_prep_cost").html().toNumber():"0.00") +
+				"&adhoutput="  + ((quoteInsOpt.val() > 0)?quoteAdhOutput.val().toNumber():"0") +
+				"&adhhrcost="  + ((quoteInsOpt.val() > 0)?quoteAdhHrCost.val().toNumber():"0.00") +
+				"&adhcost="  + ((quoteInsOpt.val() > 0)?$("#gq_adh_cost").html().toNumber():"0.00") +
+				"&manucost="+ $("#gq_manu_cost").html().toNumber() +
+				"&inventper=" + quoteInventPer.val().toNumber() +
+				"&inventcost=" +  $("#gq_invent_cost").html().toNumber() +				
+				"&rejper=" + quoteRejPer.val().toNumber() +
+				"&rejcost=" +  $("#gq_rej_cost").html().toNumber() +
+				"&adminper=" + quoteAdminPer.val().toNumber() +
+				"&admincost=" +  $("#gq_admin_cost").html().toNumber() +
+				"&freightcost=" + $("#gq_freight_cost").val().toNumber() +
+				"&profitper=" + quoteProfitPer.val().toNumber() +
+				"&profitcost=" +  $("#gq_profit_cost").html().toNumber() +	
+				"&misccost="+ $("#gq_misc_cost").html().toNumber() +
+				"&finalcost="+ $("#gq_final_cost").html().toNumber() +
+				"&matlsample=" +  $("#gq_matl_sample").val() +
+				"&compsample=" +  $("#gq_comp_sample").val() +
+				"&pilotlot=" +  $("#gq_pilot_lot").val() +
+				"&regsupply=" +  $("#gq_reg_supply").val() +
+				"&quoteremarks=" + quoteRemarks.val() ;
+		
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Generate/Update the Quote?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Generate/Update Quote',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															//alert(param); //return false;
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															//alert(XMLContent); //return false;
+															xmlData				=	parseXMLdoc(XMLContent);
+															error				=	$(xmlData).find("mysql:first status:first").text();
+															if(error == "success"){																
+																alert("Quote created Sucessfully");
+																$("#quote_popup").dialog("close");
+																getPageData();
+															}
+															else{
+																displayError(feasError, "error", "<strong>Error !</strong> - Quote Creation/Updation failed due to : "+ error);
+																return false;															
+															}
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+}
+
+
+
+

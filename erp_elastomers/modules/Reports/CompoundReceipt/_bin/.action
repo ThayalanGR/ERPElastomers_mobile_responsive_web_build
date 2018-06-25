@@ -1,0 +1,50 @@
+<?php
+	session_start();
+	// List Data
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "INVGRP":
+			$sql_batch	=	"SELECT invId,DATE_FORMAT(invDate, '%d-%b-%Y') as invDate, sum(invQty) as invQty, sum(recvQty) as recvQty, count(*) as noofbatches FROM tbl_component_cpd_recv 
+							where status > 0  and invDate >= '".$_POST["startDate"]."' and  invDate <= '".$_POST["endDate"]."' and invId != 'CPDRETURN' 
+							group by invId 
+							order by invId";
+			$list		=	@getMySQLData($sql_batch,"xml","root","lower");
+			$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>$list</xmldata>";
+		break;	
+		case "CPDGRP":
+			$sql_batch	=	"SELECT cpdName as invId,'NA' as invDate, sum(invQty) as invQty, sum(recvQty) as recvQty, count(*) as noofbatches FROM tbl_component_cpd_recv  tccr
+							inner join tbl_compound tc on tccr.cpdid=tc.cpdId
+							inner join tbl_polymer_order tpo on tpo.polyname = tc.cpdpolymer
+							where tccr.status > 0  and invDate >= '".$_POST["startDate"]."' and  invDate <= '".$_POST["endDate"]."' and invId != 'CPDRETURN'
+							group by cpdName 
+							order by disporder,cpdName";
+			$list		=	@getMySQLData($sql_batch,"xml","root","lower");
+			$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>$list</xmldata>";
+		break;			
+		case "BATDETS":			
+			$dcRef	=	$_POST['invref'];
+			if($_POST['groupby'] != "CPDGRP"){
+				$sql	=	"select invId,DATE_FORMAT(invDate, '%d-%b-%Y') as invDate,cpdPolymer,cpdName ,batId, invQty,recvQty, (recvQty - issuedQty) as availQty
+							from tbl_component_cpd_recv di
+								inner join tbl_compound tc on di.cpdid=tc.cpdId
+								inner join tbl_polymer_order tpo on tpo.polyname = tc.cpdpolymer
+							where di.status=1 and invId = '$dcRef' and invDate >= '".$_POST["startDate"]."' and  invDate <= '".$_POST["endDate"]."' and invId != 'CPDRETURN' order by disporder,cpdName,batId";
+			}
+			else
+			{
+				$sql	=	"select invId,DATE_FORMAT(invDate, '%d-%b-%Y') as invDate,cpdPolymer,cpdName ,batId, invQty,recvQty, (recvQty - issuedQty) as availQty
+							from tbl_component_cpd_recv di
+								inner join tbl_compound tc on di.cpdid=tc.cpdId
+							where di.status=1 and cpdName = '$dcRef' and invId != 'CPDRETURN' and invDate >= '".$_POST["startDate"]."' and  invDate <= '".$_POST["endDate"]."' order by invId,batId";		   			
+			}
+			$list	=	@getMySQLData($sql,"xml","root","lower");
+			echo "<xmldata>".$list."</xmldata>";			
+		break;
+	}
+	
+
+
+	
+?>

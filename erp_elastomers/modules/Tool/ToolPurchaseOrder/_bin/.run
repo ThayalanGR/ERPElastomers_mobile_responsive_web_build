@@ -1,0 +1,233 @@
+tableFilters.sort_config	=	{ sort_types:['string','string','string', 'us','us','us','None','us','None'] };
+var TF_01					=	null;
+
+$(document).ready(function(){
+	startup();
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	$("#dialog_box").dialog({
+		modal:true,
+		width:600,
+		height:600,
+		autoOpen:false,
+		resizable:false,
+		title:'Raise PO',
+		position:['center','center'],
+		buttons:[
+			{
+				text:'Generate',
+				click:function(){
+					doEntry();
+				}
+			},
+			{
+				text:'Generate & Print',
+				click:function(){
+					doEntry(true);
+				}
+			},
+			{
+				text:'Generate & Email',
+				click:function(){
+					doEntry(false);
+				}
+			},			
+			{
+				text:'Close',
+				click:function(){
+					$("#dialog_box").dialog('close');
+				}
+			}
+		],
+		close:function(){
+			$('#raise_error').css({display:'none'});
+			$("#dialog_box form")[0].reset();
+			$("#raise_cavities").addClass("invisible_text");
+			$("#raise_poval").addClass("invisible_text");
+			$("#raise_poval").val("0.00");
+			$("#raise_shrinkage").val("0.00");
+		}
+	});
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function sethead(){
+	$("#content_body").hasScrollBar();
+}
+
+function startup(){
+	//retireive datas
+	XMLContent		=	postback(actionFile, "type=RFQLIST", "POST", "XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	$(".tl_option").change(function(){
+		if($(this).val()=='0'){
+			$(".tool_multi").show();
+		}else{
+			$(".tool_multi").hide();
+		}								 
+	});
+	$("#raise_toolsize").change(function(){
+		if($(this).val()=='Non-Standard'){
+			$("#raise_tool_size").show();
+		}else{
+			$("#raise_tool_size").hide();
+		}								 
+	});	
+	$(".generate_button").click(function(e) {	
+		rfqNo		=	$(this).attr('rfqid');
+		noOfCavs	=	$(this).attr('partcavs');
+		shrinkage	=	$(this).attr('shrinkage');
+		toolRef		=	$(this).attr('toolref');
+		$("#raise_partnum").html($(this).attr('partnum'));
+		$("#raise_partdesc").html($(this).attr('partdesc'));
+		$("#raise_shrinkage").val(((shrinkage>0)?shrinkage:'0.00'));
+		$("#raise_cavities").val(((noOfCavs>0)?noOfCavs:1));
+		$("#raise_moldprocess").val($(this).attr('moldproc'));
+		$("#dialog_box").attr("rfqid",rfqNo);
+		$("#dialog_box").attr("toolref",toolRef);
+		$("#lbl_remarks").html("Remarks");
+		if(noOfCavs > 1)
+		{
+			$("#tool_multi").attr('checked',true);
+			$(".tool_multi").show();
+		}
+		else
+		{		
+			$("#tool_proto").attr('checked',true);
+			$(".tool_multi").hide();
+		}
+		if(toolRef != 'NA')
+		{
+			$("#lbl_remarks").html("Enter Rework Requirements");
+		}
+		$("#dialog_box").dialog('open');
+    });	
+	
+	$('#raise_cavities').keydown(numbersOnly);
+	$('#raise_poval').keydown(numbersOnly);
+
+	updateHeader();updateContent();
+}
+
+function doEntry(doPrint){
+	toolRef			=	$("#dialog_box").attr("toolref");
+	supplierList	=	$("#raise_supplierlist");
+	supplierId		=	supplierList.find('option:selected').attr("value");
+	toolCavs		=	$('#raise_cavities');
+	isProto			=	(($("#tool_proto").attr("checked") == true)?1:0);
+	numCavs			= 	(($("#tool_proto").attr("checked") == true)?1:toolCavs.val());
+	toolSizeCntl	=	$("#raise_toolsize");
+	toolSize		=	((toolSizeCntl.val() == "Non-Standard")?$("#raise_tool_size").val():toolSizeCntl.val())
+	moldProc		=	$("#raise_moldprocess");
+	moldType		=	$("#raise_moldtype");
+	moldMatl		=	$("#raise_moldmatl");
+	cpdShrinkage	= 	$('#raise_shrinkage');
+	poVal			=	$('#raise_poval');
+	remarks			=	$("#raise_remarks");
+	raiseError		=	$('#raise_error');
+	var_split		=	(isRewrite)?"/":"&";
+	if(supplierId == null || supplierId == ""){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please Select A Tool Maker");
+		supplierList.focus();
+		return false;
+	}
+	else if ( Number(numCavs) <= 0){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please enter the Tool Cavity Details");
+		toolCavs.focus();
+		return false;
+	}
+	else if(toolSize == null || toolSize == ""){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please enter the Tool Size Details");
+		toolSizeCntl.focus();
+		return false;
+	}	
+	else if(moldProc.val() == null || moldProc.val() == ""){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please select Mold Process");
+		moldProc.focus();
+		return false;
+	}	
+	else if(moldType.val() == null || moldType.val() == ""){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please select Mold Type");
+		moldType.focus();
+		return false;
+	}	
+	else if(moldMatl.val() == null || moldMatl.val() == ""){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please select Mold Material");
+		moldMatl.focus();
+		return false;
+	}		
+	else if(isNaN(Number(cpdShrinkage.val())) || Number(cpdShrinkage.val()) <= 0){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Invalid Shrinkage Value.");
+		cpdShrinkage.focus();
+		return false;
+	}
+	else if(isNaN(Number(poVal.val())) || Number(poVal.val()) <= 0){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Invalid PO Amount.");
+		poVal.focus();
+		return false;
+	}
+	else if(toolRef != 'NA' && (remarks.val() == null || remarks.val() == "")){
+		displayError(raiseError, "error", "<strong>Error !</strong> - Please provide Rework Details");
+		remarks.focus();
+		return false;
+	}
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Create the Tool Purchase Order?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Raise Tool PO',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															param		=	"type=" + "TOOLPOADD" +
+																			"&rfqid=" + $("#dialog_box").attr('rfqid') +
+																			"&quotedate="+ $("#tool_quotedate").val() +
+																			"&supplier=" + supplierId +
+																			"&quoteref="+ $("#raise_quoteref").val() +
+																			"&supquotedate="+ $("#raise_quotedate").val()+
+																			"&toolsize=" + toolSize +
+																			"&toolcavs=" + numCavs +
+																			"&shrinkage=" + cpdShrinkage.val() +
+																			"&moldproc=" + moldProc.val() +
+																			"&moldtype=" + moldType.val() +
+																			"&moldmatl=" + moldMatl.val() +
+																			"&cavengrave=" + (($('#engrave_yes').attr("checked") == true)?1:0) +
+																			"&isproto="+ isProto +
+																			"&poval=" + poVal.val() +
+																			"&compdate=" + $("#raise_compdate").val() +
+																			"&remark=" + remarks.val();
+															if(doPrint == false)
+																param		+= "&sendemail=yes";
+															$("#dialog_box").dialog("close");
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															xmlData				=	XMLContent.split(" | ");
+															if(xmlData[0] == "success" ){
+																alert( "Purchase Order No:"+xmlData[1]+" created sucessfully");
+																if(doPrint == true)
+																	openInvoice({invID:xmlData[1]});		
+															}
+															else{
+																alert("Unable to raise Purchase Order Due to :" +xmlData[0]);
+															}
+															startup();
+															TF_01		=	setFilterGrid("resultTable",tableFilters);
+															TF_01.RefreshGrid();																
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});		
+
+}

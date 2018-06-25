@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+        <table border="0" cellpadding="6" cellspacing="0" width="100%">
+            <xsl:for-each select="xmldata/root/data/row">
+                <tr>
+                    <xsl:if test="position() mod 2 != 0">
+                        <xsl:attribute name="class">content_rows_light</xsl:attribute>
+                    </xsl:if>
+                    <xsl:if test="position() mod 2 != 1">
+                        <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+                    </xsl:if>
+                    <td align="left" width="5%">
+                    	<xsl:value-of select="position()" />
+                    </td>
+                    <td align="left" width="7%">
+                    	<xsl:value-of select="sanid" />
+                    </td>
+                    <td align="left" style="width:10%">
+                        <xsl:value-of select="sandate"/>
+                    </td>
+                    <td align="left" style="width:15%">
+                        <xsl:value-of select="cmpdname"/>
+                    </td>
+                    <td align="left" style="width:12%">
+                        <xsl:value-of select="cmpdrefno"/>
+                    </td>
+                    <td align="right" style="width:12%">
+                        <xsl:value-of select='format-number(bookqty,"##,##,##0")' />
+                    </td>
+                    <td align="right" style="width:12%">
+                        <xsl:value-of select='format-number(phyqty,"##,##,##0")' />
+                    </td>
+                    <td align="right" style="width:12%">
+                        <xsl:value-of select='format-number(exorshrt,"##,##,##0")' />
+                    </td>
+                    <td align="center" width="8%">
+                    <xsl:value-of select="format-number((exorshrt div bookqty)* 100,'##,##,##0')" />
+                    </td>
+                    <td align="right">
+                        <span>
+                            <xsl:attribute name="invoiceid"><xsl:value-of select="sanid" /></xsl:attribute>
+                            <xsl:attribute name="class">view_button link</xsl:attribute>
+                            View
+                        </span>
+                    </td>
+                </tr>
+            </xsl:for-each>
+        </table>
+    </xsl:template>
+</xsl:stylesheet>

@@ -1,0 +1,101 @@
+<?php
+	session_start();
+	global $complaints_upload_dir,$rca_upload_dir,$closeverify_upload_dir;
+	header("Content-Type: text/xml");
+
+	if ( isset($_FILES['file'])) {
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$closeverify_upload_dir;
+		try {
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			 }
+
+			 // You should also check filesize here. 
+			 if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			 }
+
+			 if( 'application/pdf' == $_FILES['file']['type'] ) 
+			 {
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					echo $_FILES['file']["name"] . " already exists. ";
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath.$_FILES['file']["name"]))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+					$compId			=	$_POST['compid'];
+					$closureRemarks	=	$_POST['closeremarks'];
+					if($compId != ""){	
+						$sql_comp		=	"update tbl_complaint set 
+												closureRemarks = '$closureRemarks',
+												closeverify_file_name = '".$_FILES['file']["name"]."',
+												status = '5',
+												closure_on = now(),
+												closure_by = '".$_SESSION['userdetails']['userId']."'
+											where complaintId = '$compId'";
+						//echo $sql_comp ; exit();
+						$output			=	@getMySQLData($sql_comp, "xml");
+					}
+					else
+					{
+						$output	.= "<result_set>failed</result_set>";	
+					}
+					echo "<root>$output</root>";
+				}
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			echo $e->getMessage();
+		}      
+    } 
+	else
+	{ 
+		switch($_POST["type"]){
+			case "NEWCOMPLIST":
+				$sql	=	"select complaintId,isInternal,DATE_FORMAT(complaintDate, '%d-%b-%Y') as complaintDate,DATE_FORMAT(closure_target, '%d-%b-%Y') as closeTarget,concat(tcmpd.cmpdname,'(',tcmpd.cmpdrefno,')') as cmpdname,description,tcust.cusName,tool_comments,cpd_comments,prod_comments,quality_comments,purchase_comments,corrAction,analysisMethod,prevAction,sketch_file_name,rcadoc_file_name,'/".$complaints_upload_dir."' as filepath,'/".$rca_upload_dir."' as rcafilepath
+							from tbl_complaint tcomp
+								left join tbl_customer tcust on tcomp.cusId=tcust.cusId
+								left join tbl_component tcmpd on tcmpd.cmpdId=tcomp.cmpdId							
+							where tcomp.status=4 order by complaintDate";
+				echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+			break;
+			case "CLOSECOMPLAINT":
+					$compId			=	$_POST['compid'];
+					$closureRemarks	=	$_POST['closeremarks'];
+					if($compId != ""){	
+						$sql_comp		=	"update tbl_complaint set 
+												closureRemarks = '$closureRemarks',
+												status = '5',
+												closure_on = now(),
+												closure_by = '".$_SESSION['userdetails']['userId']."'
+											where complaintId = '$compId'";
+						//echo $sql_comp ; exit();
+						$output			=	@getMySQLData($sql_comp, "xml");
+					}
+					else
+					{
+						$output	.= "<result_set>failed</result_set>";	
+					}
+					echo "<root>$output</root>";
+			break;
+		}
+	}
+
+?>

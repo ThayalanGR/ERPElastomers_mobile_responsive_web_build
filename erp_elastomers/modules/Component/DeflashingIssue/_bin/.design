@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+<div style="overflow-x:auto;">
+<table id="resultTable" class="table table-sm table-light text-success"  border="0" cellpadding="6" cellspacing="0">
+	<thead>
+		<tr>
+			<th align="left" title="Key Reference">Key Ref.</th>
+			<th align="left" title="Part Number">Part No</th>
+			<th align="left" title="Part Description">Part Desc.</th>
+			<th align="left" title="Moulding Receipt Date">Mould. Rec. Date</th>
+			<th align="right" title="Moulded Qty">Mld. Qty</th>
+			<th align="left">Operator</th>
+			<th align="right" >#</th>
+		</tr>	
+	</thead>
+	<tbody>
+	<xsl:for-each select="xmldata/root/data/row">
+    	<tr>
+            <td align="left"><xsl:value-of select="planid" /></td>
+            <td align="left"><xsl:value-of select="recdatef" /></td>
+            <td align="left"><xsl:value-of select="cmpdname" /></td>
+            <td align="left"><xsl:value-of select="cmpdrefno" /></td> 
+            <td align="right"><xsl:value-of select='format-number(mouldqty, "###,###,##0")' /></td>
+            <td align="left"><xsl:value-of select="operator" /></td>
+            <td align="center">
+                <input type='checkbox'>
+                    <xsl:attribute name="href">javascript:void(0)</xsl:attribute>
+                    <xsl:attribute name="id">issueqty_<xsl:value-of select="planid" />_<xsl:value-of select="modrecref" /></xsl:attribute>
+					<xsl:attribute name="planid"><xsl:value-of select="planid" /></xsl:attribute>
+                    <xsl:attribute name="modrecref"><xsl:value-of select="modrecref" /></xsl:attribute>
+                    <xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+                    <xsl:attribute name="mouldqty"><xsl:value-of select="mouldqty" /></xsl:attribute>
+					<xsl:attribute name="jwcontrol"><xsl:value-of select="cmpddeflashjwcont" /></xsl:attribute>
+                </input>
+            </td>
+        </tr>
+	</xsl:for-each>
+	</tbody>
+</table>
+<table border="0" cellpadding="6" cellspacing="0" width="100%">
+	<tr>
+	  <th width="65%" align="right">Total</th>
+	  <th width="10%" align="right" id="val_total1">0</th>
+	  <th align="center">&nbsp;</th>
+	</tr>				
+</table>
+</div>	
+</xsl:template>
+</xsl:stylesheet>

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+   <xsl:template match="/"> 
+		<table class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="3%">SNo</th>
+					<th width="17%">Name</th> 
+					<th width="8%">Plan. Lifts</th>
+					<th width="8%">Plan. Qty</th>
+					<th width="8%">Plan. Val. <sup>Rs</sup></th>
+					<th width="8%">Iss. Com. Qty<sup>Kg</sup></th>    
+					<th width="8%">Iss. Com. Val.<sup>Rs</sup></th>
+					<th width="8%">Act. Lifts</th>
+					<th width="8%">Act. Qty</th>
+					<th width="8%">Act. Val.<sup>Rs</sup></th>
+					<th width="8%">Used Comp. Qty<sup>Kg</sup></th>    
+					<th>Used Comp. Val.<sup>Rs</sup></th>					
+				</tr>
+			</thead>
+			<tbody>	
+            <xsl:for-each select="xmldata/root/data/row">
+				<tr>
+					<xsl:if test="position() mod 2 != 0">
+						<xsl:attribute name="class">content_rows_light</xsl:attribute>
+					</xsl:if>
+					<xsl:if test="position() mod 2 != 1">
+						<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+					</xsl:if>
+					<xsl:if test="0.9 * totalplanval &gt;= totalmoldval">
+						<xsl:attribute name="style">color:#FF0000</xsl:attribute>
+					</xsl:if>		
+					<td align="left">
+						<xsl:value-of select="position()"/>
+					</td>					
+					<td align="left">
+						<span>
+							<xsl:attribute name="cusgroup"><xsl:value-of select="cusgroup"/></xsl:attribute>
+							<xsl:attribute name="operator"><xsl:value-of select="operator"/></xsl:attribute>
+							<xsl:attribute name="compname"><xsl:value-of select="compname"/></xsl:attribute>
+							<xsl:attribute name="step"><xsl:value-of select="step"/></xsl:attribute>
+							<xsl:if test="step != 3">
+								<xsl:attribute name="class">view_button link</xsl:attribute> <xsl:value-of select="dispname"/>
+							</xsl:if>
+							<xsl:if test="step = 3">
+								<xsl:value-of select="dispname"/>
+							</xsl:if>							
+						</span>	
+						
+					</td>					  
+					<td align="right">
+						<xsl:value-of select='format-number(plannedlifts,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(totalplanqty,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(totalplanval,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(totalcpdplan,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(totalcpdval,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(actuallifts,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(mouldqty,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(totalmoldval,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(cpdqtyused,"##,##,##0")' />
+					</td>	
+					<td align="right">
+						<xsl:value-of select='format-number(totalusedcpdval,"##,##,##0")' />
+					</td>					
+				</tr>
+            </xsl:for-each>		
+			</tbody> 
+		</table>
+    </xsl:template>		
+</xsl:stylesheet>
+		

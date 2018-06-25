@@ -1,0 +1,62 @@
+details				= 	"";
+
+function getData(){        
+	to_date   	=	$("#to_date").val();
+	from_date 	=	$("#from_date").val();	
+	group_by	=	$("#group_by").val();
+	param		=	"selecttype=GETDETAIL" +
+						"&outtype=xml" +
+						"&group_by=" + group_by +
+						"&from_date=" + from_date +
+						"&to_date=" + to_date;
+	details		=	postback(actionFile, param, "POST", "XML");
+	//alert(details);
+	listPageData($("#content_body"), details, XSLFile);
+	if(details != "")
+	{
+		$("#button_submit").css('visibility', 'visible');		
+	}
+	else
+	{
+		$("#button_submit").css('visibility', 'hidden');
+	}	
+
+}
+
+// -------------------------------------------------------------------------------------------------------------------------------------- //
+
+$(document).ready(function(){
+	errDefault		=	$(".window_error");
+	errMsgDefault	=	'<div class="warning_txt"><span>No Data Available . . .</span></div>';
+	errDefault.html(errMsgDefault);	
+	getData();
+	
+    /*	getStockData(); */
+	$("#button_submit").button().click(function(){
+		
+		$("#print_item_form").css('visibility', 'visible');	
+			
+		$("#print_item_form").dialog({
+										modal:true,
+										minWidth:'1200',
+										resizable:false,									
+										open: function(event, ui) {
+											listPageData($("#print_body"), details, XSLFile);
+											var today = new Date();											
+											$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+											$("#hdr_title").html( " from: " + $("#from_date").val() + " to: " + $("#to_date").val());
+											$("#imgpath").attr("src","<?php echo (ISO_IS_REWRITE)?'/':'../../../' ?>images/company_logo.png");
+										}									
+									});		
+		var DocumentContainer = document.getElementById('print_item_form');
+		$("#print_item_form").dialog('close');
+		var WindowObject = window.open("","PrintWindow");
+		WindowObject.document.writeln(DocumentContainer.innerHTML);	
+		loader = document.createElement('link');
+		loader.href = "/style/printTable.css";
+		loader.rel = "stylesheet";	
+		WindowObject.document.head.appendChild(loader);		
+		WindowObject.document.close();
+		WindowObject.focus();
+	});	
+});

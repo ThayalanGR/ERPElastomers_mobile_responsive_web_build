@@ -1,0 +1,39 @@
+XSLFile_Detail		=	XSLPath + "d1.design";
+
+function getData()
+{
+	custGrp		=	$("#customer").val();
+	calcRate	=	($("#calcCpdRate").val() == 'Yes')?1:0;
+	if(calcRate == 1 && custGrp == 'All')
+	{
+		displayError($("#errmsg"), "error", "<strong>Error !</strong> - Can be calculated only if a customer is selected!!!");
+		$("#calcCpdRate").val('No');
+		return false;	
+	}
+	$("#content_body").accordion("destroy");
+	XMLContent	=	postback(actionFile, "selecttype=GETCPDDETAIL&custgrp="+custGrp+"&calccpdrate="+calcRate+"&type=select&outtype=xml", "POST", "XML");
+	//alert(XMLContent);
+	//$("#content_body").html(XMLContent); return false;
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	$("#content_body").accordion({
+		active:false,
+		collapsible: false,
+		autoHeight: false,
+		change:function(event, ui){
+			cpdObj		=	ui.newContent;
+			cpdId		=	cpdObj.attr("id");
+			contList	=	$("#cont_" + cpdId);
+			if(cpdObj.hasClass("ui-accordion-content-active") && ($.trim(contList.html()) == "" || $.trim(contList.html()) == "Loading...")){
+				var expandData = postback(actionFile,"selecttype=RAMDETAILLIST&CPDID="+cpdId+"&custgrp="+custGrp+"&calccpdrate="+calcRate+"&type=select&outtype=xml","POST","XML");
+				//alert(expandData);
+				contList.html(xslTranform(String(expandData.split("&lt;br/&gt;").join(unescape("<br />"))), XSLFile_Detail));
+			}
+		}
+	});
+}
+
+$(document).ready(function(){
+	
+getData();
+	
+});

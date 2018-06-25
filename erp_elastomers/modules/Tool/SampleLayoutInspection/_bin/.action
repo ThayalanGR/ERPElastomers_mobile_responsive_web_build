@@ -1,0 +1,73 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	global $cpd_grp_email,$dev_grp_email;
+	switch($_POST["type"]){
+		case "ADDDIMS":	
+			$output			=	"";
+			$paramList		=	$_REQUEST['param'];
+			$rfqId			=	$_POST['rfqid'];
+			if(is_array($_REQUEST['param']) && count($_REQUEST['param']) > 0){
+				@getMySQLData("delete from tbl_sample_layout_dim where rfqid = '$rfqId'");
+				$sql		=	"insert into tbl_sample_layout_dim(rfqid, dimRef, dimSpec, dimULimit, dimLLimit) values";
+				for($rpl=0; $rpl<count($paramList); $rpl++){
+					$sql	.=	"('$rfqId', '".$paramList[$rpl]['pname']."', '".$paramList[$rpl]['pspec']."', '".$paramList[$rpl]['pul']."',
+									'".$paramList[$rpl]['pll']."')".
+								(($rpl<count($paramList)-1)?',':'')." ";
+				}
+				$sql_query = @getMySQLData($sql);				
+				$output = "<root>
+								<sql>$sql</sql>
+								<status>".$sql_query['status']."</status>
+							</root>";
+				if($sql_query['status'] != "success"){
+					$output = "<root>
+								<sql>$sql</sql>
+								<status>".$sql_query['errtxt']."</status>
+							</root>";						
+				}
+				else
+				{
+					@getMySQLData("update tbl_sample_receipt set status = 2 where planId = '".$_REQUEST['planid']."'");
+					$partData	=	@getMySQLData("select part_number,part_description from tbl_develop_request where sno = '$rfqId'");
+					$part_num	=	$partData['data'][0]['part_number'];
+					$part_desc	=	$partData['data'][0]['part_description'];
+					sendEmail($cpd_grp_email,$dev_grp_email,"Sample Layout Inspection Completed for : ".$part_num."(".$part_desc.")","Kind Attn: Compound Development Team !!! <br/> Sample Layout Inspection has been Completed for: ".$part_num."(".$part_desc.") <br/> Please login to the <a href='http://".$_SERVER['SERVER_NAME']."/NPD/SubmitForApproval'>ERP here</a> and upload the Compound Material Document(s) for customer PPAP/Approval submission. ","");	
+				}
+			}
+			echo $output;
+		break;
+		case "DIMLIST":
+			if($_REQUEST['rfqid'] != ""){
+				$output		=	@getMySQLData("select dimRef,uom_short_name,paramTestMethod,dimSpec,dimLLimit,dimULimit from tbl_sample_layout_dim t1 
+													left outer join tbl_param t3 on t3.sno = t1.dimRef
+													left outer join tbl_uom t4 on t4.sno = t3.paramUOM 
+													where t1.rfqId='".$_REQUEST['rfqid']."' and t3.status > 0 ", "xml", "xmldata");
+				echo $output;
+			}		
+		break;
+		case "SAMPLELIST":
+			$sql	=	"select tsr.planId, DATE_FORMAT(recvDate,'%d-%b-%Y') as recvDate,tt.rfqid, part_number,part_description,toolCavities,cusName,approved_qty
+							from tbl_sample_receipt tsr
+							inner join tbl_sample_plan tsp on tsp.planid = tsr.planid
+							inner join tbl_trn tt on tt.trnId=tsp.toolRef
+							inner join tbl_develop_request tdr on tt.rfqid=tdr.sno
+							inner join tbl_customer tc on tc.cusid=tdr.cusid
+						where tsr.status = 1 and tt.status = 1 order by tsr.planId desc";
+			echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+		break;
+		case "PARAMLIST":
+			$output		=	@getMySQLData("select * from tbl_param where status > 0 ", "xml", "xmldata");
+			echo $output;
+			exit();
+		break;
+		case "PARAMDETAIL":
+			if($_REQUEST['paramid'] != ""){
+				$output		=	@getMySQLData("select paramStdRef,(select uom_short_name from tbl_uom where sno = tbl_param.paramUOM) as paramUOM,paramTestMethod  from tbl_param where status > 0 and sno ='".$_REQUEST['paramid']."';", "xml", "xmldata");
+				echo $output;
+			}
+			exit();
+		break;
+	}
+
+?>

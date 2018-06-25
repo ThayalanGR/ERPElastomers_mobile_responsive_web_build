@@ -1,0 +1,595 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+blendList		=	new Array();
+cpdList			=	new Array();
+cpdData			=	new Array();
+compoundList	=	new Array();
+compoundData	=	new Array();
+compHTML		=	'';
+errMsg			=	null;
+partNo			=	10;
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+function getCustomerDetails(){
+	$("#new_InvDate").val("<?php echo date('Y-m-d',mktime(0, 0, 0, date('m')  , date('d'), date('Y'))); ?>") ;
+	$("#new_Particulars table tr").each(function(index, element) {
+		if(index > 0)
+			$(element).remove();
+	});
+	for(cpd=0; cpd<partNo; cpd++){
+		date			=	new Date();
+		idNum			=	date.getTime();
+		totLen			=	$("#new_Particulars table tr").length;
+		tabClass		=	(totLen%2)?'content_rows_light':'content_rows_dark';
+		tabData			=	"<tr class='"+tabClass+"' id='addbat_" + idNum + "'>" +
+								"<td align='center'>"+totLen+"</td>" +
+								"<td align='center'><input type='text' tabindex='3' id='cpdcode_" + idNum + "' idtxt='" + idNum + "' style='width:50%' /></td>" +
+								"<td align='right'><input type='text' tabindex='3' id='quan_" + idNum + "' idtxt='" + idNum + "' class='invisible_text' style='text-align:right;width:35%'  onkeyup=calculateTotal() onfocus=\"FieldHiddenValue(this, 'in', '0.000')\" onblur=\"FieldHiddenValue(this, 'out', '0.000')\" disabled /></td>" +
+							"</tr>";
+		$("#new_Particulars table tr:last").after(tabData);
+		$("#new_Particulars table tr").each(function(index, element) {
+			$(this).find("td:eq(1) input:text").autocomplete({
+				source:compoundData,
+				close:function(event, ui){
+							enableEntry(this);
+						}
+			});
+			$(this).find("td:eq(2) input:text").keyup(function(){
+				calculateTotal();
+			});
+		});
+	}
+	$("#total_field").html("0.000");
+
+}
+
+
+function calculateTotal(){
+	total	=	0;
+	$("#new_Particulars table tr:gt(0)").each(function(index, element) {
+		totTxt	=	$(this).find('td:eq(2) input[type="text"]').val();
+		
+		totNum	=	Number(
+						(totTxt)
+							?totTxt
+							:0
+					);
+        total	+=	totNum;
+    });
+	$("#total_field").html(getCurrency(total, 3));
+}
+
+function enableEntry(obj){
+	cpdName = $(obj).val();
+	if(cpdName != null && cpdName != ""){
+		id			=	$(obj).attr("idtxt");
+		$("#quan_"+id).removeAttr("disabled");
+		$("#quan_"+id).focus();
+	}	
+}
+
+function handleFormSubmit(){
+	invoicedate		=	$("#new_InvDate"); 
+	newError		=	$("#error_msg");
+	stat			=	true;
+	getstring		=	"selecttype=" + "ADDCOMPOUNDRETURN";
+	
+	if(errMsg != null)
+	clearTimeout(errMsg);
+	errMsg			=	setTimeout(function(){
+							newError.css("display", "none");
+						}, 2500);
+	
+	if(invoicedate.val() == null || invoicedate.val() == "" ){
+		displayError(newError, "error", "<strong>Error !</strong> - Invoice Date Missing.");
+		invoicedate.focus();
+		return false;
+	}
+	
+	$("#new_Particulars").find('table tr:gt(0)').each(function(index, element) {
+		cpdCodeObj	=	$(this).find('td:eq(1) input');
+		cpdCodeVal	= 	cpdCodeObj.val()
+		aplQtyObj	=	$(this).find('td:eq(2) input');
+		if(cpdCodeVal != null && cpdCodeVal != '')
+		{
+			cpdCode		=	"";
+			cpdCode		=	compoundList[compoundData.indexOf(cpdCodeVal)];	
+			if(cpdCode == undefined || cpdCode == null || cpdCode == "")
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Row " + (index+1) + " - Invalid Compound Reference.");
+				cpdCodeObj.focus();
+				stat =	false;		
+			}			
+			aplQty		=	aplQtyObj.val();
+			if(cpdCode != null && cpdCode != ""){
+				if(!(aplQty.toNumber() > 0)){
+					displayError(newError, "error", "<strong>Error !</strong> - Row " + (index+1) + " - Received Quantity Missing.");
+					aplQtyObj.focus();
+					stat =	false;
+				}
+				
+				getstring	+=	"&cpdcode[]="	+	cpdCode +
+								"&aplqty[]="	+	aplQty ;
+			}
+		}
+    });
+	
+	if(stat ==	true && getstring.indexOf("cpdcode") < 1)
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Atleast one Compound Reference needs to be included!.");
+		stat =	false;
+	}
+	
+	
+	if(stat == false )
+		return false;
+	
+	/*	to template	*/
+	getstring		+=	"&invoicedate="			+	invoicedate.val() ;
+	
+	//open(getstring);
+	//open(actionFile+"?"+getstring);
+	//alert(getstring);
+	//return false;
+	
+	var printObj		=	postback(actionFile,getstring,"POST","XML");
+	//$('#content_body').html(printObj); return false;
+	printData			=	parseXMLdoc(printObj);
+	error				=	printData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+	
+	if(error == "success"){
+		alert("Compound Return for - " + invoicedate.val() + " has been added !" );
+		getCustomerDetails();
+	}
+	else{
+		displayError(newError, "error", error);
+	}
+}
+
+function handleFormCancel(){
+	getCustomerDetails();	
+}
+
+$(document).ready(function(){
+
+	$("#new_CPDButton").button().click(function(){getNewItem();});
+	
+	// Set AutoComplete Text Box
+	var objCpdList	=	postback(actionFile,"selecttype=GETCOMPOUND&outtype=xml","POST","XML");
+	cpdXML			=	parseXMLdoc(objCpdList);
+	compoundList	=	new Array();
+	compoundData	=	new Array();
+	$(cpdXML).find('row').each(function(index, element) {
+        compoundList.push($(this).find('cpdid').text() );
+		compoundData.push($(this).find('cpdname').text() );
+    });	
+
+	$("#sch_submit").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Upload the Compound DC/Invoice?</b></td></tr>' +
+					'</table>'
+		$('#confirm_dialog').html(confirmCont).dialog({
+			title:'Customer Compound DC/Invoice',
+			width:450,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					handleSchSubmit();					
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	 		
+	});		
+
+	$("#button_add").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to commit the Compound Receipt?</b></td></tr>' +
+					'</table>'
+		$('#confirm_dialog').html(confirmCont).dialog({
+			title:'Compound Receipt',
+			width:450,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					handleFormSubmit();					
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	 			
+	});
+	
+	$("#button_cancel").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Clear Compound Receipt? All details will be cleared</b></td></tr>' +
+					'</table>'
+		$('#confirm_dialog').html(confirmCont).dialog({
+			title:'Compound Receipt',
+			width:450,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					handleFormCancel();					
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});		
+	});
+	
+	getCustomerDetails();	
+	
+	// Set AutoComplete Text Box for Blends
+	var objBlendList	=	postback(actionFile,"selecttype=GETBLENDS&outtype=xml","POST","XML");
+	objBlendList		=	parseXMLdoc(objBlendList); 
+	blendList			=	new Array();
+	$(objBlendList).find('row').each(function(index, element) {
+		blendList.push($(this).find('cpdname').text() );
+    });
+	
+	$("#blend_list").autocomplete({
+		source:blendList,
+		close:function(event, ui){
+			getBaseCpdList();
+		}
+	});	
+
+	$("#button_add_blend").button().click(function(){
+		$("#receive_dialog").dialog({
+			title:'Enter Required Compound Qty',
+			width:750,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons: 
+			[
+				{
+					text: "Submit",
+					click: function(){
+						var cpdQtys    	=   new Array();
+						var	cpdIds		=	new Array();
+						blendName		=	$("#blend_list").val();
+						var issBatids	=	new Array();
+						if(blendName == "" || blendName == null || blendList.indexOf(blendName) == -1)
+						{
+							displayError($("#error_blend_msg"), "error", "<strong>Error !</strong> - Selected Blend Does not Exists!");
+							$("#blend_list").focus();	
+							return false;
+						}
+						param			=	"selecttype=BLENDISS&blendname="+ blendName+"&blenddate="+$("#blend_date").val();
+						compList		=	$('#new_ItemList table tr');
+						for(rl=1; rl<compList.length; rl++){
+							fetchId		=	$("#"+compList[rl].id).attr("id");
+							cpdName		=	$("#mat_" + fetchId).val();
+							cpdId		=	$("#input_" + fetchId).attr("cpdid");
+							cpdQty		=	$("#input_" + fetchId).val();
+							issBat 		= 	$("#input_" + fetchId).attr('batches');
+							if( cpdName == '' || cpdName == null)
+							{
+								displayError($("#error_blend_msg"), "error", "<strong>Error !</strong> - Please select a compound!");
+								$("#mat_"+fetchId).focus();
+								return false;
+							}							
+							else if(Number(cpdQty) == null || Number(cpdQty) <= 0 )
+							{
+								displayError($("#error_blend_msg"), "error", "<strong>Error !</strong> - Please enter correct weight for Compound: "+cpdName+".");
+								$("#input_"+fetchId).focus();
+								return false;
+							}
+							else
+							{
+								batAndQtys	=	issBat.split(";");
+								for(bCnt = 0; bCnt < batAndQtys.length; bCnt++)
+								{
+									cpdQtyVal	=	batAndQtys[bCnt].split("~");
+									cpdQtys.push(cpdQtyVal[1]);
+									issBatids.push(cpdQtyVal[0]);
+								}							
+								cpdIds.push(cpdId);
+							}
+						}
+						if(cpdIds.length > 1 )
+						{	
+							for(x=0; x<issBatids.length; x++){
+								param	+=	"&cpdbatches["+ issBatids[x] + "]=" + cpdQtys[x] ;
+							}
+							confirmCont = '<table width="100%" >' +
+										'<tr><td><b>Are you Sure to commit the Compound Blend Issue?</b></td></tr>' +
+										'</table>'
+							$('#confirm_dialog').html(confirmCont).dialog({
+								title:'Compound Blend Issue',
+								width:450,
+								height:'auto',
+								resizable:false,
+								modal:true,
+								buttons:{
+									'Ok':function(){
+										$(this).dialog('close');
+										//alert(param); return false;	
+										details		=	postback(actionFile, param, "POST", "XML");
+										//$("#content_body").html(details); return false;
+										if(details == "success"){
+											displayError($("#error_blend_msg"), "highlight", "<strong>Info !</strong> - Compound Blend Issue completed sucessfully.");											
+											setTimeout(function(){
+												$("#receive_dialog").dialog("close");
+												window.location.reload();
+											}, 5000);
+										}
+										else{
+											displayError($("#error_blend_msg"), "error", "<strong>Error !</strong> - Compound Blend Issue failed due to :" + details);
+											return false;
+										}	
+									},
+									'Cancel':function(){
+										$(this).dialog('close');
+									}
+								},
+								close:function(){
+									$(this).html('').dialog('destroy');
+								}
+							});						
+						}
+						else
+						{
+							displayError($("#error_blend_msg"), "error", "<strong>Error !</strong> - Aleast 2 compounds need to be selected!");	
+							return false;
+						}							
+					}
+				},
+				{
+					text: "Close",
+					click: function(){ 
+						$(this).dialog("close"); 
+					}
+				}
+			],
+			close: function(event, ui) {
+				$("#blend_list").val("");
+				compList		=	$('#new_ItemList table tr');
+				for(rl=1; rl<compList.length; rl++){
+					$("#"+compList[rl].id).remove();
+				}			
+				$(this).dialog("destroy");
+			} 
+		});	
+	});			
+});
+
+function calcBlendIssTotal(){
+	total		=	0;	
+	compList	=	$('#new_ItemList table tr');
+	for(rl=1; rl<compList.length; rl++){
+		fetchId		=	$("#"+compList[rl].id).attr("id");
+		cpdName		=	$("#mat_" + fetchId).val();
+		total		+=	Number($("#input_" + fetchId).val());
+	}
+	
+	if(isNaN(Number(total))){
+		total	=	0;
+	}
+	$("#total_issue").html(getCurrency(total, 3));		
+}
+
+function removeAllList(){
+	$("#new_ItemList tr:gt(0)").remove();	
+}
+
+function getBaseCpdList(){
+	objClassList	=	postback(actionFile, "selecttype=GETCOMPOUND&outtype=xml", "POST", "XML");
+	classXML		=	parseXMLdoc(objClassList);
+	cpdList			=	new Array();
+	cpdData			=	new Array();
+	$(classXML).find("row").each(function(index, element) {
+		cpdId		=	$.trim(element.childNodes[0].firstChild.nodeValue);
+		cpdName		=	$.trim(element.childNodes[1].firstChild.nodeValue);
+		cpdPolymer	=	$.trim(element.childNodes[2].firstChild.nodeValue);
+		cpdList.push(cpdName);
+		cpdData[cpdName]	=	{
+			id:cpdId,
+			poly:cpdPolymer
+		}
+    });
+}
+
+function setCpdId(timenow){
+	cpdname	=	$("#mat_" + timenow).val();
+	cpdid	=	cpdData[cpdname].id;
+	$("#input_" + timenow).attr("value", '0.00');
+	$("#input_" + timenow).attr("cpdid",cpdid);
+	$("#label_" + timenow).html(cpdData[cpdname].poly);
+}
+
+function getBatches(timenow){
+	cpdName		=	$("#mat_" + timenow).val();
+	cpdId		=	cpdData[cpdname].id;
+	batches		=	postback(actionFile,"selecttype=GETBATCH&cpdid="+cpdId,"POST","XML");
+	issueCont   =   '<div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="new_item_error"></div>'+
+						'<form action="" onsubmit="return false;">' +
+							'<table width="100%" id="titleBatch" cellpadding=0 >' +
+								'<tr><td height="25px">Compound Name</td><td style="font-weight:bold">'+cpdName+'</td></tr>' ;
+	batarr		=	[];
+	$(batches).find('row').each(function(index, element) {
+		avlQty		=	$(this).find('avlqty').text();
+		batId		=	$(this).find('sno').text();
+		issueCont	+=	'<tr>'+
+							'<td >'+$(this).find('batid').text()+' ('+avlQty+')</td>'+
+							'<td ><input type=text id="'+batId+'" avlqty="'+avlQty+'" onkeyup="calcApproved()" tab="1" style="width:50%;text-align:right;" value="0" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+						'</tr>';
+		batarr.push(batId);
+	});
+		issueCont	+=	'<tr><td height="20px">Issued Quantity</td><td style="font-weight:bold" id="issqty" >0.000</td></tr>' +
+							'</table>' +
+						'</form>';
+	$('#issue_dialog').html(issueCont).dialog({
+		title:'Compound Issue',
+		width:500,
+		resizable:false,
+		modal:true,
+		buttons:{
+			'Set Batch':function(){
+				if(setIssue(timenow))
+					$(this).dialog('close');									
+			},
+			'Cancel':function(){
+				$(this).dialog('close');
+			}
+		},
+		close:function(){
+			$(this).html('').dialog('destroy');
+		}
+	});
+	if(batarr.length == 0)
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Batch List Not Available.");
+
+}
+
+function calcApproved(){
+	total		=	0;	
+	$(batarr).each(function(index, element) {
+		vvl		=	$("#"+element).val();
+		total	=	total	+	Number(vvl);
+	});
+	if(isNaN(Number(total))){
+		total	=	0;
+	}
+	$("#issqty").html(getCurrency(total, 3));
+}
+
+function setIssue(timenow){
+	output		=	"";
+	totVal		=	0;
+	issQty		=	$("#issue_dialog #issqty").html();
+	var temp	=	new Array();
+	temp		=	issQty.split(",");
+	receivetemp	=	"";
+	for(i=0;i<temp.length;i++){
+		receivetemp	+=	temp[i];
+	}
+	issQty		=	receivetemp;
+	issQty		=	Number(issQty);
+	if(issQty <= 0){
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Issued Quantity cannot be zero or negative ! ! !");
+		return false;	
+	}
+	okToContinue	=	true;
+	$("#issue_dialog input:text").each(function(index, element){
+        val 	= 	Number($(element).val());
+		avlQty	=	Number($(element).attr("avlqty"));
+		if( val < 0 || avlQty < val){
+			okToContinue	=	false;
+		}
+		totVal	+= val;
+		if(val > 0)
+		{
+			if(output != "")
+				output	+=	";" + $(element).attr("id")+"~"+val;
+			else
+				output	=	$(element).attr("id")+"~"+val
+		}
+    });
+	if(okToContinue == false)
+	{
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Invalid Batch Quantity ! ! !");
+		return false;
+	}		
+	$("#input_"+timenow).val(totVal);
+	$("#input_"+timenow).attr("batches",output);
+	calcBlendIssTotal();
+	return true;
+}
+
+function getNewItem(){	
+	objList		=	$('#new_ItemList table tr');
+	ndate		=	new Date();
+	timenow		=	ndate.getTime();
+	cpList		=	cpdList;
+	ol			=	objList.length;
+	
+	newRow		=	"<tr class='" + ((ol%2)?'content_rows_light':'content_rows_dark') + "' id='" + timenow + "'>" +
+						"<td >"+ol+"</td>" +
+						"<td align='center'>" + cpList.toSelectWithEmpty('mat_' + timenow, 'mat_' + timenow, null, 'width:90%;', 'onchange="setCpdId(' + timenow + ');getBatches(' + timenow + ');"', '', true) + "</td>" +
+						"<td id='label_" + timenow + "' style='text-align:center'>-</td>" +
+						"<td style='text-align:center'><input type='text' cpdid='' id='input_" + timenow + "' value='0.00' style='text-align:right;width:25%' readonly /></td>" +
+					"</tr>"		
+	
+	$('#new_ItemList table tr:last').after(newRow);			
+
+}
+
+function handleSchSubmit(){
+	var filedata = document.getElementById("file");
+	formdata = false;
+	newError		=	$("#error_msg");
+	formdata = new FormData();
+    file = filedata.files[0];
+	if(file)
+	{
+		if (formdata) {
+			formdata.append("file", file,file.name);
+		}
+		
+		$("#sch_submit").attr("value","Loading, Please Wait...");
+		$("#sch_submit").attr("disabled","true");
+		// Set up the request.
+		var xhr = new XMLHttpRequest();
+
+		// Open the connection.
+		xhr.open('POST', actionFile, true);
+
+		// Set up a handler for when the request finishes.
+		xhr.onload = function () {
+			if (xhr.status === 200) {
+				// File(s) uploaded.
+				var printObj	=	xhr.response;
+				printData		=	$(printObj);
+				error			=	printData.find("status").html();
+				invid			=	printData.find("invid").html();
+				
+				if(error == "success"){
+					alert("Compound DC/Invoice :" + invid + " has been uploaded sucessfully");					
+					window.location.reload();
+				}
+				else{
+					displayError(newError, "error", printObj);
+					$("#sch_submit").attr("value","Upload Compound DC/Invoice");
+					$("#sch_submit").removeAttr("disabled");					
+				}			
+			} 
+			else {
+				displayError(newError, "error", "Unable to upload the file, Please retry again");
+				$("#sch_submit").attr("value","Upload Compound DC/Invoice");
+				$("#sch_submit").removeAttr("disabled");				
+			}
+		};
+		
+		// Send the Data.
+		xhr.send(formdata);
+	}
+	else
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please Select a File.");
+		$("#file").focus();	
+	}
+}

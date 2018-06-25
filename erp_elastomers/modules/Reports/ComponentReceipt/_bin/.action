@@ -1,0 +1,54 @@
+<?php
+	session_start();
+	// List Data
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "INVGRP":
+			$sql_batch	=	"SELECT invId,DATE_FORMAT(invDate, '%d-%b-%Y') as invDate, sum(recvQty) as recvQty, count(*) as noofbatches 
+								FROM tbl_component_recv 
+								where status > 0  and invDate >= '".$_POST["startDate"]."' and  invDate <= '".$_POST["endDate"]."'  
+							group by invId 
+							order by invId";
+			$list		=	@getMySQLData($sql_batch,"xml","root","lower");
+			$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>$list</xmldata>";
+		break;	
+		case "CMPDGRP":
+			$sql_batch	=	"SELECT cmpdName as invId,invDate, sum(recvQty) as recvQty, count(*) as noofbatches 
+								FROM tbl_component_recv  tcr 
+									inner join tbl_component tc on tcr.cmpdId=tc.cmpdId 
+								where tcr.status > 0  and invDate >= '".$_POST["startDate"]."' and  invDate <= '".$_POST["endDate"]."'  
+							 group by cmpdName 
+							 order by cmpdName";
+							
+			$list		=	@getMySQLData($sql_batch,"xml","root","lower");
+			$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>$list</xmldata>";
+		break;			
+		case "KEYDETS":			
+			$dcRef	=	$_POST['invref'];
+			if($_POST['groupby'] != "CMPDGRP"){
+				$sql	=	"SELECT tcr.invId,DATE_FORMAT(invDate, '%d-%b-%Y') as invDate,tcr.cmpdId,tcr.planId,tcr.operator,tc.cmpdRefNo,tcr.recvQty 
+								FROM tbl_component_recv tcr
+									inner join tbl_component tc on tcr.cmpdId=tc.cmpdId 
+							 WHERE tcr.status > 0 and tcr.invId = '$dcRef' and invDate >= '".$_POST["startDate"]."' and  invDate <= '".$_POST["endDate"]."'
+							order by tcr.invId,tcr.planId";
+			}
+			else
+			{
+				$sql	=	"SELECT invId,sum(recvQty) as recvQty,DATE_FORMAT(invDate, '%d-%b-%Y') as invDate,cmpdName,cmpdRefNo,planId 
+								FROM tbl_component_recv tcr 
+									inner join tbl_component tc on tcr.cmpdId=tc.cmpdId 
+								WHERE tcr.status > 0 and tc.cmpdName = '$dcRef'  and invDate >= '".$_POST["startDate"]."' and  invDate <= '".$_POST["endDate"]."'
+							 group by invId 
+							 order by invId,planId";		   			
+			}
+			$list	=	@getMySQLData($sql,"xml","root","lower");
+			echo "<xmldata>".$list."</xmldata>";			
+		break;
+	}
+	
+
+
+	
+?>

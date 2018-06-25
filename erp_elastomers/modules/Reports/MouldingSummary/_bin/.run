@@ -1,0 +1,240 @@
+tableFilters.col_0			=	"none";
+tableFilters.sort_config	=	{ sort_types:['none','string', 'us','us','us','us','us','us','us','us','us','us'] };
+tableFilters.col_operation	=	{ 
+								   id: ["val_total1","val_total2","val_total3","val_total4","val_total5","val_total6","val_total7","val_total8","val_total9","val_total10"], 
+								   col: [2,3,4,5,6,7,8,9,10,11],
+								   operation: ["sum","sum","sum","sum","sum","sum","sum","sum","sum","sum"],
+								   decimal_precision: [0,0,0,0,0,0,0,0,0,0]
+								};
+tableFilters.on_after_operation	=	formatTotals;
+var TF_01					=	null;
+var needRefresh				=	false;
+var	objCompList				=	null;
+var XSLFile					=	[XSLPath + "_1.design", XSLPath + "_2.design"];
+
+function formatTotals()
+{
+	for( var count=1; count < 11; count++)
+		tf_Id('val_total' + count).innerHTML = tf_Id('val_total' + count).innerHTML.toCurrency();
+
+}
+
+$(document).ready(function(){
+	$("#submitPrint").click(function(e){
+		submitPrint('',XSLFile[0]);
+		e.stopImmediatePropagation();
+	});	
+	
+	$(function() {
+
+		var options = { autoOpen: false ,
+						modal: true ,
+						position: ['center','center'],
+						draggable: true,
+						resizable: true,
+						width: 750,
+						height:600,
+						buttons: [
+							{
+								text: "Print",
+								click: function(){
+									submitPrint(this.id,XSLFile[1]);
+								}
+							},
+							{
+								text: "Close",
+								click: function(){
+									$(this).dialog("close");
+								}
+							}
+						],
+						close: function(event, ui) {
+							$(this).css("display", "none");
+						}, 									
+						open: function(event, ui) {
+							$(this).css('visibility','visible');
+						}
+					};
+	    $([1, 2, 3]).each(function() {
+			var num = this;
+			var dlg = $('#show_plan_form' + num)
+			  .dialog(options);
+	    });
+	});	
+	updatePageBehaviour();
+});
+
+function updatePageBehaviour(){
+	objCompList 	= postback(actionFile, "selecttype=GETTOP&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST","XML");
+	//alert(objCompList);
+	//$("#content_body").html(objCompList);
+	listPageData($("#content_body"), objCompList, XSLFile[0]);	
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;
+		
+	$(".view_button").click(function(e){
+		operator	=	$(this).attr('operator');
+		cusgrp		=	$(this).attr('cusgroup');
+		compname	=	'';
+		if(cusgrp != null && cusgrp != ""){
+			getDetailList(cusgrp,operator,compname,1);
+			e.stopImmediatePropagation();
+		}
+	});	
+}
+
+function getDetailList(cusgrp,operator,compname,step){
+	$("#show_plan_form"+step).css('visibility', 'visible');
+	$("#show_plan_form"+step).dialog("open");
+	$("#show_plan_form"+step).attr("operator",operator);
+	$("#show_plan_form"+step).attr("cusgrp" ,cusgrp);
+	$("#show_plan_form"+step).attr("compname",compname);
+	$("#show_plan_form"+step).attr("step",step);
+	objSchList	=	postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&cusgrp="+cusgrp+"&operator="+operator+"&compname="+compname+"&step="+step, "POST","XML");
+	//alert(objSchList); //return false;
+	listPageData($("#detail_body"+step), objSchList, XSLFile[1]);
+	$(".view_button").click(function(e){
+		operator	=	$(this).attr('operator');
+		cusgrp		=	$(this).attr('cusgroup');
+		compname	=	$(this).attr('compname');
+		if(cusgrp != null && cusgrp != ""){
+			getDetailList(cusgrp,operator,compname,step+1);
+			e.stopImmediatePropagation();
+		}
+	});	
+
+	planLiftsTot	=	0;
+	planQtyTot		=	0;
+	planValTot		=	0;
+	planCpdQtyTot	=	0;
+	planCpdValTot	=	0;
+	actLiftsTot		=	0;
+	actQtyTot		=	0;
+	actValTot		=	0;
+	actCpdQtyTot	=	0;
+	actCpdValTot	=	0;
+	$("#detail_body"+step+" table tr").each(function(index, element) {
+        plTot			=	($(this).find("td:eq(2)").html())?Number($(this).find("td:eq(2)").html().split(",").join("")):0;
+		pqTot			=	($(this).find("td:eq(3)").html())?Number($(this).find("td:eq(3)").html().split(",").join("")):0;
+		pvTot			=	($(this).find("td:eq(4)").html())?Number($(this).find("td:eq(4)").html().split(",").join("")):0;
+		pcqTot			=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+		pcvTot			=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().split(",").join("")):0;
+        alTot			=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+		aqTot			=	($(this).find("td:eq(8)").html())?Number($(this).find("td:eq(8)").html().split(",").join("")):0;
+		avTot			=	($(this).find("td:eq(9)").html())?Number($(this).find("td:eq(9)").html().split(",").join("")):0;
+		acqTot			=	($(this).find("td:eq(10)").html())?Number($(this).find("td:eq(10)").html().split(",").join("")):0;
+		acvTot			=	($(this).find("td:eq(11)").html())?Number($(this).find("td:eq(11)").html().split(",").join("")):0;		
+		planLiftsTot	=	planLiftsTot + (isNaN(plTot) ?0 :plTot);
+		planQtyTot		=	planQtyTot + (isNaN(pqTot) ?0 :pqTot);
+		planValTot		=	planValTot + (isNaN(pvTot) ?0 :pvTot);
+		planCpdQtyTot	=	planCpdQtyTot + (isNaN(pcqTot) ?0 :pcqTot);
+		planCpdValTot	=	planCpdValTot + (isNaN(pcvTot) ?0 :pcvTot);
+		actLiftsTot		=	actLiftsTot + (isNaN(alTot) ?0 :alTot);
+		actQtyTot		=	actQtyTot + (isNaN(aqTot) ?0 :aqTot);
+		actValTot		=	actValTot + (isNaN(avTot) ?0 :avTot);
+		actCpdQtyTot	=	actCpdQtyTot + (isNaN(acqTot) ?0 :acqTot);
+		actCpdValTot	=	actCpdValTot + (isNaN(acvTot) ?0 :acvTot);		
+	}); 
+	
+	tabData			=	"<tr style='font-weight:bold'>" +
+						"<td colspan='2' align='center'>Total</td>" +
+						"<td align='right'>"+planLiftsTot.toCurrency()+"</td>" +
+						"<td align='right'>"+planQtyTot.toCurrency()+"</td>" +								
+						"<td align='right'>"+planValTot.toCurrency()+"</td>" +								
+						"<td align='right'>"+planCpdQtyTot.toCurrency()+"</td>" +
+						"<td align='right'>"+planCpdValTot.toCurrency()+"</td>" +								
+						"<td align='right'>"+actLiftsTot.toCurrency()+"</td>" +
+						"<td align='right'>"+actQtyTot.toCurrency()+"</td>" +
+						"<td align='right'>"+actValTot.toCurrency()+"</td>" +
+						"<td align='right'>"+actCpdQtyTot.toCurrency()+"</td>" +
+						"<td align='right'>"+actCpdValTot.toCurrency()+"</td>" +
+					"</tr>";	
+	$("#detail_body"+step+" table tr:last").after(tabData);	
+}
+
+function submitPrint(dlgId,desFile){
+	prnTitle = "";	
+	$("#print_item_form").css('visibility', 'visible');	
+	if(dlgId != '')
+	{
+		currOper	=	$("#"+dlgId).attr('operator');
+		currCustGrp	=	$("#"+dlgId).attr('cusgrp');
+		currCompName=	$("#"+dlgId).attr('compname');
+		step		=	$("#"+dlgId).attr('step');
+		prnTitle	=	"for Customer Group - " +currCustGrp;
+		prnTitle	+=	(currOper != null && currOper != '')?" | Operator - " + currOper : "";
+		prnTitle	+= 	(currCompName != null && currCompName != '')?" | Part Number - " + currCompName : "";	
+		objList		=	postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&cusgrp="+currCustGrp+"&operator="+currOper+"&compname="+currCompName+"&step="+step, "POST","XML");		
+	}
+	else
+		objList	=	objCompList;
+	
+	$("#print_item_form").dialog({
+									modal:true,
+									minWidth:'1200',
+									resizable:false,									
+									open: function(event, ui) {
+										listPageData($("#print_body"), objList, desFile);
+										var today = new Date();											
+										$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+										$("#hdr_title").html( prnTitle + " From: " + $("#from_date").val() + " To: " + $("#to_date").val() );
+										$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");
+									}									
+								});	
+	planLiftsTot	=	0;
+	planQtyTot		=	0;
+	planValTot		=	0;
+	planCpdQtyTot	=	0;
+	planCpdValTot	=	0;
+	actLiftsTot		=	0;
+	actQtyTot		=	0;
+	actValTot		=	0;
+	actCpdQtyTot	=	0;
+	actCpdValTot	=	0;
+	$("#print_body table tr").each(function(index, element) {
+        plTot			=	($(this).find("td:eq(2)").html())?Number($(this).find("td:eq(2)").html().split(",").join("")):0;
+		pqTot			=	($(this).find("td:eq(3)").html())?Number($(this).find("td:eq(3)").html().split(",").join("")):0;
+		pvTot			=	($(this).find("td:eq(4)").html())?Number($(this).find("td:eq(4)").html().split(",").join("")):0;
+		pcqTot			=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+		pcvTot			=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().split(",").join("")):0;
+        alTot			=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+		aqTot			=	($(this).find("td:eq(8)").html())?Number($(this).find("td:eq(8)").html().split(",").join("")):0;
+		avTot			=	($(this).find("td:eq(9)").html())?Number($(this).find("td:eq(9)").html().split(",").join("")):0;
+		acqTot			=	($(this).find("td:eq(10)").html())?Number($(this).find("td:eq(10)").html().split(",").join("")):0;
+		acvTot			=	($(this).find("td:eq(11)").html())?Number($(this).find("td:eq(11)").html().split(",").join("")):0;		
+		planLiftsTot	=	planLiftsTot + (isNaN(plTot) ?0 :plTot);
+		planQtyTot		=	planQtyTot + (isNaN(pqTot) ?0 :pqTot);
+		planValTot		=	planValTot + (isNaN(pvTot) ?0 :pvTot);
+		planCpdQtyTot	=	planCpdQtyTot + (isNaN(pcqTot) ?0 :pcqTot);
+		planCpdValTot	=	planCpdValTot + (isNaN(pcvTot) ?0 :pcvTot);
+		actLiftsTot		=	actLiftsTot + (isNaN(alTot) ?0 :alTot);
+		actQtyTot		=	actQtyTot + (isNaN(aqTot) ?0 :aqTot);
+		actValTot		=	actValTot + (isNaN(avTot) ?0 :avTot);
+		actCpdQtyTot	=	actCpdQtyTot + (isNaN(acqTot) ?0 :acqTot);
+		actCpdValTot	=	actCpdValTot + (isNaN(acvTot) ?0 :acvTot);		
+	}); 
+	
+	$("#val_total11").html(planLiftsTot.toCurrency());
+	$("#val_total12").html(planQtyTot.toCurrency());
+	$("#val_total13").html(planValTot.toCurrency());
+	$("#val_total14").html(planCpdQtyTot.toCurrency());
+	$("#val_total15").html(planCpdValTot.toCurrency());
+	$("#val_total16").html(actLiftsTot.toCurrency());
+	$("#val_total17").html(actQtyTot.toCurrency());
+	$("#val_total18").html(actValTot.toCurrency());
+	$("#val_total19").html(actCpdQtyTot.toCurrency());
+	$("#val_total20").html(actCpdValTot.toCurrency());	
+	var DocumentContainer = document.getElementById('print_item_form');
+	$("#print_item_form").dialog('close');
+	var WindowObject = window.open("","PrintWindow");
+	WindowObject.document.writeln(DocumentContainer.innerHTML);	
+	loader = document.createElement('link');
+	loader.href = "/style/printTable.css";
+	loader.rel = "stylesheet";
+	WindowObject.document.head.appendChild(loader);	
+	WindowObject.document.close();
+	WindowObject.focus();
+}

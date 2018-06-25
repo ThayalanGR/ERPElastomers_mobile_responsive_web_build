@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+   <xsl:template match="/"> 
+		<table id="resultTable" class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="2%">SNo</th>
+					<th width="6%">Quote ID</th>
+					<th width="6%">Quote Date</th>
+					<th width="13%">Customer</th> 
+					<th width="10%">Part Number</th>
+					<th width="12%">Part Desc.</th>
+					<th width="8%">Polymer</th>
+					<th width="8%">AMR <sup>Nos</sup></th>
+					<th width="6%">Target Price<sup>Rs</sup></th>    
+					<th width="6%">Quote Price<sup>Rs</sup></th>
+					<th width="8%">Tool Acc.</th>
+					<th>#</th>					
+				</tr>
+			</thead>
+			<tbody>	
+            <xsl:for-each select="xmldata/root/data/row">
+				<tr>
+					<td align="left">
+						<xsl:value-of select="position()" />	
+					</td>					
+					<td align="left">
+						<xsl:value-of select="quoteref"/>
+					</td>					  
+					<td align="left">
+						<xsl:value-of select="quotedate"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="cusname"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="part_number"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="part_description"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="cpd_base_polymer"/>
+					</td>					  
+					<td align="right">
+						<xsl:value-of select='format-number(ave_monthly_req,"##,##,##0")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select='format-number(target_price,"##,##,##0.00")' />
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(finalcost,'###,###,##0.00')" />
+					</td>
+					<td align="left">
+						<xsl:value-of select="tooldevopt"/>
+					</td>							
+					<td align="right">
+						<a>
+							<xsl:attribute name="quoteid"><xsl:value-of select="quoteref" /></xsl:attribute>								
+							<xsl:attribute name="class">view_summary_button link</xsl:attribute>
+							View Summary
+						</a>
+						|
+						<a>
+							<xsl:attribute name="quoteid"><xsl:value-of select="quoteref" /></xsl:attribute>
+							<xsl:attribute name="class">view_detailed_button link</xsl:attribute>
+							View Detailed
+						</a>							
+					</td>		
+				</tr>
+            </xsl:for-each>		
+			</tbody> 
+		</table>
+    </xsl:template>		
+</xsl:stylesheet>

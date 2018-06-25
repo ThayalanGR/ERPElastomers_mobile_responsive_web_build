@@ -1,0 +1,20 @@
+<?php
+	global $grn_customers, $grn_role;
+	session_start();	
+	header("Content-Type: text/xml");	
+	switch($_POST["selecttype"]){
+		case "MIXLIST":
+			$sql_mixlist	=	"select purId, DATE_FORMAT(purDate, '%d-%b-%Y') as purDate, supName, entry_by as user, yourQuote, uom, rate, quantity, purTotal, 
+									description, grade
+								from tbl_invoice_purchase 
+								where status>0 and purdate >= '".$_POST["fromdate"]."' and  purdate  <= '".$_POST["todate"]."' order by purId desc";
+			$list	=	@getMySQLData($sql_mixlist,'xml','root','lower');
+			$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>
+				$list
+				$output
+			</xmldata>";		
+	}
+	
+
+?>

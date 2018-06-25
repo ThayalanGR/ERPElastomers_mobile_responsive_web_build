@@ -1,0 +1,233 @@
+tableFilters.sort_config	=	{ sort_types:['string','date', 'string','string','string','us','us','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+qanParamIds					=	new Array();
+qanParamList				=	new Array();
+paramNo						=	0;
+
+$(document).ready(function(){
+	//create buttons 					   
+
+	$("#layout_insp_receipt").dialog({
+		autoOpen:false, 
+		width:750,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 				
+				text:"Add",
+				click: function(){
+					if(typeof uploadSampleLayout == 'function')
+					uploadSampleLayout();
+				}
+			},
+			{ 
+				text: "Cancel",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$("#ParameterList table tr:gt(0)").remove();
+			$(this).find("form")[0].reset();
+		}
+	});	
+
+	$("#new_add_param").button().click(function(){
+		if(typeof addParameter == "function"){
+			addParameter();
+		}
+	});
+	getPageData();	
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+function getParamList(){
+	var objParamList=postback(actionFile, "type=PARAMLIST&outtype=xml", "POST", "XML");	
+	paramXML			=	parseXMLdoc(objParamList);
+	qanParamIds			=	new Array();
+	qanParamList		=	new Array();
+	$(paramXML).find("row").each(function(index, element) {
+        qanParamIds.push(element.childNodes[0].firstChild.nodeValue);
+        qanParamList.push(element.childNodes[1].firstChild.nodeValue);
+    });
+}
+
+function getParamDetail(obj){
+	paramid			=	$(obj).val();
+	rowNo			= 	$(obj).attr('id').substring(6);
+	var objParList	=	postback(actionFile, "type=PARAMDETAIL&paramid="+paramid+"&outtype=xml", "POST", "XML");
+	paramXML		=	parseXMLdoc(objParList);
+	rowXML			=	paramXML.getElementsByTagName("row");	
+	$("#uom_"+rowNo).html($(rowXML).find("paramUOM").text());
+	$("#tm_"+rowNo).html($(rowXML).find("paramTestMethod").text());
+}
+
+
+function addParameter(){
+	paramList	=	$("#ParameterList");
+	tableRow	=	"<tr id='ermparam_"+paramNo+"'>" +
+						'<td>' + qanParamList.toSelectWithValue(qanParamIds, "param_"+paramNo, "param_"+paramNo, "", "width:100%", "", "onchange='getParamDetail(this);'", true) + '</td>' +
+						'<td id="uom_'+paramNo+'"></td>' +
+						'<td id="tm_'+paramNo+'"></td>' +
+						'<td><input type="text" id="spec_'+paramNo+'" class="invisible_text" value="0.00" onkeydown="numbersOnly(event)" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" style="text-align:right;width:90%" /></td>' +
+						'<td><input type="text" id="ll_'+paramNo+'" class="invisible_text" value="0.00" onkeydown="numbersOnly(event)" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" style="text-align:right;width:90%" /></td>' +
+						'<td><input type="text" id="ul_'+paramNo+'" class="invisible_text" value="0.00" onkeydown="numbersOnly(event)" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" style="text-align:right;width:90%" /></td>' +
+						"<td><div id='drmparam_"+paramNo+"' class='removebtn' /></td>" +
+					"</tr>";
+	paramList.find("table tr:last").after(tableRow);
+	eval("$(\"#drmparam_"+paramNo+"\").click(function(){ $(\"#ermparam_"+paramNo+"\").remove(); updateParamTable() });");
+	updateParamTable();
+	paramNo++;
+}
+
+function updateParamTable(){
+	paramTR	=	$("#ParameterList table tr");
+	for(ptr=1; ptr<paramTR.length; ptr++){
+		tabClass	=	(ptr%2)?'content_rows_light':'content_rows_dark';
+		$(paramTR[ptr]).removeClass().addClass(tabClass);
+	}
+}
+
+function listAllParameters(no){
+	paramList		=	$("#ParameterList");
+	param			=	"type=DIMLIST&rfqid=" + no;
+	//alert(param);
+	paramData		=	postback(actionFile, param, "POST", "XML");
+	//alert(paramData);
+	paramXML		=	parseXMLdoc(paramData);
+	rowXML			=	paramXML.getElementsByTagName("row");
+	
+	for(rx=0; rx<rowXML.length; rx++){
+		row			=	rowXML[rx].childNodes;
+		paramArray	=	new Array();
+		for(rxa=0; rxa<row.length; rxa++){
+			paramArray[row[rxa].nodeName]	=	(row[rxa].firstChild)?row[rxa].firstChild.nodeValue:"";
+		}
+		tabClass	=	((rx+1)%2)?'content_rows_light':'content_rows_dark';
+		tableRow	=	"<tr class='"+tabClass+"' id='ermparam_"+paramNo+"'>" +
+							'<td>' + qanParamList.toSelectWithValue(qanParamIds, "param_"+paramNo, "param_"+paramNo, paramArray['dimRef'], "width:100%", "", "onchange='getParamDetail(this);'", true) + '</td>' +							
+							'<td id="uom_'+paramNo+'">'+paramArray['uom_short_name']+'</td>' +
+							'<td id="tm_'+paramNo+'">'+paramArray['paramTestMethod']+'</td>' +
+							'<td><input type="text" id="spec_'+paramNo+'" value="' + paramArray['dimSpec'] + '" class="' + ((paramArray['dimSpec']=='0.00')?"invisible_text":"normal_text") + '" style="width:90%;text-align:right"  onkeydown="numbersOnly(event)" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" /></td>' +
+							'<td><input type="text" id="ll_'+paramNo+'" value="' + paramArray['dimLLimit'] + '" class="' + ((paramArray['dimLLimit']=='0.00')?"invisible_text":"normal_text") + '" style="width:90%;text-align:right"  onkeydown="numbersOnly(event)" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" /></td>' +
+							'<td><input type="text" id="ul_'+paramNo+'" value="' + paramArray['dimULimit'] + '" class="' + ((paramArray['dimULimit']=='0.00')?"invisible_text":"normal_text") + '" style="width:90%;text-align:right"  onkeydown="numbersOnly(event)" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" /></td>' +
+							"<td><div id='drmparam_"+paramNo+"' class='removebtn' /></td>" +
+						"</tr>";
+		paramList.find("table tr:last").after(tableRow);
+		eval("$(\"#drmparam_"+paramNo+"\").click(function(){ $(\"#ermparam_"+paramNo+"\").remove(); updateParamTable() });");
+		paramNo++;
+	}
+	updateParamTable();
+}
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=SAMPLELIST","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+	getParamList();
+}
+
+function updatePageBehaviour(){
+	
+	$(".layout_insp_button").click(function(e) {
+		rfqId	=	$(this).attr('rfqid');
+		$("#layout_insp_receipt").dialog('open');
+		$("#layout_insp_receipt").attr("planid",$(this).attr('planid'));
+		$("#layout_insp_receipt").attr("rfqid",rfqId);
+		$("#partnum").html($(this).attr('partnum'));
+		$("#partdesc").html($(this).attr('partdesc'));
+		listAllParameters(rfqId);
+    });
+		
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+
+}
+
+function uploadSampleLayout(){
+	newError		=	$("#raise_error");
+	rfqId			=	$("#layout_insp_receipt").attr("rfqid");
+	planId			=	$("#layout_insp_receipt").attr("planid");
+	param			=	"type=ADDDIMS&rfqid=" + rfqId + "&planid=" + planId ;
+	paramTR			=	$("#ParameterList table tr:gt(0)");	
+	if(paramTR.length > 1)
+	{
+		// Get Paramter List
+		for(ptr=0; ptr<paramTR.length; ptr++){
+			parameter = $(paramTR[ptr]).find("td:eq(0) select");
+			if(parameter.val() != null && parameter.val() != ""){
+				spec	=	$(paramTR[ptr]).find("td:eq(3) input[type=text]");
+				ulimit	=	$(paramTR[ptr]).find("td:eq(5) input[type=text]");
+				llimit	=	$(paramTR[ptr]).find("td:eq(4) input[type=text]");
+				if(spec.val().toNumber() >= llimit.val().toNumber() && spec.val().toNumber() <= ulimit.val().toNumber()) {
+					param += 	"&param["+ptr+"][pname]=" + parameter.val() +
+								"&param["+ptr+"][pspec]=" + spec.val() +
+								"&param["+ptr+"][pul]=" + ulimit.val() +
+								"&param["+ptr+"][pll]=" + llimit.val();
+				}
+				else
+				{			
+					displayError(newError, "error", "<strong>Error !</strong> - Please check the values provided for the Parameter.");
+					spec.focus();
+					return false;			
+				}
+			}
+			else
+			{
+				displayError(newError, "error", "<strong>Error !</strong> - Please select a Parameter.");
+				parameter.focus();
+				return false;		
+			}
+		}
+	}
+	else
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please select minimum two Parameter(s).");
+		return false;	
+	}
+
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Create the Sample Layout Inspection Report?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+												title:'Upload SLIR',
+												width:450,
+												height:'auto',
+												resizable:false,
+												modal:true,
+												buttons:{
+													'Ok':function(){
+														$(this).dialog('close');
+														//alert(param); return false;
+														XMLContent			=	postback(actionFile, param, "POST", "XML");
+														//alert(XMLContent); //return false;
+														printData		=	$(XMLContent);
+														error			=	printData.find("status").html();
+														if(error == "success"){
+															$("#layout_insp_receipt").dialog("close");														
+															alert("Sample Layout Inspection report has been created successfully for :" + $("#partnum").html());
+															openInvoice({invID:rfqId});
+															getPageData();
+														}
+														else{
+															displayError(newError, "error", error);
+														}			
+													}, 
+													'Cancel':function(){
+														$(this).dialog('close');
+													}
+												},
+												close:function(){
+													$(this).html('').dialog('destroy');
+												}
+											});
+}
+
+

@@ -1,0 +1,201 @@
+<?php
+	session_start();
+	header("Content-Type: text/xml");
+	$issMemCache = array();
+	switch($_REQUEST["type"]){
+		case 'GETMOULD':
+			$planDate	=	$_REQUEST['plandate'];
+			$operator	=	$_REQUEST['operator'];
+			$sql		=	"select timp.cmpdCpdId
+								from tbl_moulding_plan tm
+									INNER JOIN tbl_invoice_mould_plan timp ON timp.planid = tm.planid 
+									INNER JOIN tbl_polymer_order tpo ON tpo.polyName = timp.cmpdPolymer
+								WHERE tm.status = 1 AND tm.planDate = '$planDate' and tm.operator =  '$operator' 
+								GROUP BY timp.cmpdCpdId ORDER BY tpo.dispOrder ASC";
+			$outputarr	=  @getMySQLData($sql);
+			
+			if($outputarr['count'] != null && $outputarr['count'] != "" && $outputarr['count'] > 0 ){ 
+				  
+				$cpdId = array();
+				$cn = 0;
+				foreach($outputarr['data'] as $cpd){
+					if(!in_array($cpd['cmpdCpdId'],$cpdId)){
+						array_push($cpdId,$cpd['cmpdCpdId']);
+						$_SESSION['cpdidtemp'][$cn] = $cpd['cmpdCpdId'];	
+					}
+					$cn += 1;
+				}
+				$_SESSION['countid'] = count($cpdId);
+				//issue Memory
+				$getquery = "SELECT * FROM `tbl_compound_issue_memory`";
+
+				$getissuememory = @getMySQLData($getquery);
+				$issueCount = $getissuememory['count'];
+
+				for($is=0 ; $is<=$issueCount ; $is++){
+					$temp = $getissuememory['data'][$is]['cpdid'];
+					//echo $temp;	
+					$_SESSION['issueMemory'][$temp] = $getissuememory['data'][$is]['issueqty']; 
+					 
+					$_SESSION[$temp]['batche'] = $getissuememory['data'][$is]['batches'];
+					//echo $_SESSION['issueMemory']['".$temp."'];
+				}
+			
+				$data 		= "";					
+				if( ($outputarr['errno'] == 0)&&($outputarr['count'] > 0) ){
+					foreach($cpdId as $cpd){
+						$cpdname_sql 	=	@getMySQLData("select cpdName from tbl_compound where cpdId='$cpd'");
+						$cpdName 		=	$cpdname_sql['data'][0]['cpdName']; 
+						$cpdstock_sql 	=	@getMySQLData("select ifnull(sum(recvQty - issuedQty),0) as avlQty from tbl_component_cpd_recv  WHERE status = 1 and (recvQty - issuedQty) > 0 and cpdId='$cpd'");
+						$avlQty			=	$cpdstock_sql['data'][0]['avlQty'];
+						$tot_cpdqty		= 	0;
+						
+						if($_SESSION['issueMemory'][$cpd]){
+							$issMem = $_SESSION['issueMemory'][$cpd];
+							$batchVal = $_SESSION[$cpd]['batche'];
+							$_SESSION['issueMemory'][$cpd] = '';
+							$_SESSION[$cpd]['batche'] = '';
+						}
+						else{
+							$issMem = 0;
+							$batchVal = '';
+						}
+
+						$data			.=	"<row>";
+						$data			.=	"<cpdId>".$cpd."</cpdId>";
+						$data			.=	"<avlQty>".$avlQty."</avlQty>";
+						$data			.=	"<issQty>".$issMem."</issQty>";
+						$data			.=	"<batch>".$batchVal."</batch>";
+						$data			.=	"<row>";
+						$pSQL    		=   "select tm.planid,timp.cmpdname,timp.cmpdrefno,tm.liftplanned,timp.no_of_active_cavities,timp.cmpdBlankWgt,DATE_FORMAT(tm.planDate, '%d-%b-%Y') as plandate
+											from tbl_moulding_plan tm
+											INNER JOIN tbl_invoice_mould_plan timp ON timp.planid = tm.planid 
+											WHERE tm.status = 1 AND timp.cmpdCpdId = '$cpd' AND tm.planDate = '$planDate' and tm.operator =  '$operator' ";
+						$sql_comp 		=	@getMySQLData($pSQL);
+						
+						$sno 			= 	1;	
+									
+						if( ($sql_comp['errno'] == 0)&&($sql_comp['count'] > 0) ){
+							foreach($sql_comp['data'] as $compound){
+								$noOfCavs 		= $compound['no_of_active_cavities'];									
+								$liftplanned  	= $compound['liftplanned'] ;
+								$blankWgt		= $compound['cmpdBlankWgt'];
+								$cpdQty			= ($noOfCavs * $liftplanned * $blankWgt)/1000;
+								$tot_cpdqty 	= $tot_cpdqty + $cpdQty;
+								$data		.=	"<planDetail>";
+								$data		.=	"<planid>".$compound['planid']."</planid>";
+								$data		.=	"<sno>".$sno."</sno>";
+								$data		.=	"<plandate>".$compound['plandate']."</plandate>";
+								$data		.=	"<cmpdname>".$compound['cmpdname']."</cmpdname>";										
+								$data		.=	"<cmpdrefno>".$compound['cmpdrefno']."</cmpdrefno>";
+								$data		.=	"<liftplanned>".$liftplanned."</liftplanned>";
+								$data		.=	"<no_of_active_cavities>".$noOfCavs."</no_of_active_cavities>";
+								$data		.=	"<cmpd_blank_wgt>".$blankWgt."</cmpd_blank_wgt>";
+								$data		.=	"</planDetail>";
+								$sno++;									
+							}
+						}
+
+						$data		.=	"</row>";
+						$data		.=	"<title>Compound Name</title>";
+						$data		.=	"<cpdName>".$cpdName."</cpdName>";
+						$data		.=	"<cpdTotWeight>".round($tot_cpdqty,3)."</cpdTotWeight>";
+						$data		.=	"</row>";
+						//}
+					}
+				}
+			}
+			$output	= "<xmldata><root><count>".$outputarr['count']."</count><data>".$data."</data><status>".$outputarr['status']."</status></root></xmldata>";
+			echo $output;
+		break;
+
+		case 'DELPLAN':
+			$cmpdid	=	$_REQUEST['cmpdid'];
+			$planqty=	$_REQUEST['planqty'];
+			
+			$res    =   @getMySQLData("update tbl_moulding_plan SET status = 0 WHERE planid='".$_REQUEST['keyid']."'");
+			if ($res['status'] == 'success')
+				$res    =   @getMySQLData("update tbl_moulding_receive SET status = 0 WHERE planRef='".$_REQUEST['keyid']."'");
+			echo $res['status'];
+		break;
+
+		case "GETBATCH":
+			$cpdid			=	$_REQUEST['cpdid'];				
+			$sql_stocklevel	=	"select sno, batId, (recvQty-issuedQty) as avlQty	
+									from tbl_component_cpd_recv 
+									where cpdId='".$cpdid."' and status>0 and (recvQty-issuedQty) > 0	order by batId" ;
+			$batData	=	getXML($sql_stocklevel,false);			
+			echo $batData;
+			exit();
+		break;	
+		
+		case 'SETMEMORY':
+			$setcpdid = $_REQUEST['cpdid'];
+			$setissueqty = $_REQUEST['issueqty'];
+			$batchxal = $_REQUEST['batche'];
+			$setuid = $_SESSION['userdetails']['userId'];
+			$setquery = "INSERT INTO `tbl_compound_issue_memory`(`cpdid`, `issueqty`, `issuedby`, `batches`) VALUES ('".$setcpdid."',".$setissueqty.",'".$setuid."','".$batchxal."')";
+			$setresult	= @getMySQLData($setquery);
+			if($setresult['status'] == 'success'){
+				echo 'success';
+			}
+			else{
+				echo "failed";
+			}
+		break;
+
+		case 'MOULDISS':
+			$cpdBatches		=	$_REQUEST['cpdbatches'];
+			$planDate		=	$_REQUEST['plandate'];
+			$operator		=	$_REQUEST['operator'];
+			if($operator == 'In-House')
+				$codeName  	=  "intMouldIss";
+			else
+				$codeName  	=   "mouldIss";			
+			$codeArray  	=   @getSettingsData($codeName);
+			$codeNo			=   @getRegisterNo($codeArray[0], $codeArray[1]);			
+			$batRefs		=	array();
+			$issQtys		=	array();
+			$batchCount		=	count($cpdBatches);
+			$sql_insert		=	" insert into tbl_moulding_issue (mdIssRef, issuedate,operator, batRef, qtyIss, rate, status,entryOn, entry_by) values  ";
+			$countBat		= 	0;
+			foreach($cpdBatches as $key => $value){
+				$cpdIDQuery			= 	@getMySQLData("select cpdId from tbl_component_cpd_recv where sno = '$key'");
+				$cpdRate			=	getCompoundCost($cpdIDQuery['data'][0]['cpdId']);			
+				array_push($batRefs,$key);
+				$issQtys[$key]		=	$value;									
+				$sql_insert			.=	" ( '$codeNo', now(), '$operator', '$key', '$value', '$cpdRate', '1', now(), '".$_SESSION['userdetails']['userId']."') ";
+				if($countBat < ($batchCount - 1)){
+					$sql_insert		.=	" , ";
+				}
+				$countBat++;
+			}					
+			$output			=	@getMySQLData($sql_insert);
+			if($output['status'] == 'success'){	
+				foreach($batRefs  as $batRef){
+					@getMySQLData("update tbl_component_cpd_recv set issuedQty= issuedQty + ".$issQtys[$batRef]." where sno='$batRef'");
+				}
+				$res = @getMySQLData("update tbl_moulding_plan tmp
+										inner join tbl_moulding_receive tmr on tmr.planRef =  tmp.planid 
+										set tmp.mdIssRef = '$codeNo', tmr.status='2', tmp.status='2'
+										where tmp.status = 1 and tmr.status = 1 and tmp.operator = '$operator' and tmp.planDate = '$planDate'");
+				@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='$codeName'");						
+
+
+				
+			
+			}else{
+				print_r($output);
+				exit();
+			}	
+			//clearing issue memory
+				$issMemCount = $_SESSION['countid'];
+				for( $cnt = 0 ; $cnt < $issMemCount ; $cnt++ ){
+				 	$issQuery = "DELETE FROM `tbl_compound_issue_memory` WHERE `cpdid` = '".$_SESSION['cpdidtemp'][$cnt]."'";
+				 	$issOutput			=	@getMySQLData($issQuery);
+					
+				}		
+			echo "success-".$codeNo;
+		break;
+	}			
+?>

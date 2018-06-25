@@ -1,0 +1,100 @@
+/* CSS Document */
+
+.ui-filters{
+	
+}
+
+.ui-filters .ui-filters-head{
+	
+}
+
+.ui-filters .ui-filters-icon{
+	background:url(../images/downArrow.png) right bottom no-repeat;
+}
+
+.ui-filters .ui-filters-pipe-icon{
+	background:#efefef url(../images/filter_icon_small.png) right top no-repeat;
+}
+
+.ui-filters .ui-filters-head .ui-filters-head-icon{
+	padding:2px 18px 3px 0px;
+	cursor:pointer;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window{
+	display:none;
+	position:absolute;
+	top:25px;
+	left:0px;
+	width:250px;
+	max-height:220px;
+	padding:5px 5px 5px 5px;
+	/*background:#278caa #268ba9;*/
+	background:#fff;
+	color:#000;
+	border:1px solid #cccccc;
+	overflow:hidden;
+	border-top:0px;
+	text-align:left;
+	-moz-border-radius: 0px 0px 8px 8px;
+	-webkit-border-radius: 0px 0px 8px 8px;
+	border-radius: 0px 0px 8px 8px;
+	box-shadow: 0px 0px 10px #ccc;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window .ui-filters-date-cover{
+	border:1px solid #efefef;
+	padding:5px;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window .ui-filters-date-cover table{
+	width:100%;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window .from,
+.ui-filters .ui-filters-head .ui-filters-window .to{
+	font-size:11px;
+	font-family:Verdana;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window label{
+	top:-2px;
+	width:200px;
+	height:13px;
+	overflow:hidden;
+	position:relative;
+	display:inline-block;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window .invisible_text,
+.ui-filters .ui-filters-head .ui-filters-window .normal_text{
+	width:98.5%;
+	font-size:11px;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window div{
+	padding:2px;
+	font-weight:normal;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window .ui-filters-options{
+	width:99.6%;
+	height:169px;
+	padding:0px;
+	overflow-y:auto;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window .ui-filters-options div{
+	background:none;
+	border-bottom:1px dashed #ccc;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window .ui-filters-options div:hover{
+	color:#fff;
+	background:#268ba9;
+	border-bottom:1px dashed #EFEFEF;
+}
+
+.ui-filters .ui-filters-head .ui-filters-window table{
+	margin:0px;
+}

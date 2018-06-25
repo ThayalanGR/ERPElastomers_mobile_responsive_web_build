@@ -1,0 +1,42 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+
+isSelectable	=	true;
+
+function updateData(){
+	ad_qty		=   0;
+	ordQtyTot	=	0;
+	valTot		=	0;
+	$("#content_body table tr").each(function(index, element) {
+        base_poly	=	($(this).find("td:eq(4)").html())?Number($(this).find("td:eq(4)").html().split(",").join("")):0;
+		ad_ty		=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+		vTot		=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().split(",").join("")):0;
+		ordQtyTot	=	ordQtyTot + (isNaN(base_poly) ?0 :base_poly);
+		ad_qty		=	ad_qty + (isNaN(ad_ty) ?0 :ad_ty);
+		valTot		=	valTot 	  + (isNaN(vTot) ?0 :vTot);
+    });
+	$("#base_qty_total").html(ordQtyTot.toCurrency(3));
+	$("#ad_qty_total").html(ad_qty.toCurrency(3));
+	$("#val_total").html(valTot.toCurrency(2));
+	
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('invid');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});
+}
+
+$(document).ready(function(){
+	objCompList		=	postback(actionFile, "", "POST", "XML");
+	listPageData($("#content_body"), objCompList, XSLFile);
+	updatePageBehaviour();
+});
+
+function updatePageBehaviour(){
+	$(".filter-table").filters({
+		onUpdate:updateData
+	});
+	
+	updateHeader();updateContent();
+	updateData();
+}

@@ -1,0 +1,91 @@
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+$(document).ready(function(){	
+	$("#sch_submit").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Upload the Component DC?</b></td></tr>' +
+					'</table>'
+		$('#confirm_dialog').html(confirmCont).dialog({
+			title:'Upload Component DC',
+			width:450,
+			height:'auto',
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					handleSchSubmit();					
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	 		
+	});
+});
+
+function handleSchSubmit(){
+	var filedata 	= 	document.getElementById("file");
+	formdata 		= 	false;
+	newError		=	$("#error_msg");
+	formdata 		= 	new FormData();
+    file 			= 	filedata.files[0];
+	operator		=	$("#operator").val();
+	if(operator == null || operator == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Location Missing.");
+		$("#operator").focus();
+		return false;
+	}  	
+	if(file)
+	{
+		if (formdata) {
+			formdata.append("file", file,file.name);
+			formdata.append("operator", operator);
+		}
+		
+		$("#sch_submit").attr("value","Loading, Please Wait...");
+		$("#sch_submit").attr("disabled","true");
+		// Set up the request.
+		var xhr = new XMLHttpRequest();
+
+		// Open the connection.
+		xhr.open('POST', actionFile, true);
+
+		// Set up a handler for when the request finishes.
+		xhr.onload = function () {
+			if (xhr.status === 200) {
+				// File(s) uploaded.
+				var printObj	=	xhr.response;
+				printData		=	$(printObj);
+				error			=	printData.find("status").html();
+				invid			=	printData.find("invid").html();
+				
+				if(error == "success"){
+					alert("Component DC :" + invid + " has been uploaded sucessfully");					
+					window.location.reload();
+				}
+				else{
+					displayError(newError, "error", printObj);
+					$("#sch_submit").attr("value","Upload");
+					$("#sch_submit").removeAttr("disabled");					
+				}			
+			} 
+			else {
+				displayError(newError, "error", "Unable to upload the file, Please retry again");
+				$("#sch_submit").attr("value","Upload");
+				$("#sch_submit").removeAttr("disabled");				
+			}
+		};
+		
+		// Send the Data.
+		xhr.send(formdata);
+	}
+	else
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please Select a File.");
+		$("#file").focus();	
+	}
+}

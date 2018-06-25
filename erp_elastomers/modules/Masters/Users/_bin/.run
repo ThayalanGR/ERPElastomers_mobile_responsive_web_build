@@ -1,0 +1,928 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+
+compoundList	=	new Array();
+compoundIds		=	new Array();
+menuHeadList	=	new Array();
+menuSubList		=	new Array();
+appCpd			=	new Array();
+isMoulding		=	false;
+isTrimming		=	false;
+selHead			=	new Array();
+selSub			=	new Array();
+
+function getParamDataAndValidate(type)
+{
+	objData			=	[
+		// Object ID's
+		[
+			['OptName', 'OptDesign', 'OptAdd1', 'OptAdd2', 'OptAdd3', 'OptPhone', 'OptMob', 'OptEml','Password'],
+			['BankName', 'AccNo', 'IFSCCode', 'PANNo'],
+			['OperatorDetails'],
+			['OperatorAccess'],
+			['AppUser', 'AppDate', 'Remarks']
+		],
+		// Object Default Values
+		[
+			['', '', '', '', '', '', '', '', ''],
+			['', '', '', ''],
+			[''],
+			[''],
+			['', 'DD/MM/YYYY', '']
+		],
+		// Object POST Variable
+		[
+			['optname', 'optdesign', 'optadd1', 'optadd2', 'optadd3', 'optph', 'optmob', 'opteml', 'optpass'],
+			['optbank', 'optacc', 'optifsc', 'optpan'],
+			['optdtls'],
+			['optaccess'],
+			['optappuser', 'optappdate', 'optremarks']
+		],
+		// Object Error Name
+		[
+			['Operator Name', 'Designation', 'Address', 'Address',
+			 'Address', 'Phone', 'Mobile', 'Email', 'Password'],
+			['Bank Name', 'Account No.', 'IFSC Code', 'PAN No.'],
+			['Operator Details'],
+			['Operator Access'],
+			['Approved User', 'Approved Date', 'Remarks']
+		],
+		// Object Mandatory
+		[
+			[true, false, false, false, false, false, true, false,false],
+			[false, false, false, false],
+			[false],
+			[true],
+			[false, false, false]
+		]
+	];
+	
+	paramVal = "";
+	errObj		=	$('#'+type+'_item_error');
+	accordionObj	=	$("#"+type+"_item_accord");
+	
+	if(objData.length > 0 && objData[0].length > 0){
+		for(o=0; o<objData[0].length; o++){
+			for(j=0; j<objData[0][o].length; j++){
+				object	=	$("#" + type + "_" + objData[0][o][j]);
+				switch(objData[0][o][j]){
+					case 'OperatorDetails':
+						if(isMoulding || isTrimming){
+							if(appCpd.length <= 0){
+								displayError(errObj, "error", "<strong>Error !</strong> - " + objData[3][o][j] + " Missing.");
+								if(accordionObj.accordion("option", "active") != o)
+								accordionObj.accordion("option", "active", o);
+								return false;
+							}
+							for(ac=0; ac<appCpd.length; ac++){
+								cpdName			=	$("#CpdName_"+appCpd[ac]);
+								cpdMouldRate	=	$("#CpdMouldRate_"+appCpd[ac]);
+								cpdTrimRate		=	$("#CpdTrimRate_"+appCpd[ac]);
+								
+								if(cpdName.val() == null || cpdName.val() == ""){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid Component at Row " + (ac+1) + ".");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									throw cpdName;
+								}								
+								else if(isMoulding == true && (cpdMouldRate.val() == null || cpdMouldRate.val() == "" || isNaN(Number(cpdMouldRate.val())) || Number(cpdMouldRate.val()) <= 0)){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid Moulding Rate at Row " + (ac+1) + ".");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									cpdMouldRate.val('0.00');
+									throw cpdMouldRate;
+								}
+								else if(isTrimming == true && (cpdTrimRate.val() == null || cpdTrimRate.val() == "" || isNaN(Number(cpdTrimRate.val())) || Number(cpdTrimRate.val()) <= 0)){
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid Trimming Rate at Row " + (ac+1) + ".");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									cpdTrimRate.val('0.00');
+									throw cpdTrimRate;
+								}								
+								compId		=	"";
+								for(sl=0; sl<compoundList.length; sl++){
+									if(compoundList[sl] == cpdName.val()){
+										compId		= 	compoundIds[sl];										
+									}
+								}
+								if(compId != null && compId != "")
+								{
+									paramVal	+=	"&" + objData[2][o][j] + "[cpd][]=" + compId +
+													"&" + objData[2][o][j] + "[mould][]=" + ((isMoulding)?cpdMouldRate.val():0) + 
+													"&" + objData[2][o][j] + "[trim][]=" + ((isTrimming)?cpdTrimRate.val():0);
+								}
+								else
+								{
+									displayError(errObj, "error", "<strong>Error !</strong> - Invalid Component Name at Row " + (ac+1) + ".");
+									if(accordionObj.accordion("option", "active") != o)
+										accordionObj.accordion("option", "active", o);
+									throw cpdName;									
+								}								
+							}
+						}
+					break;
+					case 'OperatorAccess':
+						paramVal	+=	"&" + objData[2][o][j] + "[head]=" + selHead.join(",") +
+										"&" + objData[2][o][j] + "[sub]=" + selSub.join(",");
+					break;
+					default:				
+						if(objData[4][o][j] && (object.val() == null || object.val() == "" || object.val() == objData[1][o][j]))
+						{	
+							displayError(errObj, "error", "<strong>Error !</strong> - " + objData[3][o][j] + " Missing.");
+							if(accordionObj.accordion("option", "active") != o)
+								accordionObj.accordion("option", "active", o );
+							throw object;
+						}
+						else
+						{	
+							if(object.val() != "" && object.val() != objData[1][o][j]){
+								value	=	object.val();
+								switch(objData[0][o][j]){
+									case 'OptEml':
+										if(!emailCheck(object.val())){
+											displayError(errObj, "error", "<strong>Error !</strong> - Invalid Email Format.");
+											if(accordionObj.accordion("option", "active") != o)
+												accordionObj.accordion("option", "active", o);
+											throw object;
+										}
+									break;
+									case 'AppDate':
+										value	=	value.split('/');
+										value	=	value[2] + '-' +  value[1] + '-' +  value[0];
+									break;
+									case 'PANNo':
+										if(object.val().length != 10){
+											displayError(errObj, "error", "<strong>Error !</strong> - Invalid " + objData[3][o][j] + ".");
+											if(accordionObj.accordion("option", "active") != o)
+											accordionObj.accordion("option", "active", o);
+											object.focus();
+											return false;
+										}
+									break;
+								}
+								paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+							}
+							else{
+								value		=	object.val();
+								paramVal	+=	"&" + objData[2][o][j] + "=" + value;
+							}					
+						}
+					break;
+				}
+			}
+		}
+	}
+	return paramVal;
+}
+
+
+function getPageData(){
+	XMLContent		=	postback(actionFile,"selecttype=CUSVIEW&outtype=xml","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+	$(".editBtn").click(function(e) {
+		$idno	=	$(this).attr("uid");
+		editForm($idno);
+    });
+	
+	$(".delBtn").click(function(e) {
+		$idno	=	$(this).attr("uid");
+		deleteForm($idno);
+    });
+	
+	updateHeader();updateContent();
+}
+
+function getCompoundAutoList(){
+	var getCPDList			=	postback(actionFile,"selecttype=USERCPDATLIST&outtype=xml","POST","XML");
+	supXML					=	parseXMLdoc(getCPDList);
+	rowXML					=	supXML.getElementsByTagName("row");
+	for(sl=0; sl<rowXML.length; sl++){
+		compoundList[sl]	=	rowXML[sl].childNodes[2].firstChild.nodeValue + " - " + rowXML[sl].childNodes[1].firstChild.nodeValue;
+		compoundIds[sl]		=	rowXML[sl].childNodes[0].firstChild.nodeValue;
+	}
+}
+
+function getMenuList(type){
+	var ObjMenuList		=	postback(actionFile,"selecttype=MODLIST&outtype=xml","POST","XML");
+	supXML				=	parseXMLdoc(ObjMenuList);
+	
+	// Get XML Data
+	rowXML				=	supXML.getElementsByTagName("row");
+	rowHeadXML			=	supXML.getElementsByTagName("modhead")[0].getElementsByTagName("row");
+	rowSubXML			=	supXML.getElementsByTagName("modsub")[0].getElementsByTagName("row");
+	
+	// Get 
+	for(rh=0; rh<rowHeadXML.length; rh++){
+		menuHeadList[rh]	=	{
+			id		:	rowHeadXML[rh].childNodes[0].firstChild.nodeValue,
+			name	:	rowHeadXML[rh].childNodes[1].firstChild.nodeValue
+		}
+		if(rowHeadXML[rh].childNodes[1].firstChild.nodeValue != null &&
+		   rowHeadXML[rh].childNodes[1].firstChild.nodeValue !=""){
+			subMenu		=	new Array();
+			for(rs=0; rs<rowSubXML.length; rs++){
+				if(rowSubXML[rs].childNodes[1].firstChild.nodeValue	==	rowHeadXML[rh].childNodes[1].firstChild.nodeValue){
+					if(rowSubXML[rs].childNodes[2].firstChild.nodeValue != "-")
+					subMenu[subMenu.length]		=	{
+						id		:	rowSubXML[rs].childNodes[0].firstChild.nodeValue,
+						name	:	rowSubXML[rs].childNodes[2].firstChild.nodeValue
+					};
+				}
+			}
+			menuSubList[rowHeadXML[rh].childNodes[1].firstChild.nodeValue]	=	subMenu;
+		}
+	}
+	
+	constructMenuList(type);
+}
+
+function constructMenuList(type){
+	type		=	(type)?type:'new';
+	thisObject	=	"#" + type + "_OptAccess";
+	thisMenus	=	[];
+	bigMenu		=	0;
+	selHead		=	[];
+	selSub		=	[];
+	mnuLst		=	'<table border="0" cellspacing="0" cellpadding="0" class="user_access">';
+	
+	// Get Menu Data
+	mnuHeader		=	'';
+	for(mh=0; mh<menuHeadList.length; mh++){
+		mnuHeader	+=	'<th align="left" style="padding:2px;">' +
+							'<table border=0 cellspacing=0 cellpadding=2 style="width:100%;width:180px;">' +
+								'<tr>' +
+									'<td style="width:25px" valign="top">' +
+										'<input type="checkbox" value="'+menuHeadList[mh].id+'" id="'+type+'_head_'+menuHeadList[mh].id+'" onchange="MasterSelect(\''+type+'\', \''+type+'_head_'+menuHeadList[mh].id+'\', \''+menuHeadList[mh].name+'\')">' +
+									'</td>' +
+									'<td style="text-align:left;padding-top:5px;" valign="top" onclick="CheckBox(\''+type+'_head_'+menuHeadList[mh].id+'\')">' +
+										menuHeadList[mh].name.toUpperCase() +
+									'</td>' +
+								'</tr>' +
+							'</table>' +
+						'</th>';
+		thisMenus.push(menuHeadList[mh].name);
+		
+		bigMenu		=	(bigMenu > menuSubList[menuHeadList[mh].name].length)?bigMenu:menuSubList[menuHeadList[mh].name].length;
+	}
+	mnuLst		+=	'<thead id="'+type+'_oamenu_head">' +
+						'<tr style="border-bottom:1px solid black;cursor:pointer">' +
+							mnuHeader +
+						'<tr>' +
+					'</thead>';
+	
+	
+	// Get Sub Menu Data
+	mnuLst		+=	'<tbody id="'+type+'_oamenu_sub">';
+	for(bm=0; bm<bigMenu; bm++){
+		tabClass	=	(bm%2)?'content_rows_light':'content_rows_dark';
+		tSubMenu	=	'<tr>';
+		for(tm=0; tm<thisMenus.length; tm++){
+			tSubMenu	+=	'<td class="' + tabClass + '" style="padding:2px;">' + (
+								(menuSubList[thisMenus[tm]][bm])
+									?'<table border=0 cellspacing=0 cellpadding=2 style="width:100%;width:180px;">' +
+										'<tr>' +
+											'<td style="width:25px" valign="top">' +
+												'<input type="checkbox" disabled value="'+menuSubList[thisMenus[tm]][bm].id+'" id="'+type+'_sub_'+thisMenus[tm]+'_'+menuSubList[thisMenus[tm]][bm].id+'">' +
+											'</td>' +
+											'<td style="text-align:left;padding-top:5px;" valign="top" onclick="CheckBox(\''+type+'_sub_'+thisMenus[tm]+'_'+menuSubList[thisMenus[tm]][bm].id+'\')">' +
+												menuSubList[thisMenus[tm]][bm].name +
+											'</td>' + 
+										'</tr>' +
+									 '</table>'
+									:'&nbsp;'
+							) + '</td>' ;
+		}
+		tSubMenu	+=	'</tr>';
+		mnuLst	+=	tSubMenu;
+	}
+	mnuLst		+=	'</tbody>';
+	
+	mnuLst		+=	'</table>';
+	$(thisObject).html(mnuLst);
+}
+
+function MasterSelect(type, id, name){
+	
+	type		=	(type)?type:'new';
+	menuHead	=	$("#" + id).attr("checked");
+	menuVal		=	$("#" + id).val();
+
+	if(menuHead){
+		if(!selHead.inArray(menuVal)){
+			selHead.push(menuVal);
+		}
+	}
+	else{
+		if(selHead.inArray(menuVal)){
+			selHead.splice(selHead.inArrayNo(menuVal), 1);
+		}
+	}
+	
+	selHead.toAsc();
+	
+	if(name != null && name != "" && typeof menuSubList[name] == 'object'){
+		for(msl=0; msl<menuSubList[name].length; msl++){
+			CheckBox(type+"_sub_"+name+"_"+menuSubList[name][msl].id, "sub", menuHead);
+		}
+	}
+}
+
+function CheckBox(id, type, dval){
+	chkId	=	$("#" + id);
+	type	=	(type)?type:'sub';
+	if(chkId){
+		chkVal	=	chkId.val();
+		chkOP	=	(dval != null && dval != "")
+						?dval
+						:(chkId.attr('checked'))
+							?false
+							:true;
+		
+		chkOnCnge	=	chkId.attr("onchange");
+		chkId.attr('checked', chkOP);
+		if(typeof chkOnCnge == 'function')
+		chkOnCnge();
+		
+		switch(type){
+			case 'head':
+				if(chkOP){
+					if(!selHead.inArray(chkVal)){
+						selHead.push(chkVal);
+					}
+				}
+				else{
+					if(selHead.inArray(chkVal)){
+						selHead.splice(selHead.inArrayNo(chkVal), 1);
+					}
+				}
+				
+				selHead.toAsc();				
+			break;
+			case 'sub':
+				if(chkOP){
+					if(!selSub.inArray(chkVal)){
+						selSub.push(chkVal);
+					}
+				}
+				else{
+					if(selSub.inArray(chkVal)){
+						selSub.splice(selSub.inArrayNo(chkVal), 1);
+					}
+				}
+				
+				selSub.toAsc();				
+			break;
+		}
+		return chkOP;
+	}
+	return false;
+}
+
+function removeComponent(cpd){
+	if(cpd != null && cpd != ""){
+		for(ad=0; ad<appCpd.length; ad++){
+			if(appCpd[ad] == cpd){
+				appCpd.splice(ad, 1);
+				break;
+			}			
+		}
+		
+		for(ad=0; ad<appCpd.length; ad++){
+			tabClass	=	(ad%2)?'content_rows_light':'content_rows_dark';
+			$("#nCpdDtls_" + appCpd[ad]).removeClass().addClass(tabClass);
+		}
+	}
+}
+
+function clearAllCompounds(type){
+	for(ac=0; ac<appCpd.length; ac++){
+		if(type == 'edit')
+			$("#eCpdDtls_" + appCpd[ac]).remove();
+		else
+			$("#nCpdDtls_" + appCpd[ac]).remove();
+	}
+	appCpd		=	new Array();
+}
+
+function chkMouldingTrimming(type, val){
+	if(type != null &&  type != ""){
+		switch(type){
+			case 'moulding':
+				isMoulding	=	(val!=null)?val:isMoulding;
+			break;
+			case 'trimming':
+				isTrimming	=	(val!=null)?val:isTrimming;
+			break;
+		}
+		updateMouldingTrimming();
+	}
+}
+
+function updateMouldingTrimming(){
+	if(typeof appCpd == 'object' && appCpd.length > 0){
+		for(ac=0; ac<appCpd.length; ac++){
+			$("#CpdMouldRate_" + appCpd[ac]).attr('disabled', ((isMoulding)?false:true));
+			$("#CpdTrimRate_" + appCpd[ac]).attr('disabled', ((isTrimming)?false:true));
+		}
+	}
+}
+
+function openAccordion(obj, ev, type, no){
+	ev = ev || window.event;			// gets the event in ie or ns
+	kCode = ev.keyCode || ev.which;		// gets the keycode in ie or ns
+	if(ev != null && no != null && no > 0){
+		if(!ev.shiftKey && kCode == 9){
+			switch(type){
+				case 'new':
+					$("#new_item_accord").accordion("option", "active", no);
+				break;
+				case 'edit':
+					$("#edit_item_accord").accordion("option", "active", no);
+				break;
+			}
+		}
+	}
+}
+
+function getSubmitButton(fid){
+	if(fid != null){
+		fid			=	(typeof fid == "object")?fid:document.getElementById(fid);
+		if(fid){
+			nsib		=	fid.nextSibling;
+			if(nsib){
+				buttons		=	nsib.getElementsByTagName("button");
+				if(buttons.length > 0){
+					buttons[0].click();
+				}
+			}
+		}
+	}
+}
+
+function editForm(no){
+	$("#edit_item_form").css('visibility', 'visible');
+	$("#edit_item_form").dialog("open");
+	EditNo		=	(no)?no:null;
+	
+	if(typeof setEditFunc == "function")
+	setEditFunc();
+}
+
+function deleteForm(no){
+	$("#del_item_form").css('visibility', 'visible');
+	$("#del_item_form").dialog("open");
+	DeleteNo	=	(no)?no:null;
+}
+
+function addItemFunc(){
+	newError		=	$('#new_item_error');
+	newAccordion	=	$("#new_item_accord");	
+	displayError(newError, "highlight", "<div class='loading' /> <strong>Adding Data to Server . . .</strong>");
+	param				=	"selecttype=" + "USERADD";
+	
+	// Get All Options
+	radioBtns	=	$("#new_item_form input:radio:checked");
+	for(ir=0; ir<radioBtns.length; ir++){
+		switch(radioBtns[ir].name){
+			case "new_OptType":
+				param	+=	"&opttype=" + radioBtns[ir].value;
+			break;
+			case "new_Moulding":
+				param	+=	"&optmould=" + radioBtns[ir].value;
+			break;
+			case "new_Trimming":
+				param	+=	"&opttrim=" + radioBtns[ir].value;
+			break;
+		}
+	}
+	
+	try{
+		param		+=	getParamDataAndValidate("new");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}	
+	//alert (param); return false;
+	XMLContent			=	postback(actionFile, param, "POST", "XML");
+	xmlData				=	parseXMLdoc(XMLContent);
+	error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+	if(error == "success"){
+		alert("User has been created....");
+		listPageData($("#content_body"),XMLContent, XSLFile);
+		$("#new_item_form").dialog("close");
+		updatePageBehaviour();
+	}
+	else{
+		displayError(newError, "error", error);
+	}
+}
+
+function setEditFunc(){
+	editError		=	$('#edit_item_error');
+	
+	if(EditNo != null && EditNo != ""){
+		xmlData		=	parseXMLdoc(XMLContent);
+		Rows		=	xmlData.getElementsByTagName("row");
+		EditData	=	new Array();
+		if(Rows.length > 0){
+			for(R=0; R<Rows.length; R++){
+				Obj		=	Rows[R];
+				Sno		=	Obj.childNodes[0].firstChild.nodeValue;
+				if(Sno == EditNo){
+					for(ER=0; ER<Obj.childNodes.length; ER++){
+						EditData[Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+					}
+					break;
+				}
+			}
+
+			if(EditData['usertype'] == 'Sub-Contractor')
+			$("#edit_item_accord #edit_OptTypeSubCont").attr("checked", true);
+			if(EditData['ismoulding'] == '0' || EditData['ismoulding'] == 0)
+			$("#edit_item_accord #edit_MouldNo").attr("checked", true);
+			if(EditData['istrimming'] == '0' || EditData['istrimming'] == 0)
+			$("#edit_item_accord #edit_TrimNo").attr("checked", true);
+			
+			isMoulding		=	(EditData['ismoulding'] == '0' || EditData['ismoulding'] == 0)?false:true;
+			isTrimming		=	(EditData['istrimming'] == '0' || EditData['istrimming'] == 0)?false:true;
+			
+			$('#edit_OptName').val(EditData['fullname']);
+			$('#edit_OptDesign').val(EditData['userdesignation']);
+			$('#edit_OptAdd1').val(EditData['useraddress1']);
+			$('#edit_OptAdd2').val(EditData['useraddress2']);
+			$('#edit_OptAdd3').val(EditData['useraddress3']);
+			$('#edit_OptPhone').val(EditData['userphone']);
+			$('#edit_OptMob').val(EditData['usermobile']);
+			$('#edit_OptEml').val(EditData['useremail']);
+			$('#edit_Password').val('');
+			$('#edit_BankName').val(EditData['userbank']);
+			$('#edit_AccNo').val(EditData['userbankacc']);
+			$('#edit_IFSCCode').val(EditData['userifscno']);
+			$('#edit_PANNo').val(EditData['userpan']);
+			$('#edit_Remarks').val(EditData['userremarks']);
+			$('#edit_AppUser').val(EditData['userapprovedby']);
+			$('#edit_AppDate').val(EditData['userapproveddate']);			
+			
+			$('#edit_item_accord').accordion("option", "active", 0);
+			$('#edit_OptName').focus();
+			
+			setEditCompoundList();
+			setEditAccess(EditData['userpermissions'], EditData['usersubpermissions']);
+		}
+	}
+}
+
+function setEditCompoundList(){
+	var getCPDList		=	postback(actionFile,"selecttype=USERCPDLIST&userid="+EditNo+"&outtype=xml","POST","XML");
+	supXML				=	parseXMLdoc(getCPDList);
+	Rows				=	supXML.getElementsByTagName("row");
+	appCpd				=	new Array();
+	EditCpdDtls			=	new Array();
+	timenow				=	(new Date()).getTime();
+	if(Rows.length > 0){
+		for(R=0; R<Rows.length; R++){
+			Obj					=	Rows[R];
+			EditCpdDtls[R]		=	new Array();
+			for(ER=0; ER<Obj.childNodes.length; ER++){
+				EditCpdDtls[R][Obj.childNodes[ER].tagName]	=	(Obj.childNodes[ER].firstChild)?Obj.childNodes[ER].firstChild.nodeValue:'';
+			}
+		}
+		
+		for(ECD=0; ECD<EditCpdDtls.length; ECD++){
+			tabClass	=	(ECD.length%2)?'content_rows_light':'content_rows_dark';
+			$("#edit_CpdDtls tr:last").after(
+				'<tr id="eCpdDtls_' + timenow + '" class="' + tabClass + '">' +
+					'<td>' +
+						'<input type="text" value="'+EditCpdDtls[ECD]['cmpdname']+" - "+EditCpdDtls[ECD]['cmpdrefno']+'" id="CpdName_' + timenow + '" style="width:95%" />' +
+					'</td>' +
+					'<td>' +
+						'<input type="text" id="CpdMouldRate_' + timenow + '" ' +
+							'style="width:95%" '+((isMoulding)?'':'disabled')+' ' +
+							'value="'+((Number(EditCpdDtls[ECD]['mouldingrate']) > 0)?EditCpdDtls[ECD]['mouldingrate']:'0.00')+'" ' +
+							((Number(EditCpdDtls[ECD]['mouldingrate']) > 0)?'':'class="invisible_text" ') +
+							'onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" />' +
+					'</td>' +
+					'<td>' +
+						'<input type="text" id="CpdTrimRate_' + timenow + '" ' +
+							'style="width:95%" '+((isTrimming)?'':'disabled')+' ' +
+							'value="'+((Number(EditCpdDtls[ECD]['trimmingrate']) > 0)?EditCpdDtls[ECD]['trimmingrate']:'0.00')+'" ' +
+							((Number(EditCpdDtls[ECD]['trimmingrate']) > 0)?'':'class="invisible_text" ') +
+							'onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" />' +
+					'</td>' +
+					'<td align="center">' +
+						'<div class="removebtn" id="dCpdDtls_' + timenow + '" /></td>' +
+					'</td>' +
+				'<tr>'
+			);
+			
+			$("#CpdName_" + timenow).focus();
+			$("#CpdName_" + timenow).autocomplete({source:compoundList});
+			eval("$(\"#dCpdDtls_"+timenow+"\").click(function(){ $(\"#eCpdDtls_"+timenow+"\").remove(); removeComponent("+timenow+") });");
+			appCpd.push(timenow);
+			timenow++;
+		}
+		updateMouldingTrimming();
+	}
+}
+
+function setEditAccess(hmenu, smenu){
+	hmenu		=	(hmenu)?hmenu.split(","):[];
+	smenu		=	(smenu)?smenu.split(","):[];
+	submenus	=	menuSubList.Keys();
+	
+	// Set Sub Menus
+	for(sm=0; sm<smenu.length; sm++){
+		for(sml=0; sml<submenus.length; sml++){
+			smnu		=	submenus[sml];
+			chkFinish	=	false;
+			if(menuSubList[smnu]){
+				for(msl=0; msl<menuSubList[smnu].length; msl++){
+					if(menuSubList[smnu][msl].id != null && Number(menuSubList[smnu][msl].id) == Number(smenu[sm])){
+						CheckBox("edit_sub_"+smnu+"_"+smenu[sm], 'sub', true);
+						chkFinish	=	true;
+						break;
+					}
+				}
+				if(chkFinish == true)
+				break;
+			}
+		}
+	}
+}
+
+function editItemFunc(){
+	editError		=	$('#edit_item_error');
+	editAccordion	=	$("#edit_item_accord");
+	
+	displayError(editError, "highlight", "<div class='loading' /> <strong>Adding Data to Server . . .</strong>");
+	param				=	"selecttype=" + "USEREDIT" +
+							"&userid=" + EditNo;
+	
+	// Get All Options
+	radioBtns	=	$("#edit_item_form input:radio:checked");
+	for(ir=0; ir<radioBtns.length; ir++){
+		switch(radioBtns[ir].name){
+			case "edit_OptType":
+				param	+=	"&opttype=" + radioBtns[ir].value;
+			break;
+			case "edit_Moulding":
+				param	+=	"&optmould=" + radioBtns[ir].value;
+			break;
+			case "edit_Trimming":
+				param	+=	"&opttrim=" + radioBtns[ir].value;
+			break;
+		}
+	}
+	
+	try{
+		param		+=	getParamDataAndValidate("edit");
+	}
+	catch (err)
+	{
+		err.focus();
+		return false;
+	}	
+	//alert(param); return false;
+	XMLContent			=	postback(actionFile, param, "POST", "XML");
+	xmlData				=	parseXMLdoc(XMLContent);
+	error				=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+	if(error == "success"){
+		alert("User has been updated....");
+		$("#content_body").html(xslTranform(XMLContent, XSLFile));
+		$("#edit_item_form").dialog("close");
+		updatePageBehaviour();
+	}
+	else{
+		displayError(editError, "error", error);
+	}
+}
+
+function delItemFunc(){
+	delError		=	$('#del_item_error');
+	if(DeleteNo != null && DeleteNo != ""){
+		displayError(delError, "highlight", "<div class='loading' /> <strong>Removing Data From Server . . .</strong>");
+		param			=	"selecttype=USERDEL" + "&userid=" + DeleteNo;
+		XMLContent		=	postback(actionFile, param, "POST", "XML");
+		xmlData			=	parseXMLdoc(XMLContent);
+		error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			$("#content_body").html(xslTranform(XMLContent, XSLFile));
+			$("#del_item_form").dialog("close");
+			updatePageBehaviour();
+		}
+		else{
+			displayError(delError, "error", error);
+			setTimeout(function(){
+				$("#del_item_form").dialog("close");
+			}, 2000);
+		}
+	}
+}
+
+function setObjFocus(ui)
+{
+	if ($(document.activeElement).attr("type") != "text" && $(document.activeElement).attr("type") != "select-one" && $(document.activeElement).attr("type") != "textarea"){
+		if($('input', ui.newContent.html()).length > 0)
+			$('#' + $('input', ui.newContent.html())[0].id).focus();
+		else if ($('textarea', ui.newContent.html()).length > 0)
+			$('#' + $('textarea', ui.newContent.html())[0].id).focus();
+		else if ($('select', ui.newContent.html()).length > 0)
+			$('#' + $('select', ui.newContent.html())[0].id).focus();
+	}  
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+	// Add Item Dialog
+	$("#new_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 850,
+		height:'auto',
+		buttons: [
+			{
+				text: "Add",
+				click: function(){
+					if(typeof addItemFunc == "function"){
+						addItemFunc();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Close",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		open: function(event, ui){
+			getMenuList();			
+			$("#new_item_form").css('visibility','visible');
+			$("#new_item_accord").accordion("option", "active", 0);
+			$("#new_item_form form")[0].reset();
+			$('#new_OptName').focus();
+		},
+		close: function(event, ui) {
+			$("#new_item_error").html("");
+			$("#new_item_error").css("display", "none");
+			clearAllCompounds('new');
+		} 
+	});
+	// Add Item Accordion
+	$("#new_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui);
+			$("#new_item_form").dialog({position:['center','center']});
+		}
+	});
+	$("#button_add").button().click(function(){
+		$("#new_item_form").dialog("open");
+	});
+	
+	$("#new_CpdBtn").button().click(function(){
+		timenow		=	new Date();
+		timenow		=	timenow.getTime();
+		
+		tabClass	=	(appCpd.length%2)?'content_rows_light':'content_rows_dark';
+		$("#new_CpdDtls tr:last").after(
+			'<tr id="nCpdDtls_' + timenow + '" class="' + tabClass + '">' +
+				'<td>' +
+					'<input type="text" id="CpdName_' + timenow + '" style="width:95%" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="CpdMouldRate_' + timenow + '" style="width:95%" '+((isMoulding)?'':'disabled')+' value="0.00" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="CpdTrimRate_' + timenow + '" style="width:95%" '+((isTrimming)?'':'disabled')+' value="0.00" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" />' +
+				'</td>' +
+				'<td align="center">' +
+					'<div class="removebtn" id="dCpdDtls_' + timenow + '" /></td>' +
+				'</td>' +
+			'<tr>'
+		);
+		
+		$("#CpdName_" + timenow).focus();
+		$("#CpdName_" + timenow).autocomplete({source:compoundList});
+		eval("$(\"#dCpdDtls_"+timenow+"\").click(function(){ $(\"#nCpdDtls_"+timenow+"\").remove(); removeComponent("+timenow+") });");
+		appCpd.push(timenow);
+		updateMouldingTrimming();
+	});
+	
+	// Edit Item Dialog
+	$("#edit_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 850,
+		height:'auto',
+		buttons: {
+			Update:function(){
+				$(this).css("default");
+				if(typeof editItemFunc == "function"){
+					editItemFunc();
+				}else{
+					$(this).dialog("close");
+				}
+			},
+			Close:function(){
+				$(this).dialog("close");
+			}
+		},
+		open: function(event, ui){
+			getMenuList('edit');
+		}, 
+		close: function(event, ui) {
+			clearAllCompounds('edit');
+			$("#edit_item_error").html("");
+			$("#edit_item_error").css("display", "none");
+		} 
+	});
+	// Add Item Accordion
+	$("#edit_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui);
+			$("#edit_item_form").dialog({position:['center','center']});
+		}
+	});
+	$("#edit_CpdBtn").button().click(function(){
+		timenow		=	new Date();
+		timenow		=	timenow.getTime();
+		
+		tabClass	=	(appCpd.length%2)?'content_rows_light':'content_rows_dark';
+		$("#edit_CpdDtls tr:last").after(
+			'<tr id="eCpdDtls_' + timenow + '" class="' + tabClass + '">' +
+				'<td>' +
+					'<input type="text" id="CpdName_' + timenow + '" style="width:95%" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="CpdMouldRate_' + timenow + '" style="width:95%" '+((isMoulding)?'':'disabled')+' value="0.00" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" />' +
+				'</td>' +
+				'<td>' +
+					'<input type="text" id="CpdTrimRate_' + timenow + '" style="width:95%" '+((isTrimming)?'':'disabled')+' value="0.00" class="invisible_text" onfocus="FieldHiddenValue(this, \'in\', \'0.00\')" onblur="FieldHiddenValue(this, \'out\', \'0.00\')" />' +
+				'</td>' +
+				'<td align="center">' +
+					'<div class="removebtn" id="dCpdDtls_' + timenow + '" /></td>' +
+				'</td>' +
+			'<tr>'
+		);
+		
+		$("#CpdName_" + timenow).focus();
+		$("#CpdName_" + timenow).autocomplete({source:compoundList});
+		eval("$(\"#dCpdDtls_"+timenow+"\").click(function(){ $(\"#eCpdDtls_"+timenow+"\").remove(); removeComponent("+timenow+") });");
+		appCpd.push(timenow);
+		updateMouldingTrimming();
+	});
+	
+	// Delete Item Dialog
+	$("#del_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 400,
+		buttons: [
+			{
+				text: "Yes",
+				click: function(){
+					if(typeof delItemFunc == "function"){
+						delItemFunc();
+					}else{
+						$(this).dialog("close");
+					}
+				}
+			},
+			{
+				text: "No",
+				click: function() { $(this).dialog("close"); }
+			}
+		],
+		close: function(event, ui) {
+			$("#del_item_error").html("");
+			$("#del_item_error").css("display", "none");
+		} 
+	});
+
+	getCompoundAutoList();
+	getPageData();
+});

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+		<table id="resultTable" class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="3%"  align="left">S.No.</th>
+					<th width="12%" align="left">Name</th>
+					<th width="5%"  align="right">Rec. Batches</th>
+					<th width="5%"  align="right">Hardness</th>
+					<th width="5%"  align="right">Spec</th>
+					<th width="5%"  align="right">Cp</th>
+					<th width="5%"  align="right">CpK</th>
+					<th width="5%"  align="right">Sp. Gravity</th>
+					<th width="5%"  align="right">Spec</th>
+					<th width="5%"  align="right">Cp</th>
+					<th width="5%"  align="right">CpK</th>					
+					<th width="5%"  align="right">TS2 </th>
+					<th width="5%"  align="right">Spec</th>
+					<th width="5%"  align="right">Cp</th>
+					<th width="5%"  align="right">CpK</th>
+					<th width="5%"  align="right">T90</th>
+					<th width="5%"  align="right">Spec</th>
+					<th width="5%"  align="right">Cp</th>					
+					<th align="right"  >CpK</th>
+				</tr>
+			</thead>
+			<tbody>
+          	<xsl:for-each select="xmldata/root/data/row">
+				<tr style="font-size:10px;">   
+				    <td align="left">
+						<xsl:value-of select="position()"/>
+				    </td>					
+					<td align="left">
+						<span>
+							<xsl:attribute name="cpdid"><xsl:value-of select="cpdid"/></xsl:attribute>
+							<xsl:attribute name="cpdname"><xsl:value-of select="cpdname"/></xsl:attribute>
+							<xsl:attribute name="class">view_button link</xsl:attribute> <xsl:value-of select="cpdname"/>
+						</span>					  
+					</td>
+					<td align="right">
+						<xsl:value-of select="totbatches"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(tothard,'##,##,##0')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(spechard,'##,##,##0')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(cphard,'##,##,##0.00')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(cpkhard,'##,##,##0.00')"/>
+					</td>					
+					<td align="right">
+						<xsl:value-of select="format-number(totsg,'##,##,##0')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(specsg,'##,##,##0.00')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(cpsg,'##,##,##0.00')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(cpksg,'##,##,##0.00')"/>
+					</td>										
+					<td align="right">
+						<xsl:value-of select="format-number(totts2,'##,##,##0')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(spects2,'##,##,##0')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(cpts2,'##,##,##0.00')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(cpkts2,'##,##,##0.00')"/>
+					</td>										
+					<td align="right">
+						<xsl:value-of select="format-number(tott90,'##,##,##0')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(spect90,'##,##,##0')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(cpt90,'##,##,##0.00')"/>
+					</td>
+					<td align="right">
+						<xsl:value-of select="format-number(cpkt90,'##,##,##0.00')"/>
+					</td>										
+                </tr>
+            </xsl:for-each>
+			</tbody>
+        </table>
+   </xsl:template>
+</xsl:stylesheet>

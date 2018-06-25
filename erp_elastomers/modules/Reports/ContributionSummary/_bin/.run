@@ -1,0 +1,273 @@
+tableFilters.col_0			=	"none";
+tableFilters.sort_config	=	{ sort_types:['none','string', 'us','us','us','us','us','us','us','us','us'] };
+tableFilters.col_operation	=	{ 
+								   id: ["val_total1","val_total2","val_total3","val_total4","val_total5","val_total6","val_total7","val_total8"], 
+								   col: [2,3,4,5,6,7,8,9],
+								   operation: ["sum","sum","sum","sum","sum","sum","sum","sum"],
+								   decimal_precision: [0,0,0,0,0,0,0,0]
+								};
+tableFilters.on_after_operation	=	formatTotals;
+var TF_01					=	null;
+var needRefresh				=	false;
+var	objCompList				=	null;
+
+function formatTotals()
+{
+	for( var count=1; count < 10; count++)
+	{
+		if(count == 9)
+		{
+			var contrib = 	tf_Id('val_total' + (count - 1)).innerHTML;
+			var sales	=	tf_Id('val_total' + (count - 2)).innerHTML;
+			tf_Id('val_total' + count).innerHTML	=	(Number(contrib.replace(/[^0-9\.]+/g,""))/Number(sales.replace(/[^0-9\.]+/g,""))) * 100;
+		}
+		tf_Id('val_total' + count).innerHTML 	= 	tf_Id('val_total' + count).innerHTML.toCurrency();			
+	}
+}
+
+$(document).ready(function(){
+	$("#submitPrint").click(function(e){
+		submitPrint('',XSLFile,true);
+		e.stopImmediatePropagation();
+	});	
+	
+	$(function() {
+
+		var options = { autoOpen: false ,
+						modal: true ,
+						position: ['center','center'],
+						draggable: true,
+						resizable: true,
+						width: 750,
+						height:600,
+						buttons: [
+							{
+								text: "Print",
+								click: function(){
+									submitPrint(this.id,XSLFile,true);
+								}
+							},
+							{
+								text: "Close",
+								click: function(){
+									$(this).dialog("close");
+								}
+							}
+						],
+						close: function(event, ui) {
+							$(this).css("display", "none");
+						}, 									
+						open: function(event, ui) {
+							$(this).css('visibility','visible');
+						}
+					};
+	    $([1, 2]).each(function() {
+			var num = this;
+			var dlg = $('#show_plan_form' + num)
+			  .dialog(options);
+	    });
+	});	
+	updatePageBehaviour();
+});
+
+function updatePageBehaviour(){
+	today 		= 	new Date();
+	endDate  	= 	new Date(today.getFullYear(), today.getMonth(), 0);
+	startDate 	= 	new Date(endDate.getFullYear(), endDate.getMonth(), 1);	
+	fromDate	=	startDate.getFullYear()+"-"+(startDate.getMonth()+1)+"-"+startDate.getDate();
+	toDate		=	endDate.getFullYear()+"-"+(endDate.getMonth()+1)+"-"+endDate.getDate();
+	if (getUrlParameter('type') == 'summaryreport1')
+	{
+		objCompList	=	postback(actionFile, "selecttype=GETTOP&fromdate="+fromDate+"&todate="+toDate+"&cusgrp="+$("#cust_group").val()+"&prodgroup="+$("#prod_group").val()+"&blankgroup="+$("#blank_group").val()+"&groupby=cusGroup&conToHTML=1", "POST", "XML");
+		submitPrint("","",false)
+	}	
+	else if (getUrlParameter('type') == 'summaryreport2')
+	{
+		objCompList	=	postback(actionFile, "selecttype=GETTOP&fromdate="+fromDate+"&todate="+toDate+"&cusgrp="+$("#cust_group").val()+"&prodgroup="+$("#prod_group").val()+"&blankgroup="+$("#blank_group").val()+"&groupby=cmpdProdGroup&conToHTML=1", "POST", "XML");
+		submitPrint("","",false)
+	}
+	else if (getUrlParameter('type') == 'summaryreport3')
+	{
+		objCompList	=	postback(actionFile, "selecttype=GETTOP&fromdate="+fromDate+"&todate="+toDate+"&cusgrp="+$("#cust_group").val()+"&prodgroup="+$("#prod_group").val()+"&blankgroup="+$("#blank_group").val()+"&groupby=blankWgtGroup&conToHTML=1", "POST", "XML");
+		submitPrint("","",false)
+	}
+	else
+	{
+		objCompList 	= postback(actionFile, "selecttype=GETTOP&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&cusgrp="+$("#cust_group").val()+"&prodgroup="+$("#prod_group").val()+"&blankgroup="+$("#blank_group").val()+"&groupby="+$("#group_by").val(), "POST","XML");
+		//alert(objCompList);
+		//$("#content_body").html(objCompList); return false;
+		listPageData($("#content_body"), objCompList, XSLFile);	
+		TF_01	=	setFilterGrid("resultTable",tableFilters);	
+		if(needRefresh)
+			TF_01.RefreshGrid();
+		else
+			needRefresh	=	true;
+	}
+		
+	$(".view_button").click(function(e){
+		prodgroup	=	$(this).attr('prodgroup');
+		blankgroup	=	$(this).attr('blankgroup');
+		cusgrp		=	$(this).attr('cusgroup');
+		step		=	$(this).attr('step');
+		compname	=	'';
+		if(cusgrp != null && cusgrp != ""){
+			getDetailList(cusgrp,prodgroup,blankgroup,compname,step);
+			e.stopImmediatePropagation();
+		}
+		else
+		{
+			getDetailList($("#cust_group").val(),$("#prod_group").val(),$("#blank_group").val(),compname,step);
+		}
+	});	
+}
+
+function getTotals(divRef,cusgrp,prodgroup,blankgroup,compname,step)
+{
+	tableData		=	"";
+	cpdQtyTot		=	0;
+	cpdQtyValTot	=	0;
+	liftsTot		=	0;
+	liftsValTot		=	0;
+	trimCostTot		=	0;
+	inspCostTot		=	0;
+	salesValTot		=	0;
+	contribValTot	=	0;
+	contribPerTot	=	0;
+	$("#" + divRef +" table tr").each(function(index, element) {
+		cqTot			=	($(this).find("td:eq(2)").html())?Number($(this).find("td:eq(2)").html().split(",").join("")):0;
+		cvTot			=	($(this).find("td:eq(3)").html())?Number($(this).find("td:eq(3)").html().split(",").join("")):0;
+		lfTot			=	($(this).find("td:eq(4)").html())?Number($(this).find("td:eq(4)").html().split(",").join("")):0;
+		lvTot			=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().split(",").join("")):0;
+		tcTot			=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().split(",").join("")):0;
+		icTot			=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().split(",").join("")):0;
+		svTot			=	($(this).find("td:eq(8)").html())?Number($(this).find("td:eq(8)").html().split(",").join("")):0;
+		cbvTot			=	($(this).find("td:eq(9)").html())?Number($(this).find("td:eq(9)").html().split(",").join("")):0;	
+	
+		cpdQtyTot		=	cpdQtyTot + (isNaN(cqTot) ?0 :cqTot);
+		cpdQtyValTot	=	cpdQtyValTot + (isNaN(cvTot) ?0 :cvTot);
+		liftsTot		=	liftsTot + (isNaN(lfTot) ?0 :lfTot);
+		liftsValTot		=	liftsValTot + (isNaN(lvTot) ?0 :lvTot);	
+		trimCostTot		=	trimCostTot + (isNaN(tcTot) ?0 :tcTot);
+		inspCostTot		=	inspCostTot + (isNaN(icTot) ?0 :icTot);
+		salesValTot		=	salesValTot + (isNaN(svTot) ?0 :svTot);
+		contribValTot	=	contribValTot + (isNaN(cbvTot) ?0 :cbvTot);	
+	}); 
+	
+	contribPerTot	=	((contribValTot > 0)?(contribValTot/salesValTot) * 100:0);
+	
+	if(divRef == "print_body")
+	{
+		$("#val_total11").html(cpdQtyTot.toCurrency());
+		$("#val_total21").html(cpdQtyValTot.toCurrency());	
+		$("#val_total31").html(liftsTot.toCurrency());
+		$("#val_total41").html(liftsValTot.toCurrency());	
+		$("#val_total51").html(trimCostTot.toCurrency());
+		$("#val_total61").html(inspCostTot.toCurrency());	
+		$("#val_total71").html(salesValTot.toCurrency());
+		$("#val_total81").html(contribValTot.toCurrency());
+		$("#val_total91").html(contribPerTot.toCurrency());
+	}
+	else
+	{	
+		tableData		=	"<tr style='font-weight:bold'>" +
+								"<td colspan='2' align='center'>"+((step < 3)?"<span cusgroup='"+((cusgrp)?cusgrp:'ALL')+"' prodgroup='"+((prodgroup)?prodgroup:'ALL')+"' blankgroup='"+((blankgroup)?blankgroup:'ALL')+"' compname='"+((compname)?compname:'ALL')+"' step='"+step+"' class='view_button link'>Total</span>":"Total")+"</td>" +
+								"<td align='right'>"+cpdQtyTot.toCurrency()+"</td>" +
+								"<td align='right'>"+cpdQtyValTot.toCurrency()+"</td>" +
+								"<td align='right'>"+liftsTot.toCurrency()+"</td>" +
+								"<td align='right'>"+liftsValTot.toCurrency()+"</td>" +
+								"<td align='right'>"+trimCostTot.toCurrency()+"</td>" +
+								"<td align='right'>"+inspCostTot.toCurrency()+"</td>" +
+								"<td align='right'>"+salesValTot.toCurrency()+"</td>" +
+								"<td align='right'>"+contribValTot.toCurrency()+"</td>" +
+								"<td align='right'>"+contribPerTot.toCurrency()+"</td>" +								
+							"</tr>";
+	}
+	return tableData;
+		
+
+}
+
+function getDetailList(cusgrp,prodgroup,blankgroup,compname,step){
+	$("#show_plan_form"+step).css('visibility', 'visible');
+	$("#show_plan_form"+step).dialog("open");
+	$("#show_plan_form"+step).attr("prodgroup",prodgroup);
+	$("#show_plan_form"+step).attr("blankgroup",blankgroup);
+	$("#show_plan_form"+step).attr("cusgrp" ,cusgrp);
+	$("#show_plan_form"+step).attr("compname",compname);
+	$("#show_plan_form"+step).attr("step",step);
+	objSchList	=	postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&cusgrp="+cusgrp+"&prodgroup="+prodgroup+"&blankgroup="+blankgroup+"&compname="+compname+"&step="+step, "POST","XML");
+	//alert(objSchList); 
+	//$("#detail_body"+step).html(objSchList);return false;
+	listPageData($("#detail_body"+step), objSchList, XSLFile);
+	tabData	=	getTotals("detail_body"+step,cusgrp,prodgroup,blankgroup,compname,(step*1 + 1));
+	$("#detail_body"+step+" table tr:last").after(tabData);	
+	
+	$(".view_button").click(function(e){
+		prodgroup	=	$(this).attr('prodgroup');
+		cusgrp		=	$(this).attr('cusgroup');
+		blankgroup	=	$(this).attr('blankgroup');
+		compname	=	$(this).attr('compname');
+		step		=	$(this).attr('step');
+		if(cusgrp != null && cusgrp != "" ){
+			getDetailList(cusgrp,prodgroup,blankgroup,compname,step);
+			e.stopImmediatePropagation();
+		}
+	});		
+}
+
+function submitPrint(dlgId,desFile,needTransform){
+	prnTitle = "";	
+	$("#print_item_form").css('visibility', 'visible');	
+	if(dlgId != '')
+	{
+		currProdGrp	=	$("#"+dlgId).attr('prodgroup');
+		currBlankGrp=	$("#"+dlgId).attr('blankgroup');
+		currCustGrp	=	$("#"+dlgId).attr('cusgrp');
+		currCompName=	$("#"+dlgId).attr('compname');
+		step		=	$("#"+dlgId).attr('step');
+		prnTitle	=	(currCustGrp != 'ALL')?"for Customer Group - " +currCustGrp :"";
+		prnTitle	+=	(currProdGrp != null && currProdGrp != '' && currProdGrp != 'ALL')?" | Product Group - " + currProdGrp : "";
+		prnTitle	+= 	(currCompName != null && currCompName != '' &&  currCompName != 'ALL')?" | Part Number - " + currCompName : "";	
+		objList		=	postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&cusgrp="+currCustGrp+"&prodgroup="+currProdGrp+"&blankgroup="+currBlankGrp+"&compname="+currCompName+"&step="+step, "POST","XML");	
+	}
+	else
+		objList	=	objCompList;
+	
+	$("#print_item_form").dialog({
+									modal:true,
+									minWidth:'1200',
+									resizable:false,									
+									open: function(event, ui) {
+										var today 		= 	new Date();	
+										if(needTransform)
+										{
+											listPageData($("#print_body"), objList, desFile);
+											var startDate 	= 	new Date($("#from_date").val());
+											var endDate 	= 	new Date($("#to_date").val());
+										}
+										else
+										{
+											$("#print_body").html(objList);
+											endDate  	= 	new Date(today.getFullYear(), today.getMonth(), 0);
+											startDate 	= 	new Date(endDate.getFullYear(), endDate.getMonth(), 1);											
+										}		
+										$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+										$("#hdr_title").html( prnTitle + " For items invoiced from: " + startDate.getDate()+"-"+(startDate.getMonth()+1)+"-"+startDate.getFullYear() +" To: " + endDate.getDate()+"-"+(endDate.getMonth()+1)+"-"+endDate.getFullYear() );
+										$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");
+									}									
+								});	
+	getTotals("print_body");
+	var DocumentContainer = document.getElementById('print_item_form');
+	$("#print_item_form").dialog('close');
+	if(needTransform)
+		WindowObject = window.open("","printWindow");
+	else
+		WindowObject = window.open("","_self");
+	WindowObject.document.writeln(DocumentContainer.innerHTML);	
+	loader = document.createElement('link');
+	loader.href = "/style/printTable.css";
+	loader.rel = "stylesheet";
+	WindowObject.document.head.appendChild(loader);	
+	WindowObject.document.close();
+	WindowObject.focus();
+}

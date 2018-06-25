@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+	<table width="100%" border="0" class="print_table" cellspacing="0" cellpadding="0" >
+		<tr style="font-size:8px;">
+			<th style="width:5%">No</th>
+			<th style="width:15%">Component Name</th>
+			<th style="width:25%">Component Desc.</th>                
+			<th style="width:10%">Closing Stock</th>
+			<th style="width:35%">Key Details</th>
+			<th>Physical</th>
+		</tr> 	
+		<xsl:for-each select="rootxml/root" >
+			<!-- <xsl:for-each select="rowCustGrp" > -->
+				<xsl:for-each select="rowCustGrp/row" >
+					<tr  style="font-size:10px;">
+						<td align="center">
+							<xsl:value-of select="position()" />
+						</td>
+						<td align="left">
+							<xsl:value-of select="cmpdpart" />
+						</td>
+						<td align="left">
+							<xsl:value-of select="cmpddesc" />
+						</td>
+						<td align="right" >
+							<xsl:value-of select="closing_stock" />
+						</td>
+						<td>
+							<xsl:value-of select="keydetails" />
+						</td>
+						<td>
+							&#160;
+						</td>			
+					</tr>
+				</xsl:for-each>
+			<!-- </xsl:for-each> -->
+			<tr style="font-weight:bold">
+				<xsl:attribute name="class">content_rows_dark cust_subtot</xsl:attribute>
+				<td align="center" colspan="3">Total</td>
+				<td align="right"><xsl:value-of select="format-number(clsStockGrdTot,'###,###,##0')" /></td>
+				<td align="right">&#160;</td>
+				<td align="right">&#160;</td>
+			</tr>		
+		</xsl:for-each>	
+    </table>
+</xsl:template>
+</xsl:stylesheet>

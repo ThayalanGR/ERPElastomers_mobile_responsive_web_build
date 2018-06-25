@@ -1,0 +1,40 @@
+Options -Indexes
+
+ErrorDocument 400 /modules/common/not_found.php
+ErrorDocument 401 /modules/common/not_found.php
+ErrorDocument 403 /modules/common/not_found.php
+ErrorDocument 404 /modules/common/no_permission.php
+ErrorDocument 500 /modules/common/not_found.php
+
+ForceType  application/x-httpd-php
+
+php_value include_path '.;/elastomers/htdocs_mobile/erp_elastomers/libraries/'
+php_value auto_prepend_file 'require_top.php'
+php_value auto_append_file 'require_bottom.php'
+
+# Modify Headers
+<IfModule mod_headers.c>
+	Options +FollowSymLinks
+	RewriteEngine On
+	
+	# Cache files
+	<FilesMatch "\.(ico|pdf|flv|jpg|jpeg|png|gif|swf|mp3|mp4)$">
+		Header set Cache-Control "public"
+		Header set Expires "now plus 365 days"
+		Header unset Last-Modified
+	</FilesMatch>
+	 
+	# Cache JavaScript & CSS
+	<FilesMatch "\.(js|css)$">
+		Header set Cache-Control "public"
+		Header set Expires "now plus 365 days"
+		Header unset Last-Modified
+	</FilesMatch>
+</IfModule>
+
+# Compress JavaScript & CSS
+<IfModule mod_deflate.c>
+	<FilesMatch "\.(js|css)$">
+		SetOutputFilter DEFLATE
+	</FilesMatch>
+</IfModule>

@@ -1,0 +1,67 @@
+/* Sankey */
+
+.node rect {
+  cursor: move;
+  fill-opacity: .9;
+  shape-rendering: crispEdges;
+}
+.node text {
+  pointer-events: none;
+  text-shadow: 0 1px 0 #fff;
+}
+.link {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: .2;
+}
+.link:hover {
+  stroke-opacity: .5;
+}
+
+.sankey svg { 
+  font: 10px sans-serif;
+}
+
+/* Chord */
+
+#chord_tooltip {
+  color: white;
+  opacity: .9;
+  background: #333;
+  padding: 5px;
+
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background-color: rgb(25, 25, 25);
+  background-color: rgba(25, 25, 25, 0.92);
+  background-image: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#666), to(transparent));
+  border-radius: 3px;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  box-shadow: 0 0 3px #555;
+  -webkit-box-shadow: 0 0 3px #555;
+  -moz-box-shadow: 0 0 3px #555;
+  
+  border-radius: 3px;
+  position: absolute;
+  z-index: 10;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.chord #circle circle {
+  fill: none;
+  pointer-events: all;
+}
+.chord .group path {
+    stroke: #222;
+    stroke-width: .5px;
+    fill-opacity: .9;
+}
+.chord path.chord {
+  fill-opacity: .8;
+  stroke: #000;
+  stroke-width: .5px;
+}
+.chord #circle:hover path.fade {
+  display: none;
+}

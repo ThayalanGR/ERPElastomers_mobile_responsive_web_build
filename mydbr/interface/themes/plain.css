@@ -1,0 +1,22 @@
+.pw_reset_link, .pw_reset_link:visited {color:black;}
+.even, .odd {
+  background-color: #FFFFFF;
+}
+.odd:hover td, .even:hover td, .popuprow:hover, .autocomplete ul li.selected {
+	background-color: #F5F5F5 !important;
+}
+
+.fc-head, .fc-head-container.fc-widget-header {
+  border-top: 1px solid black; 
+  border-bottom: 1px solid black;
+}
+.dbr_calendar .fc-day-header {
+  border-top: 1px solid black; 
+  background: white;
+  color: black;
+} 
+.dbr_calendar .fc-basic-view th.fc-week-number, .dbr_calendar .fc-head-container.fc-widget-header, .dbr_calendar .fc-week-number.fc-widget-header {
+  background: white;
+  color: black;
+  font-weight:bold;
+}

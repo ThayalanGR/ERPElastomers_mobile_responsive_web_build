@@ -1,0 +1,119 @@
+function updateData(){
+	invQtyTot	=	0;
+	ordQtyTot	=	0;
+	batQtyTot	=	0;
+	
+	$("#content_body table tr").each(function(index, element) {
+		inTot		=	($(this).find("td:eq(3)").html())?Number($(this).find("td:eq(3)").html().split(",").join("")):0;
+        oqTot		=	($(this).find("td:eq(4)").html())?Number($(this).find("td:eq(4)").html().split(",").join("")):0;
+		bqTot		=	($(this).find("td:eq(2)").html())?Number($(this).find("td:eq(2)").html()):0;
+		invQtyTot	=	invQtyTot + (isNaN(inTot) ?0 :inTot);
+		ordQtyTot	=	ordQtyTot + (isNaN(oqTot) ?0 :oqTot);
+		batQtyTot	=	batQtyTot + (isNaN(bqTot) ?0 :bqTot);
+    });
+	$("#inv_total").html(invQtyTot.toCurrency(3));
+	$("#qty_total").html(ordQtyTot.toCurrency(3));
+	$("#bat_total").html(batQtyTot.toCurrency(0));
+	
+	$(".view_button").click(function(e){
+		invref	=	$(this).attr('invref');
+		if(invref != null && invref != ""){
+			getBatchDetailList(invref);
+		}
+	});		
+		
+}
+
+$(document).ready(function(){
+
+	//MonthPicker
+	$('#to_date').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	}).bind('monthpicker-click-month', function (e, month) {
+    	updatePageBehaviour();
+	})
+	
+	// View Item Dialog
+	$("#show_bat_form").dialog({ autoOpen: false ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 750,
+									height:'auto',
+									buttons: [
+										{
+											text: "Close",
+											click: function(){
+												$(this).dialog("close");
+											}
+										}
+									],
+									open: function(event, ui) {
+										$("#show_bat_form").css('visibility','visible');
+									}
+								});		
+	updatePageBehaviour();	
+	
+});
+
+function getMonthParam()
+{
+	var val				=	$("#to_date").val(); 			
+	space_pos 			= 	val.indexOf(' ');
+	month 				= 	val.substring(0,space_pos);
+	cur_year 			= 	val.substring(space_pos+1,val.length);
+	var monthsArray 	= [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+	var LastDaysArray 	= [ 31,28,31,30,31,30,31,31,30,31,30,31 ];
+	monthIndex 			= 	monthsArray.indexOf(month);
+	cur_month			=	monthIndex + 1;
+	cur_month 			= 	(cur_month>9)?cur_month:'0'+cur_month;
+	start_day 			=	cur_year + "-" + cur_month +"-01";
+	last_day 			= 	(Number(cur_year)%4!=0)?LastDaysArray[monthIndex]:LastDaysArray[monthIndex]+1;
+	end_day				=	cur_year + "-" + cur_month +"-" + last_day;	
+	param				=	"&startDate="+start_day+"&endDate="+end_day;	
+	return param;	
+}
+
+function updatePageBehaviour(){
+	param				=	"type="+$("#grpfield").val()+getMonthParam();	
+	var objCompList		=	postback(actionFile, param, "POST", "XML");
+	listPageData($("#content_body"), objCompList, XSLFile);	
+	updateData();		
+}
+
+function getBatchDetailList(invRef){
+	$("#show_bat_form").css('visibility', 'visible');
+	$("#show_bat_form").dialog("open");
+	var objList	=	postback(actionFile,"type=BATDETS&invref="+invRef+"&groupby="+$("#grpfield").val()+getMonthParam()+"&outtype=xml","POST","XML");
+	$("#new_BatchList table tr:gt(0)").remove();
+	sno 	= 	1;
+	invTot	=	0;
+	recvTot = 	0;
+	availTot= 	0;
+	$(objList).find('row').each(function(index, element) {
+		tabClass		=	(sno%2)?'content_rows_dark':'content_rows_light';
+		invQty			=	$(this).find('invqty').text();
+		recvQty			= 	$(this).find('recvqty').text();
+		availQty		= 	$(this).find('availqty').text();
+		tabData			=	"<tr class='"+tabClass+"'>" +
+								"<td width='5%' align='center'>"+sno+"</td>" +
+								"<td width='15%' align='left'>"+$(this).find('invid').text()+"</td>" +
+								"<td width='15%' align='center'>"+$(this).find('invdate').text()+"</td>" +								
+								"<td width='20%' align='left'>"+$(this).find('cpdname').text()+"</td>" +
+								"<td width='15%' align='left'>"+$(this).find('batid').text()+"</td>" +
+								"<td width='10%' align='right'>"+getCurrency(invQty,3)+"</td>" +								
+								"<td width='10%' align='right'>"+getCurrency(recvQty,3)+"</td>" +
+								"<td align='right'>"+getCurrency(availQty,3)+"</td>" +
+							"</tr>";	
+		$("#new_BatchList table tr:last").after(tabData);
+		invTot 			= invTot + Number(invQty.split(",").join(""));
+		recvTot 		= recvTot + Number(recvQty.split(",").join(""));
+		availTot		= availTot + Number(availQty.split(",").join(""));
+		sno++;
+	});
+	$("#inv_tot_qty").html(getCurrency(invTot,3));	
+	$("#recv_tot_qty").html(getCurrency(recvTot,3));
+	$("#avail_tot_qty").html(getCurrency(availTot,3));
+}

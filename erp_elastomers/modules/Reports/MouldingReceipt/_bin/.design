@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+    <div id="content_head">
+        <table border="0" cellpadding="6" cellspacing="0" width="100%">
+             <tr>
+                  <th align="left" width="6%" filter="ignore" title="Key Reference">Key Ref.</th>
+                  <th align="left" width="7.7%" filter="date" title="Receipt Date">Rcpt Date</th>
+                  <th align="left" width="8%" title="Component Code">CNT Code</th>
+                  <th align="left" width="10%" title="Component Name">CNT Name</th>
+                  <th align="left" width="8%">Compound</th> 
+                  <th align="right" width="7%" filter="currency" >Planned Lifts</th>
+                  <th align="right" width="7%" filter="currency" >Actual Lifts</th>
+                  <th align="right" width="7%" filter="currency" >Planned Qty</th>
+                  <th align="right" width="7%" filter="currency" >Actual Qty</th>
+                  <th align="right" width="7%" filter="currency" >Iss. Compound Weight</th>
+                  <th align="right" width="7%" filter="currency" >Used Compound Weight</th>				  
+                  <th align="left" width="10%">Operator</th>
+				  <th align="left" >Entry By</th>
+            </tr>
+        </table>
+    </div>
+    <div id="window_list">
+        <div id="content_body">	
+        <table border="0" cellpadding="6" cellspacing="0" width="100%">
+            <xsl:for-each select="xmldata/root/data/row">
+    			<tr>
+                	<xsl:if test="position() mod 2 != 0">
+						<xsl:attribute name="class">content_rows_light</xsl:attribute>
+                    </xsl:if>
+                    <xsl:if test="position() mod 2 = 0">
+                    	<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+					</xsl:if>
+					<td align="left" width="6%">
+						<xsl:value-of select="planid"/>
+					</td>
+					<td align="left" width="7.7%">
+						<xsl:value-of select="keydate"/>
+					</td>
+					<td align="left" width="8%">
+						<xsl:value-of select="cmpdname"/>
+					</td>
+					<td align="left" width="10%">
+						<xsl:value-of select="cmpdrefno"/>
+					</td>
+					<td align="left" width="8%">
+						<xsl:value-of select="cmpdcpdname"/>
+					</td>
+					<td align="right" width="7%">
+						<xsl:value-of select="format-number(plannedlifts,'##,##,##,##0')"/>
+					</td>
+					<td align="right" width="7%">
+						<xsl:choose>
+							<xsl:when test="actuallifts &gt; 0">
+								<xsl:value-of select='format-number(actuallifts,"##,##,##0")'/>
+							</xsl:when>
+							<xsl:otherwise>
+								0
+							</xsl:otherwise>
+						</xsl:choose>						
+					</td>
+					<td align="right" width="7%">
+					   <xsl:value-of select="format-number(quantity,'##,##,##,##0')"/> 
+					</td>
+					<td align="right" width="7%">                      	
+						<xsl:choose>
+							<xsl:when test="mouldqty &gt; 0">
+								<xsl:value-of select="format-number(mouldqty,'##,##,##,##0')"/>
+							</xsl:when>
+							<xsl:otherwise>
+								0
+							</xsl:otherwise>
+						</xsl:choose>						
+					</td>
+					<td align="right" width="7%">
+						<xsl:value-of select="format-number(cpdqtyissued,'##,##,##,##0.000')"/>
+					</td>
+					<td align="right" width="7%">                      	
+						<xsl:choose>
+							<xsl:when test="cpdqtyused &gt; 0">
+								<xsl:value-of select="format-number(cpdqtyused,'##,##,##,##0.000')"/>
+							</xsl:when>
+							<xsl:otherwise>
+								0
+							</xsl:otherwise>
+						</xsl:choose>						
+					</td>
+					<td align="left" width="10%">
+						<xsl:value-of select="operator"/>
+					</td>
+					<td align="left">
+						<xsl:value-of select="fullname"/>
+					</td>					
+                </tr>
+            </xsl:for-each>
+        </table>
+		</div>
+    </div>		
+    </xsl:template>
+</xsl:stylesheet>

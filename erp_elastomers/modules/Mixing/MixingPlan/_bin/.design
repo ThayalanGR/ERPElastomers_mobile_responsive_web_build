@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+        <table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+            <tr font-size="8">
+                <th width="15%" align="left">Compound Name</th>
+                <th width="3%" align="right" title="Schedule Batches">Sch. Bat</th>
+				<th width="5%" align="right" title="Schedule Qty">Sch. Qty</th>					
+                <th width="3%" align="right" title="Awaiting Plan Batches">Awt. Plan Bat</th>
+				<th width="5%" align="right" title="Awaiting Plan Qty">Awt. Plan Qty</th>
+				<th width="3%" align="right" title="Master Planned Batches">Mast. Plan Bat</th>
+                <th width="5%" align="right" title="Master Planned Qty">Mast. Plan Qty</th>
+				<th width="3%" align="right" title="Available Master Batches">Avl. Mast Bat</th>
+                <th width="5%" align="right" title="Available Master Qty">Avl. Mast Qty</th>
+				<th width="3%" align="right" title="Final Planned Batches">Final. Plan Bat</th>				
+                <th width="5%" align="right" title="Final Planned Qty">Final. Plan Qty</th>
+				<th width="3%" align="right" title="Available Final Batches">Avl Final Bat</th>
+                <th width="5%" align="right" title="Available Final Qty">Avl Final Qty</th>
+				<th width="3%" align="right" title="In Stock Bat.">In Stk Bat.</th>
+                <th width="5%" align="right" title="In Stock Qty">In Stk Qty</th>
+				<th width="3%" align="center" title="Click for Selecting ALL or None">Direct Final? <input id="input_select_all" type="checkbox"></input></th>
+				<th width="6%" align="center" title="Base Polymer Weight (Kg)">Poly Wgt <sub>kg</sub></th>
+				<th width="6%" align="center">Batch Wgt <sub>kg</sub></th>
+				<th width="8%" align="center" >Planned for</th>
+                <th align="center">Today's Batches</th>
+            </tr>
+			</thead>
+			<tbody>		
+			<xsl:for-each select="xmldata/root/mysql/data/row">
+            <tr>
+                <xsl:if test="position() mod 2 != 0">
+                    <xsl:attribute name="class">content_rows_light</xsl:attribute>
+                </xsl:if>
+                <xsl:if test="position() mod 2 != 1">
+                    <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+                </xsl:if>
+                <xsl:attribute name="id"><xsl:value-of select="cpdid" /></xsl:attribute>
+                <xsl:attribute name="cpdname"><xsl:value-of select="cpdname" /></xsl:attribute>
+                <td><xsl:value-of select="cpdname"/></td>
+				<td align="right">
+					<xsl:value-of select="format-number(cpdawtplan div batchwgt, '##,##,##0')"/>				
+				</td>
+				<td align="right">
+					<xsl:value-of select="format-number(cpdawtplan, '##,##,##0.000')"/>				
+				</td>				
+                <td align="right">
+						<xsl:if test="(cpdawtplan div batchwgt - cntawtissue - cntawtfinal - cntawtrcpt - cntawtqc - cntawtstorercpt - cnttotstock   &gt;  0)">
+							<xsl:value-of select="format-number(cpdawtplan div batchwgt - cntawtissue - cntawtfinal - cntawtrcpt - cntawtqc - cntawtstorercpt - cnttotstock, '##,##,##0')"/>
+						</xsl:if>
+						<xsl:if test="(cpdawtplan div batchwgt - cntawtissue - cntawtfinal - cntawtrcpt - cntawtqc - cntawtstorercpt - cnttotstock  &lt;=  0)">
+							0
+						</xsl:if>
+						
+				</td>
+                <td align="right">
+					<xsl:if test="(cpdawtplan - cpdawtissue - cpdawtfinal - cpdawtrcpt - cpdawtqc - cpdawtstorercpt - cpdtotstock  &gt;  0)">
+						<xsl:value-of select="format-number(cpdawtplan - cpdawtissue - cpdawtfinal - cpdawtrcpt - cpdawtqc - cpdawtstorercpt - cpdtotstock, '##,##,##0.000')"/>						</xsl:if>
+					<xsl:if test="(cpdawtplan - cpdawtissue - cpdawtfinal - cpdawtrcpt - cpdawtqc - cpdawtstorercpt - cpdtotstock  &lt;=  0)">
+						0
+					</xsl:if>
+				</td>
+				<td align="right"><xsl:value-of select="format-number(cntawtissue, '##,##,##0')"/></td>
+                <td align="right"><xsl:value-of select="format-number(cpdawtissue, '##,##,##0.000')"/></td>
+				<td align="right"><xsl:value-of select="format-number(cntawtfinal, '##,##,##0')"/></td>
+                <td align="right"><xsl:value-of select="format-number(cpdawtfinal, '##,##,##0.000')"/></td> 
+				<td align="right"><xsl:value-of select="format-number(cntawtrcpt, '##,##,##0')"/></td>				
+                <td align="right"><xsl:value-of select="format-number(cpdawtrcpt, '##,##,##0.000')"/></td>
+				<td align="right"><xsl:value-of select="format-number(cntawtstorercpt, '##,##,##0')"/></td>
+                <td align="right"><xsl:value-of select="format-number(cpdawtstorercpt, '##,##,##0.000')"/></td>
+				<td align="right"><xsl:value-of select="format-number(cnttotstock, '##,##,##0')"/></td>
+                <td align="right" ><xsl:value-of select="format-number(cpdtotstock, '##,##,##0.000')"/></td>
+                <td align="center">
+                    <input>
+                        <xsl:attribute name="type">checkbox</xsl:attribute>
+                        <xsl:attribute name="id">chk_<xsl:value-of select="cpdid" /></xsl:attribute>
+						<xsl:attribute name="class">checkbox1</xsl:attribute>
+                    </input>
+                </td>
+                <td align="center">
+                    <input>
+                        <xsl:attribute name="type">text</xsl:attribute>
+                        <xsl:attribute name="id">txtpolywgt_<xsl:value-of select="cpdid" /></xsl:attribute>
+						<xsl:attribute name="polywgt"><xsl:value-of select="polywgt" /></xsl:attribute>
+						<xsl:attribute name="batchtotwgt"><xsl:value-of select="batchtotwgt" /></xsl:attribute>
+						<xsl:attribute name="basepolyratio"><xsl:value-of select="basepolyratio" /></xsl:attribute>
+						<xsl:attribute name="style">text-align:right;width:80%</xsl:attribute>
+						<xsl:attribute name="class">invisible_text</xsl:attribute>
+						<xsl:attribute name="onkeyup">calculateBatchWeight('<xsl:value-of select="cpdid" />')</xsl:attribute>
+						<xsl:attribute name="value"><xsl:value-of select="format-number(cpdminstock, '##,##,##0.000')" /></xsl:attribute>
+						<xsl:attribute name="onfocus">FieldHiddenValue(this, 'in', '0')</xsl:attribute>
+						<xsl:attribute name="onblur">FieldHiddenValue(this, 'out', '0')</xsl:attribute>						
+                    </input>
+                </td>
+                <td align="right">
+                    <xsl:attribute name="id">batwgt_<xsl:value-of select="cpdid" /></xsl:attribute>
+					<xsl:value-of select="batchwgt" />
+                </td>		
+                <td align="center">
+                    <select>
+                        <xsl:attribute name="id">sel_<xsl:value-of select="cpdid" /></xsl:attribute>
+                    </select>
+                </td>	
+                <td align="center">
+                    <input>
+                        <xsl:attribute name="type">text</xsl:attribute>
+                        <xsl:attribute name="id">txtbat_<xsl:value-of select="cpdid" /></xsl:attribute>
+						<xsl:attribute name="style">text-align:right;width:80%</xsl:attribute>
+						<xsl:attribute name="class">invisible_text</xsl:attribute>
+						<xsl:attribute name="value">0</xsl:attribute>
+						<xsl:attribute name="onfocus">FieldHiddenValue(this, 'in', '0')</xsl:attribute>
+						<xsl:attribute name="onblur">FieldHiddenValue(this, 'out', '0')</xsl:attribute>
+						<xsl:attribute name="onkeyup">calculateTotbatches()</xsl:attribute>
+                    </input>
+                </td>				
+            </tr>
+			</xsl:for-each>
+			</tbody>			
+        </table>
+    </xsl:template>
+
+</xsl:stylesheet>

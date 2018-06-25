@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xsl:template match="/">
+<table border="0" cellpadding="6" cellspacing="0" width="100%">
+	<xsl:for-each select="xmldata/root/data/row">
+	<xsl:if test="position() = 1">
+	   <tr>
+			<th width="4%" align="left">S.No.</th>
+			<th width="8%" align="left">Batch ID</th>
+			<th width="12%" align="left">Receipt date</th>
+			<th width="10%" align="left">Compound Name</th>
+			<th width="10%" align="left">Compound Polymer</th>
+			<th width="9%" align="center">Hardness A</th>
+			<th width="9%" align="center">Hardness B</th>
+			<th width="9%" align="center">Hardness</th>
+			<th width="9%" align="center">Weight in Air (A)</th>
+			<th width="9%" align="center">Weight in Water (B)</th>	
+			<th width="9%" align="center">Specific Gravity</th>
+			<th align="center"><input id="input_select_all" type="checkbox" value="1" title="Select for test plan"></input></th>
+		</tr>
+	</xsl:if>
+    <tr>
+    	<xsl:if test="position() mod 2 != 0">
+        	<xsl:attribute name="class">content_rows_light</xsl:attribute>
+        </xsl:if>
+        <xsl:if test="position() mod 2 != 1">
+            <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+        </xsl:if> 
+				<td align="left"><xsl:value-of select="position()"/></td>
+                <td align="left"><xsl:value-of select="dispbatid"/></td>
+                <td align="left"><xsl:value-of select="mixrecvdate" /></td>
+                <td align="left"><xsl:value-of select="cpdname" /></td>
+                <td align="left"><xsl:value-of select="cpdpolymer" /></td>
+				<xsl:if test="full_test_req = 0">
+					<td align="center">
+						<input>
+							<xsl:attribute name="id">hard_<xsl:value-of select="batid" />_A</xsl:attribute>
+							<xsl:attribute name="batid"><xsl:value-of select="batid" /></xsl:attribute>
+							<xsl:attribute name="param">HARDNESS</xsl:attribute>
+							<xsl:attribute name="onkeyup">getParamValue(this)</xsl:attribute>
+							<xsl:attribute name="type">text</xsl:attribute>
+							<xsl:attribute name="style">text-align:right;width:60%</xsl:attribute>
+							<xsl:attribute name="class">invisible_text</xsl:attribute>
+							<xsl:attribute name="value">0</xsl:attribute>
+							<xsl:if test="hardulimit = hardllimit">
+								<xsl:attribute name="readonly">true</xsl:attribute>
+							</xsl:if>								
+							<xsl:attribute name="onfocus">FieldHiddenValue(this, 'in', '0')</xsl:attribute>
+							<xsl:attribute name="onblur">FieldHiddenValue(this, 'out', '0')</xsl:attribute>
+						</input>				
+					</td>
+					<td align="center">
+						<input>
+							<xsl:attribute name="id">hard_<xsl:value-of select="batid" />_B</xsl:attribute>
+							<xsl:attribute name="batid"><xsl:value-of select="batid" /></xsl:attribute>								
+							<xsl:attribute name="param">HARDNESS</xsl:attribute>
+							<xsl:attribute name="onkeyup">getParamValue(this)</xsl:attribute>								
+							<xsl:attribute name="type">text</xsl:attribute>
+							<xsl:attribute name="style">text-align:right;width:60%</xsl:attribute>
+							<xsl:attribute name="class">invisible_text</xsl:attribute>
+							<xsl:attribute name="value">0</xsl:attribute>
+							<xsl:if test="hardulimit = hardllimit">
+								<xsl:attribute name="readonly">true</xsl:attribute>
+							</xsl:if>					
+							<xsl:attribute name="onfocus">FieldHiddenValue(this, 'in', '0')</xsl:attribute>
+							<xsl:attribute name="onblur">FieldHiddenValue(this, 'out', '0')</xsl:attribute>
+						</input>				
+					</td>						
+					<td align="right">
+							<xsl:attribute name="id">hard_<xsl:value-of select="batid" /></xsl:attribute>
+							<xsl:attribute name="param">HARDNESS</xsl:attribute>
+							<xsl:attribute name="paramref"><xsl:value-of select="hardparamref" /></xsl:attribute>
+							<xsl:attribute name="ullimit"><xsl:value-of select="hardulimit" /></xsl:attribute>
+							<xsl:attribute name="llimit"><xsl:value-of select="hardllimit" /></xsl:attribute>								
+							0
+					</td>
+					<td align="center">
+						<input>
+							<xsl:attribute name="id">spgr_<xsl:value-of select="batid" />_A</xsl:attribute>
+							<xsl:attribute name="batid"><xsl:value-of select="batid" /></xsl:attribute>
+							<xsl:attribute name="param">SPECIFIC GRAVITY</xsl:attribute>
+							<xsl:attribute name="onkeyup">getParamValue(this)</xsl:attribute>
+							<xsl:attribute name="type">text</xsl:attribute>
+							<xsl:attribute name="style">text-align:right;width:60%</xsl:attribute>
+							<xsl:attribute name="class">invisible_text</xsl:attribute>
+							<xsl:attribute name="value">0</xsl:attribute>
+							<xsl:if test="spgrulimit = spgrllimit">
+								<xsl:attribute name="readonly">true</xsl:attribute>
+							</xsl:if>					
+							<xsl:attribute name="onfocus">FieldHiddenValue(this, 'in', '0')</xsl:attribute>
+							<xsl:attribute name="onblur">FieldHiddenValue(this, 'out', '0')</xsl:attribute>
+						</input>				
+					</td>
+					<td align="center">
+						<input>
+							<xsl:attribute name="id">spgr_<xsl:value-of select="batid" />_B</xsl:attribute>
+							<xsl:attribute name="batid"><xsl:value-of select="batid" /></xsl:attribute>								
+							<xsl:attribute name="param">SPECIFIC GRAVITY</xsl:attribute>
+							<xsl:attribute name="onkeyup">getParamValue(this)</xsl:attribute>								
+							<xsl:attribute name="type">text</xsl:attribute>
+							<xsl:attribute name="style">text-align:right;width:60%</xsl:attribute>
+							<xsl:attribute name="class">invisible_text</xsl:attribute>
+							<xsl:attribute name="value">0</xsl:attribute>
+							<xsl:if test="spgrulimit = spgrllimit">
+								<xsl:attribute name="readonly">true</xsl:attribute>
+							</xsl:if>					
+							<xsl:attribute name="onfocus">FieldHiddenValue(this, 'in', '0')</xsl:attribute>
+							<xsl:attribute name="onblur">FieldHiddenValue(this, 'out', '0')</xsl:attribute>
+						</input>				
+					</td>						
+					<td align="right">
+							<xsl:attribute name="id">spgr_<xsl:value-of select="batid" /></xsl:attribute>
+							<xsl:attribute name="batid"><xsl:value-of select="batid" /></xsl:attribute>
+							<xsl:attribute name="cpdid"><xsl:value-of select="cpdid" /></xsl:attribute>
+							<xsl:attribute name="param">SPECIFIC GRAVITY</xsl:attribute>
+							<xsl:attribute name="ullimit"><xsl:value-of select="spgrulimit" /></xsl:attribute>
+							<xsl:attribute name="llimit"><xsl:value-of select="spgrllimit" /></xsl:attribute>							
+							<xsl:attribute name="paramref"><xsl:value-of select="spgrparamref" /></xsl:attribute>								
+							0.00
+					</td>
+					<td aling="center">
+						<input>
+							<xsl:attribute name="id"><xsl:value-of select="batid"/></xsl:attribute>
+							<xsl:attribute name="type">checkbox</xsl:attribute>
+							<xsl:attribute name="value">1</xsl:attribute>
+							<xsl:attribute name="class">checkbox1</xsl:attribute>
+						</input>	
+					</td>
+				</xsl:if>
+				<xsl:if test="full_test_req = 1">
+					<td align="center" colspan="5">Full Test</td>								
+					<td align="right">
+						<a href="javascript:void(0)">
+							<xsl:attribute name="batid"><xsl:value-of select="batid"/></xsl:attribute>
+							<xsl:attribute name="cpdid"><xsl:value-of select="cpdid"/></xsl:attribute>
+							Fill Test Results
+						</a>
+					</td>
+				</xsl:if>				
+           	</tr>
+        </xsl:for-each>
+</table>
+</xsl:template>
+</xsl:stylesheet>

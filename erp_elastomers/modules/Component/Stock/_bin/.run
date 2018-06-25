@@ -1,0 +1,166 @@
+compoundId			=	new Array();
+compoundList        =	new Array();
+var XSLFile			=	[XSLPath + "_.1.design", XSLPath + "_.2.design" , XSLPath + "_.3.design", XSLPath + "_.4.design"];
+details			= 	"";
+
+function getCompoundAutoList(){
+	objCpdList		=	postback(actionFile,"selecttype=GETCOMPONENT&outtype=xml","POST","XML");
+	cpdXML			=	parseXMLdoc(objCpdList);
+	$(cpdXML).find('row').each(function(index, element) {
+        compoundId[index]	=	$(this).find('cmpdid').text();
+        compoundList[index]	=	$(this).find('cmpdname').text() + ' - ' + $(this).find('cmpdrefno').text();
+    });
+}
+
+function getStockData(){        
+	item_code	=	$("#item_code").val();
+	item_id		=	"";
+	to_date   	=	$("#to_date").val();
+	from_date 	=	$("#from_date").val();
+	for(cl=0; cl<compoundList.length; cl++){
+		if(compoundList[cl] == item_code){
+			item_id	=	compoundId[cl];
+			break;
+		}
+	}
+	if(item_id != null && item_id != ""){
+		if(item_id != "" && to_date != null && to_date != "" && from_date != null && from_date != ""){
+			$("#listings").css({ visibility:'hidden' });
+			$("#listings tr:gt(0)").remove();
+			param		=	"selecttype=GETDETAIL" +
+							"&outtype=xml" +
+							"&compcode=" + item_id +
+							"&from_date=" + from_date +
+							"&to_date=" + to_date;
+			details		=	postback(actionFile, param, "POST", "XML");
+			listPageData($("#content_body"), details, XSLFile[0]);
+			$("#open_stock").html($(details).find("opening_stock").html().toNumber().toCurrency(0));
+			$("#receipts").html($(details).find("total_receipt").html().toNumber().toCurrency(0));
+			$("#issue").html($(details).find("total_issue").html().toNumber().toCurrency(0));
+			$("#close_stock").html($(details).find("closing_stock").html().toNumber().toCurrency(0));
+		}
+	}else{
+		if((from_date != null && from_date != "")&&(to_date != null && to_date != "")){
+		
+			param		=	"selecttype=GETDETAIL" +
+								"&outtype=xml" +
+								"&compcode=" + item_id +
+								"&from_date=" + from_date +
+								"&to_date=" + to_date;
+			details		=	postback(actionFile, param, "POST", "XML");
+			listPageData($("#content_body"), details, XSLFile[1]);
+		}
+		$("#open_stock").html("0");
+		$("#receipts").html("0");
+		$("#issue").html("0");
+		$("#close_stock").html("0");
+		$("#item_unit").html("&ndash;");
+
+	}
+	if(item_id == "" && details != "")
+	{
+		$("#button_submit").css('visibility', 'visible');
+		$("#button_submit_psvs").css('visibility', 'visible');
+		
+	}
+	else
+	{
+		$("#button_submit").css('visibility', 'hidden');
+		$("#button_submit_psvs").css('visibility', 'hidden');
+	}	
+	updateHeader();updateContent();
+
+}
+
+// -------------------------------------------------------------------------------------------------------------------------------------- //
+
+$(document).ready(function(){
+	errDefault		=	$(".window_error");
+	errMsgDefault	=	'<div class="warning_txt"><span>No Data Available . . .</span></div>';
+	errDefault.html(errMsgDefault);	
+	
+	getCompoundAutoList();
+	
+	$("#item_code").autocomplete({
+		source:compoundList,
+		close:function(event, ui){
+			//alert($(this).val());
+			getStockData();
+		}
+	});
+	
+	$("#from_date").datepicker({
+		dateFormat: 'dd/mm/yy',
+		changeMonth:true,
+		changeYear:true,
+		onClose:function(dateTxt, inst){
+			//alert(dateTxt);
+			getStockData();
+		}
+	});
+	$("#to_date").datepicker({
+		dateFormat: 'dd/mm/yy',
+		changeMonth:true,
+		changeYear:true,
+		onClose:function(dateTxt, inst){
+			//alert(dateTxt);
+			getStockData();
+		}
+	});
+    /*	getStockData(); */
+	$("#button_submit").button().click(function(){
+		
+		$("#print_item_form").css('visibility', 'visible');	
+			
+		$("#print_item_form").dialog({
+										modal:true,
+										minWidth:'1200',
+										resizable:false,									
+										open: function(event, ui) {
+											listPageData($("#print_body"), details, XSLFile[1]);
+											var today = new Date();											
+											$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+											$("#hdr_title").html( " from: " + $("#from_date").val() + " to: " + $("#to_date").val());
+											$("#imgpath").attr("src","<?php echo (ISO_IS_REWRITE)?'/':'../../../' ?>images/company_logo.png");
+										}									
+									});		
+		var DocumentContainer = document.getElementById('print_item_form');
+		$("#print_item_form").dialog('close');
+		var WindowObject = window.open("","PrintWindow");
+		WindowObject.document.writeln(DocumentContainer.innerHTML);	
+		loader = document.createElement('link');
+		loader.href = "/style/printTable.css";
+		loader.rel = "stylesheet";	
+		WindowObject.document.head.appendChild(loader);		
+		WindowObject.document.close();
+		WindowObject.focus();
+	});	
+
+	$("#button_submit_psvs").button().click(function(){
+
+		$("#print_item_form").css('visibility', 'visible');	
+			
+		$("#print_item_form").dialog({
+										modal:true,
+										minWidth:'1200',
+										resizable:false,									
+										open: function(event, ui) {
+											listPageData($("#print_body"), details, XSLFile[2]);
+											var today = new Date();											
+											$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+											$("#hdr_title").html( " as on: " + $("#to_date").val());
+											$("#imgpath").attr("src","<?php echo (ISO_IS_REWRITE)?'/':'../../../' ?>images/company_logo.png");
+										}									
+									});		
+		var DocumentContainer = document.getElementById('print_item_form');
+		$("#print_item_form").dialog('close');
+		var WindowObject = window.open("","PrintWindow");
+		WindowObject.document.writeln(DocumentContainer.innerHTML);		
+		loader = document.createElement('link');
+		loader.href = "/style/printTable.css";
+		loader.rel = "stylesheet";	
+		WindowObject.document.head.appendChild(loader);			
+		WindowObject.document.close();
+		WindowObject.focus();
+	});			
+});

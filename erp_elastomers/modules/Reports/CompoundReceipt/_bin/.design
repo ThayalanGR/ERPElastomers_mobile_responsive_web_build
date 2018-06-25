@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+        <table border="0" cellpadding="6" cellspacing="0" width="100%">
+         <xsl:for-each select="xmldata/root/data/row">
+          <tr>
+               <xsl:if test="position() mod 2 != 0">
+                   <xsl:attribute name="class">content_rows_light</xsl:attribute>
+               </xsl:if>
+               <xsl:if test="position() mod 2 != 1">
+                   <xsl:attribute name="class">content_rows_dark</xsl:attribute>
+               </xsl:if>
+					  <td width="20%" align="left">
+                        <xsl:value-of select="invid"/>
+                      </td>
+					  <td width="20%" align="center">
+                        <xsl:value-of select="invdate"/>
+                      </td>
+					  <td width="15%" align="right">
+                        <xsl:value-of select="noofbatches"/>
+                      </td>					  
+					  <td width="15%" align="right">
+                        <xsl:value-of select='format-number(invqty,"##,##,##0.000")'/>
+                      </td>
+					  <td width="15%" align="right">
+                        <xsl:value-of select='format-number(recvqty,"##,##,##0.000")'/>
+                      </td>					  
+                      <td align="right">
+                        <a>
+                            <xsl:attribute name="invref"><xsl:value-of select="invid" /></xsl:attribute>
+                            <xsl:attribute name="class">view_button link</xsl:attribute>
+                            View
+                        </a>
+                      </td>
+                    </tr>
+            </xsl:for-each>
+        </table>
+    </xsl:template>
+</xsl:stylesheet>

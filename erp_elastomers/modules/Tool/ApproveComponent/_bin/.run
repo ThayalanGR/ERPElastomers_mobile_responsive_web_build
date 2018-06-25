@@ -1,0 +1,266 @@
+tableFilters.col_0			=	"none";
+tableFilters.sort_config	=	{ sort_types:['none','string', 'date','string','string','string','string','us','us','us','string','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+
+$(document).ready(function(){
+	$("#appr_comp_popup").dialog({
+		autoOpen:false, 
+		resizable: true,
+		width: 400,
+		modal:true,		
+		buttons:[
+			{ 
+				text:"Approve Component",
+				tabindex:26,
+				click: function(){
+					if(typeof approveComp == 'function')
+					approveComp();
+				}
+			},
+			{ 
+				text: "Cancel",
+				tabindex:27,
+				click: function(){
+					$(this).dialog('close');
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});
+	
+	$("#insert_list").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 400,
+		height:'auto',
+		buttons: [
+			{
+				text: "Update",
+				click: function(){
+					if(typeof updateInsertList == "function"){
+						updateInsertList();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Close",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close: function(event, ui) {
+			$("#InsertList table tr:gt(0)").remove();
+			$("#insertlist_error").css('display', 'none');
+		} 
+	});
+	
+	updatePageBehaviour();	
+});
+
+function updatePageBehaviour(){
+	var objCompList = postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST","XML");
+	//alert(objCompList);
+	listPageData($("#content_body"), objCompList, XSLFile);
+	$(".approve_cmpd_button").click(function(){
+		rfqId		=	$(this).attr('rfqid');
+		app			=	$(this).attr('app');
+		insertUsed	=	$(this).attr('insertused');
+		if(insertUsed == 1)
+		{
+			$("#insert_used").html(	'<table width="100%" >' +
+										'<tr><td width="35%">Inserts</td>' +
+											'<td>' +
+												'<input type="button" id="cmpdInserts" value="..." title="Select Inserts" tabindex="8" onclick="showInsertList()" />' +
+											'</td>' +
+										'</tr>' +
+									'</table>')	;
+		}	
+		else
+		{
+			$("#insert_used").html('');
+		}
+		$("#appr_comp_popup").dialog('open');
+		$("#cmpd_app").val(app);
+		$("#appr_comp_popup").attr("rfqid",rfqId);
+		$("#appr_comp_popup").attr("insertused",insertUsed);
+	});
+	
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+}
+
+function showInsertList(){
+	
+	$("#insert_list").dialog("option", "title", "Insert List");
+	insertList		=	$("#appr_comp_popup").attr("insertlist");
+	insertList		=	(insertList != null && insertList != "")?insertList.split(","):new Array();	
+	rmInsertList	=	postback(actionFile, "selecttype=GETINSERTLIST", "POST","XML");
+	insertXML		=	parseXMLdoc(rmInsertList);
+	$(insertXML).find("row").each(function(index, element) {		
+		$("#InsertList table tr:last").after(
+			"<tr class='" + ((index%2)?'content_rows_light':'content_rows_dark') + "'>" +
+				"<td>" +
+					"<input type='checkbox' id='rmInsertList_" + index + "' "+
+						"value='" + $.trim(element.childNodes[0].firstChild.nodeValue) + "' "+
+						((insertList.inArray(element.childNodes[0].firstChild.nodeValue))?"checked ":'') +
+					"/>" +
+				"</td>" +
+				"<td onclick='CheckBox(\"rmInsertList_" + index + "\")'>" +
+					$.trim(element.childNodes[1].firstChild.nodeValue) +
+				"<td>" +
+			"</tr>"
+		);
+	});
+	
+	$("#insert_list").dialog("open");
+}
+
+function updateInsertList(){
+	checkedList	=	new Array();
+	$("#InsertList input:checkbox:checked").each(function(index, element) {
+        checkedList.push($(element).val());
+    });
+	
+	if(checkedList.length > 0){
+		$("#appr_comp_popup").attr("insertlist",checkedList.join(","));
+		$("#insert_list").dialog("close");
+	}
+	else{
+		displayError($("#insertlist_error"), "error", "Invalid Selection / No Insert(s) Selected . . .");
+	}
+}
+
+function approveComp(){
+	
+	raiseErr		=	$("#raise_error");
+	rfqId			=	$("#appr_comp_popup").attr('rfqid');
+	insertUsed		=	$("#appr_comp_popup").attr("insertused");
+	insertList		=	$("#appr_comp_popup").attr("insertlist");
+	insertList		=	(insertList != null && insertList != "")?insertList.split(","):new Array();
+	param			=	"selecttype=" + "COMPAPPROVE&rfqid=" + rfqId ;
+	cmpdProdGroup	=	$("#cmpd_prod_group");
+	cmpdHSN			=	$("#cmpd_hsn");	
+	cmpdApp			=	$("#cmpd_app");
+	cmpdSubAssembly	=	$("#cmpd_subass");
+	cmpdOffs		=	$("#cmpd_offs");
+	poRef			=	$("#po_ref");
+	poDate			=	$("#po_date");
+	poRate			=	$("#po_rate");		
+	poQty			=	$("#po_qty");
+	poInsertValue	=	$("#po_insval");
+
+	if(poRef.val().trim() == null || poRef.val().trim() == ""){
+		displayError(raiseErr, "error", "<strong>Error !</strong> - Invalid Purchase Order Reference!!!");
+		poRef.focus();
+		return false;
+	}
+	else if(!(poRate.val().toNumber() > 0)){
+		displayError(raiseErr, "error", "<strong>Error !</strong> - Invalid Purcahse Order Rate!!!");
+		poRate.focus();
+		return false;
+	}
+	else if(!(poQty.val().toNumber() >= 0)){
+		displayError(raiseErr, "error", "<strong>Error !</strong> - Invalid Purcahse Order Quantity!!!");
+		poQty.focus();
+		return false;
+	}
+	else if(!(poInsertValue.val().toNumber() >= 0)){
+		displayError(raiseErr, "error", "<strong>Error !</strong> - Invalid Insert Cost!!!");
+		poInsertValue.focus();
+		return false;
+	}
+	else if(cmpdProdGroup.val() == null || cmpdProdGroup.val() == ""){
+		displayError(raiseErr, "error", "<strong>Error !</strong> - Please Select a valid Product Group!!!");
+		cmpdProdGroup.focus();
+		return false;
+	}
+	else if(cmpdHSN.val() == null || cmpdHSN.val() == ""){
+		displayError(raiseErr, "error", "<strong>Error !</strong> - Please Select a HSN Code!!!");
+		cmpdHSN.focus();
+		return false;
+	}	
+	else if(cmpdApp.val().trim() == null || cmpdApp.val().trim() == ""){
+		displayError(raiseErr, "error", "<strong>Error !</strong> - Invalid Application!!!");
+		cmpdApp.focus();
+		return false;
+	}
+	else if(cmpdSubAssembly.val().trim() == null || cmpdSubAssembly.val().trim() == ""){
+		displayError(raiseErr, "error", "<strong>Error !</strong> - Invalid Sub Assembly!!!");
+		cmpdSubAssembly.focus();
+		return false;
+	}
+	else if(!(cmpdOffs.val().toNumber() > 0)){
+		displayError(raiseErr, "error", "<strong>Error !</strong> - Invalid Offs per Assembly!!!");
+		cmpdOffs.focus();
+		return false;
+	}
+	else if(insertUsed == 1 && insertList.length < 1)
+	{
+		displayError(raiseErr, "error", "<strong>Error !</strong> - Please select alteast one Insert!!!");
+		$(".approve_cmpd_button").focus();
+		return false;	
+	}
+	
+	 param	+=	"&poref=" + poRef.val()+
+				"&podate=" + poDate.val() +
+				"&porate=" + poRate.val().toNumber() +
+				"&poqty=" + poQty.val().toNumber() +
+				"&poinsval=" +poInsertValue.val().toNumber() +
+				"&cmpdprodgroup=" + cmpdProdGroup.val()+
+				"&cmpdhsn=" + cmpdHSN.val() +				
+				"&cmpdapp=" + cmpdApp.val()+
+				"&cmpdsubass=" + cmpdSubAssembly.val() +
+				"&cmpdoffs=" + cmpdOffs.val().toNumber();
+				
+	for(iCount = 0;iCount < insertList.length;iCount++)
+		param	+=	"&cmpdinsert[]=" + insertList[iCount];
+		
+	confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Approve the Component?</b></td></tr>' +
+				'</table>'	;
+	$("#confirm_dialog").html(confirmCont).dialog({
+													title:'Approve Component',
+													width:450,
+													height:'auto',
+													resizable:false,
+													modal:true,
+													buttons:{
+														'Ok':function(){
+															$(this).dialog('close');
+															//alert(param); return false;
+															XMLContent			=	postback(actionFile, param, "POST", "XML");
+															//alert(XMLContent); return false;
+															xmlData				=	parseXMLdoc(XMLContent);
+															error				=	$(xmlData).find("mysql:first status:first").text();
+															if(error == "success"){																
+																alert("Component Approved and Component Master Created Sucessfully");																
+																$("#appr_comp_popup").dialog("close");
+																updatePageBehaviour();
+															}
+															else{
+																displayError(raiseErr, "error", "<strong>Error !</strong> - Component Approval failed due to : "+ error);
+																return false;															
+															}
+														},
+														'Cancel':function(){
+															$(this).dialog('close');
+														}
+													},
+													close:function(){
+														$(this).html('').dialog('destroy');
+													}
+												});	
+}

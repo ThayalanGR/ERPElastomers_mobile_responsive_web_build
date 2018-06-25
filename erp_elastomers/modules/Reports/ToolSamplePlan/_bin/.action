@@ -1,0 +1,19 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$sql_grn	=	"select planId, SUBSTRING_INDEX(planId, '_',1) as dispPlanid, DATE_FORMAT(planDate,'%d-%b-%Y') as planDate, supName,cusName,part_number,part_description,cpdName,toolref,toolCavities,cmpdBlankWgt,liftplanned
+						from tbl_sample_plan tsp
+						inner join tbl_develop_request tdr on tsp.rfqid=tdr.sno
+						inner join tbl_customer tcus on tcus.cusid=tdr.cusid						
+						inner join tbl_trn tt on tt.trnId=tsp.toolRef
+						left join tbl_supplier ts on ts.supId=tt.supId
+						inner join tbl_compound tc on tc.cpdId=tsp.cpdId
+					where tsp.status>0 and planDate >= '".$_POST["fromdate"]."' and  planDate  <= '".$_POST["todate"]."'
+					order by planId desc";
+	$list		=	@getMySQLData($sql_grn,'xml','root','lower');
+	$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>$list</xmldata>";
+	
+?>

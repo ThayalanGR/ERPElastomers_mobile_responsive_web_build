@@ -1,0 +1,3 @@
+User templates can be used to override the mydbr/interface/languages/templates template-files.
+
+A template is chosen based on user language (or user's browser's language if user is not logged in). If a template with given language cannot be found, myDBR uses the *en_US.tmpl.

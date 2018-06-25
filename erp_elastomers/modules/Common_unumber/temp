@@ -1,0 +1,10 @@
+ // $sql = "SELECT * from `tbl_users`";
+    // $res = @getMySQLData($sql);
+    // $count = $res['count'];
+    // $no = 101;
+    // for($a = 0 ; $a < $count ; $a++){
+    //     $userId = $res['data'][$a]['userId'];
+    //     $sql = "UPDATE `tbl_users` SET `userNo` = $no WHERE userId = '$userId'";
+    //     @getMySQLData($sql);
+    //     $no++;
+    // }

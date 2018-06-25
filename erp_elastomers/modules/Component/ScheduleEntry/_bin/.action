@@ -1,0 +1,284 @@
+<?php
+	session_start();
+	global $cmpdsched_upload_dir;
+	//header('Content-Type: text/xml');
+	if ( isset($_FILES['file'])) {
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$cmpdsched_upload_dir;
+		$ticket = uniqid(rand(), true);
+		$storagename 	= $ticket."uploaded_file.csv";
+		try {
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			 }
+
+			 // You should also check filesize here. 
+			 if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			 }
+
+			 if( 'text/csv' == $_FILES['file']['type'] ||  'application/vnd.ms-excel' == $_FILES['file']['type'] ) 
+			 {
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					throw new RuntimeException( $_FILES['file']["name"] . " already exists. ");
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath . $storagename))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+					$schArray 		= 	array();
+					$delimiter 		= 	",";
+					if (($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+					{
+						while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE)
+						{
+							$schArray[] = $row ; 
+						}
+						fclose($handle);
+					}
+					$custName	= 	"";
+					$partName	= 	"";
+					$cusId		=	"";
+					$schFillArr	=	array();
+					for($i=0;$i<count($schArray);$i++)
+					{
+						if($custName != $schArray[$i][0])
+						{
+							$custName 	= 	$schArray[$i][0];
+							$cusIdArr	=  	@getMySQLData("select cusId from tbl_customer where upper(cusName) = upper('".$custName."')" );
+							$cusId		=	$cusIdArr['data'][0]['cusId'];
+						}
+						if($cusId != null && $cusId != "")
+						{
+							$partName 		= 	$schArray[$i][1];
+							$partDetails	=  	@getMySQLData("select cmpdId,cmpdRefNo,cmpdName  from tbl_component where upper(cmpdName) = upper('".$partName."')" );
+							$partId			=	$partDetails['data'][0]['cmpdId'];
+							if($partId != null && $partId != "")
+							{
+								$rateArr	=  	@getMySQLData("select poRate  from tbl_customer_cmpd_po_rate where cusId  = '".$cusId."' and cmpdId = '".$partId."' and status >0 order by update_on desc limit 1" );
+								$rate		=	$rateArr['data'][0]['poRate'];
+								if($rate != null && $rate != "")
+								{
+									$schQty	=	str2num($schArray[$i][2]);
+									if($schQty > 0)
+									{
+										$schFillArr[$i]['cusId'] 			= 	$cusId;
+										$schFillArr[$i]['cpdId_cmpdId']		=	$partId;
+										$schFillArr[$i]['cpdName_cmpdName']	=	$partDetails['data'][0]['cmpdName']."(".$partDetails['data'][0]['cmpdRefNo'].")"; 
+										$schFillArr[$i]['cpdDesc_cmpdDesc']	=	$partDetails['data'][0]['cmpdRefNo']; 
+										$schFillArr[$i]['schQty']			=	$schQty;
+										$schFillArr[$i]['rate']				=	$rate;
+										$schFillArr[$i]['value']			=	str2num($rate)*$schQty;
+									}
+								}
+								else
+								{
+									throw new RuntimeException('The Part Number : ' .$partName. ' is not approved  for customer: '.$custName.' in row number : '. ($i+1));
+								}	
+							}
+							else
+							{
+								throw new RuntimeException('No Part Number such as : ' .$partName. ' in row number : '. ($i+1));
+							}							
+						}
+						else
+						{
+							throw new RuntimeException('No Customer such as : ' .$custName. ' in row number : '. ($i+1));
+						}
+					}
+					if(count($schFillArr) > 0)
+					{					
+						$codeArray		=	@getSettingsData("schRef");
+						$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+						$sch_month		=	$_POST['month'];	
+						$schedsql		=	"insert into tbl_scheduling(
+											schRef, cusId, schOrder, schMonth, cpdId_cmpdId, cpdName_cmpdName, cpdDesc_cmpdDesc,  
+											schDate, schQty, rate, value, entry_on, status, entry_by
+										) values";
+						$sql_sub	=	"";
+						for($lp=0;$lp<count($schFillArr);$lp++){
+							$sql_sub	.=	" ('$codeNo', '".$schFillArr[$lp]['cusId']."', 'component', '$sch_month', '".$schFillArr[$lp]['cpdId_cmpdId']."', '".$schFillArr[$lp]['cpdName_cmpdName']."', '".$schFillArr[$lp]['cpdDesc_cmpdDesc']."',
+											now(),'".$schFillArr[$lp]['schQty']."','".$schFillArr[$lp]['rate']."', '".$schFillArr[$lp]['value']."',now(), 1, '".$_SESSION['userdetails']['userId']."') ";
+											if($lp < count($schFillArr)-1){
+												$sql_sub	.=	" , ";	
+											}
+						}
+						
+						$schedsql	=	$schedsql.$sql_sub;
+						$sql_query = @getMySQLData($schedsql);
+						
+						$output = "<scheduleadd>
+										<sql>$schedsql</sql>
+										<status>".$sql_query['status']."</status>
+										<month>$sch_month</month>
+									</scheduleadd>";
+						if($sql_query['status'] == "success"){
+							@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='schRef'");
+							if(!rename($uploadPath . $storagename, $uploadPath.$_FILES['file']["name"]))
+							{
+								throw new RuntimeException('Warning! Failed to rename the file: '.$uploadPath . $storagename.' to :'.$uploadPath.$_FILES['file']["name"]);
+							}							
+						}
+						else{
+							throw new RuntimeException('Insertion of schedule data failed due to :'.$sql_query['status']);						
+						}						
+						
+						echo $output;	
+					}
+					else
+					{	
+						throw new RuntimeException("No Records to update!");									
+					}						
+				}	
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			if(($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+			{	
+				fclose($handle);
+				$thefile = $uploadPath . $storagename;
+				unlink($thefile);
+			}				
+			echo "<scheduleadd><status>".$e->getMessage()."</status></scheduleadd>";
+		}      
+     } 
+	 else 
+	 { 
+		switch($_POST["selecttype"]){
+			case "CSTATLIST":
+				$output		=	getXML("select cusId, cusName from tbl_customer where status>0",false);
+				echo $output;
+				exit();
+			break;
+			case "CSTDTLLIST":
+				$custname = $_POST['cusid'];
+				$month = $_POST['month'];
+				$year =	$_POST['year'];
+				$day = $_POST['day'];
+				
+				$date = $year.$month.$day;
+				$lastDay_preMonth = $_POST['preMonth_lastDay'];
+				$preMonth	=	$_POST['preMonth'];
+				$preYear	=	$_POST['Year'];
+				
+				$preSchMonth = $preMonth." ".$preYear; 
+				$cus_sql	=	@getMySQLData("select cusId from tbl_customer where cusName='$custname'");
+				$cusid	=	$cus_sql['data'][0]['cusId'];
+				$selMonth = $_POST['selMonth'];
+				$sql="select *, cpr.cmpdId as dataId, tc.cmpdName as dataName,tc.cmpdRefNo as dataDesc, cpr.poRate as rate,
+					  (select schQty from tbl_scheduling
+					  where cpdId_cmpdId=cpr.cmpdId and cusId=cpr.cusId and schMonth='$preSchMonth' and status=1 order by entry_on desc limit 1) as preMonthQty,
+					  (select schNo from tbl_scheduling where cpdId_cmpdId=cpr.cmpdId and cusId=cpr.cusId and schMonth='$selMonth' and status=1 order by entry_on desc limit 1)as schNo,
+					  (select DATE_FORMAT(schDate,'%d-%m-%Y') from tbl_scheduling where cpdId_cmpdId=cpr.cmpdId and cusId=cpr.cusId and schMonth='$selMonth' and status=1 order by entry_on desc limit 1)as schDate,
+					  (select schQty from tbl_scheduling where cpdId_cmpdId=cpr.cmpdId and cusId=cpr.cusId and schMonth='$selMonth' and status=1 order by entry_on desc limit 1)as schQty
+					  from tbl_customer_cmpd_po_rate cpr
+						inner join tbl_component tc on cpr.cmpdId=tc.cmpdId
+					  where cpr.cusId='$cusid' and cpr.poDate<'$date' and cpr.status=1
+						group by cpr.cmpdId";
+				$outputarr	=  @getMySQLData($sql);
+				$data = "";
+				$sno = 1;
+				if( ($outputarr['errno'] == 0)&&($outputarr['count'] > 0) ){
+					foreach( $outputarr['data'] as $value ){
+						$data		.=	"<row>";
+						$data		.=	"<sno>$sno</sno>";
+						$data		.=	"<dataid>".$value['dataId']."</dataid>";
+						$data		.=	"<dataname>".$value['dataName']."</dataname>";
+						$data		.=	"<datadesc>".$value['dataDesc']."</datadesc>";
+						$data		.=	"<preMonthQty>".$value['preMonthQty']."</preMonthQty>";
+						$data		.=	"<schNo>".$value['schNo']."</schNo>";
+						$data		.=	"<schDate>".$value['schDate']."</schDate>";
+						$data		.=	"<schQty>".$value['schQty']."</schQty>";
+						$data		.=	"<rate>".$value['rate']."</rate>";
+						$data		.= 	"<option>".$_POST['opt_code']."</option>";
+						$data		.=	"</row>";
+						$sno++;
+					}
+				}
+				
+				$output	= "<root>".$data."</root>";
+				echo $output;
+				exit();
+
+			break;
+			case "ADDSCHEDULEENTRY":
+				$data						=	$_POST['templatepost'];
+				$codeArray					=	@getSettingsData("schRef");
+				$codeNo						=	@getRegisterNo($codeArray[0], $codeArray[1]);
+				
+				$custData					=	@getMySQLData("select cusId from tbl_customer where cusName='".$data['custname']."'");
+				$custId						=	$custData['data'][0]['cusId'];
+				if($custId != null && $custId != '')
+				{
+					$order_sch					=	'component';
+					$sch_month					=	$data['month'];
+					
+					$sql			=	"insert into tbl_scheduling(
+													schRef, cusId, schOrder, schMonth, cpdId_cmpdId, cpdName_cmpdName, cpdDesc_cmpdDesc, schNo,
+													schDate, schQty, rate, value, entry_on, status, entry_by
+												) values";
+					
+					$subsql		=	array();
+					foreach($data['particulars'] as $key => $value){
+						for($sq=0;$sq<count($value);$sq++){
+							if($key == 'cpdid'){ $subsql[$sq]['cpdid'] = $value[$sq]; }
+							else if($key == 'cpdcode'){ $subsql[$sq]['cpdcode'] = $value[$sq]; }
+							else if($key == 'cpddesc'){ $subsql[$sq]['cpddesc'] = $value[$sq]; }
+							else if($key == 'schno'){ $subsql[$sq]['schno'] = $value[$sq];}
+							else if($key == 'schdate'){ $subsql[$sq]['schdate'] = ($value[$sq])?date("Y-m-d", @strtotime(@preg_replace("/[\/]/", "-", $value[$sq]))):date("Y-m-d"); }
+							else if($key == 'schqty'){ $subsql[$sq]['schqty'] = $value[$sq]; }
+							else if($key == 'rate'){ $subsql[$sq]['rate'] = @preg_replace("/[,]/", "", $value[$sq]); }
+							else if($key == 'value'){ $subsql[$sq]['value'] = @preg_replace("/[,]/", "", $value[$sq]); }
+						}
+					}
+					$sql_sub	=	"";
+					for($lp=0;$lp<count($subsql);$lp++){
+						$sql_sub	.=	" ('$codeNo', '$custId', '$order_sch', '$sch_month', '".$subsql[$lp]['cpdid']."', '".$subsql[$lp]['cpdcode']."',
+						'".$subsql[$lp]['cpddesc']."', '".$subsql[$lp]['schno']."', '".$subsql[$lp]['schdate']."', '".$subsql[$lp]['schqty']."',
+						'".$subsql[$lp]['rate']."', '".$subsql[$lp]['value']."',now(), 1, '".$_SESSION['userdetails']['userId']."') ";
+						
+						if($lp < count($subsql)-1){
+							$sql_sub	.=	" , ";	
+						}
+					}
+					
+					$sql	=	$sql.$sql_sub;
+					$sql_query = @getMySQLData($sql);
+					
+					$output = "<scheduleadd>
+									<sql>$sql</sql>
+									<status>".$sql_query['status']."</status>
+									<cusid>$custId</cusid>
+									<month>$sch_month</month>
+								</scheduleadd>";
+						if($sql_query['status'] == "success"){
+							@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='schRef'");
+						}	
+				}
+				else
+				{
+					$output = "<scheduleadd>
+									<status>No Such Customer as: ".$data['custname']."</status>
+								</scheduleadd>";
+				}
+				echo $output;				
+			break;
+		}
+	}
+	
+?>

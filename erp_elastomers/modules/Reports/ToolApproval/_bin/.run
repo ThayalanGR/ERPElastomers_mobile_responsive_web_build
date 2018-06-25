@@ -1,0 +1,25 @@
+tableFilters.sort_config		=	{ sort_types:['string','date', 'string','string','string','string','string','string','us','us','us','none'] };
+var TF_01						=	null;
+var needRefresh					=	false;
+
+$(document).ready(function(){
+	updatePageBehaviour();	
+});
+
+function updatePageBehaviour(){
+	var objCompList = postback(actionFile, "fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST","XML");
+	//alert(objCompList);
+	listPageData($("#content_body"), objCompList, XSLFile);
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('invid');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});	
+
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+}

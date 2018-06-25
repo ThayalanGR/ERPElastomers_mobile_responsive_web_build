@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xsl:template match="/">
+        <table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr>
+					<th width="6%">Id</th>
+					<th width="8%">Date</th>
+					<th width="12%">Customer Name</th>
+					<th width="10%">Part Number</th>
+					<th width="20%">Description</th>
+					<th width="8%">Closure Target Date</th>
+					<th width="15%">Sketch Link(if any)</th>
+					<th>#</th>
+				</tr>
+			</thead>
+			<tbody>
+				<xsl:for-each select="xmldata/root/data/row">
+					<tr>
+						<td align="left"><xsl:value-of select="complaintid"/></td>
+						<td align="left"><xsl:value-of select="complaintdate"/></td>
+						<td align="left"><xsl:value-of select="cusname"/></td>
+						<td align="left"><xsl:value-of select="cmpdname"/></td>
+						<td align="left"><xsl:value-of select="description"/></td>
+						<td align="left"><xsl:value-of select="closetarget"/></td>
+						<td align="left">
+							<a>
+								<xsl:attribute name="href"><xsl:value-of select="filepath"/><xsl:value-of select="sketch_file_name"/></xsl:attribute>
+								<xsl:attribute name="target">_blank</xsl:attribute>
+								<xsl:value-of select="sketch_file_name"/>
+							</a>
+						</td>
+						<td align="right">
+								<span class="link">
+									<xsl:attribute name="compid" ><xsl:value-of select="complaintid"/></xsl:attribute>
+									<xsl:attribute name="tool_comments" ><xsl:value-of select="tool_comments"/></xsl:attribute>
+									<xsl:attribute name="cpd_comments" ><xsl:value-of select="cpd_comments"/></xsl:attribute>
+									<xsl:attribute name="prod_comments" ><xsl:value-of select="prod_comments"/></xsl:attribute>
+									<xsl:attribute name="quality_comments" ><xsl:value-of select="quality_comments"/></xsl:attribute>
+									<xsl:attribute name="purchase_comments" ><xsl:value-of select="purchase_comments"/></xsl:attribute>
+									<xsl:attribute name="isinternal" ><xsl:value-of select="isinternal"/></xsl:attribute>										
+									<xsl:attribute name="corr_action" ><xsl:value-of select="corraction"/></xsl:attribute>
+									<xsl:attribute name="anal_method" ><xsl:value-of select="analysismethod"/></xsl:attribute>
+									<xsl:attribute name="close_target" ><xsl:value-of select="closetarget"/></xsl:attribute>									
+									<xsl:attribute name="class" >prev_action_button link</xsl:attribute>
+										Add Preventive Action 
+								</span>
+						</td>
+					</tr>
+				</xsl:for-each>
+			</tbody>
+    	</table>    
+    </xsl:template>
+</xsl:stylesheet>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+        <table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr>
+				  <th width="25%" align="center">Batch Date</th>
+				  <th width="20%" align="center">Master Batches</th>
+				  <th width="20%" align="center" title="Expected Batch Weight">Final Batches</th>
+				  <th align="right">#</th>
+				</tr>			
+			</thead>
+			<tbody>
+				<xsl:for-each select="xmldata/root/data/row">
+					<tr>
+						<td align="center">
+							<xsl:value-of select="batdate"/>
+						</td>
+						<td align="right">
+							<xsl:value-of select="noofmbatches"/>
+						</td>
+						<td align="right">
+							<xsl:value-of select="nooffbatches"/>
+						</td>
+						<td align="right">
+							<a>
+								<xsl:attribute name="batdate"><xsl:value-of select="batdate" /></xsl:attribute>
+								<xsl:attribute name="module">plan</xsl:attribute>
+								<xsl:attribute name="class">view_button link</xsl:attribute>
+								View Plan
+							</a>					  
+							|
+							<a>
+								<xsl:attribute name="batdate"><xsl:value-of select="batdate" /></xsl:attribute>
+								<xsl:attribute name="module">card</xsl:attribute>
+								<xsl:attribute name="class">view_button link</xsl:attribute>
+								View Card
+							</a>	
+							|
+							<a>
+								<xsl:attribute name="batdate"><xsl:value-of select="batdate" /></xsl:attribute>
+								<xsl:attribute name="module">label</xsl:attribute>
+								<xsl:attribute name="class">view_button link</xsl:attribute>
+								Print Label
+							</a>						
+						</td>					  
+                    </tr>
+				</xsl:for-each>
+			</tbody>		
+        </table>
+    </xsl:template>
+</xsl:stylesheet>

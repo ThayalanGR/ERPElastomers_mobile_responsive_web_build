@@ -1,0 +1,16 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$sql_plan	=	"select ttv.tool_ref,comp_part_ref , DATE_FORMAT(max(tvn_date),'%d-%b-%y')as invdate,lifts_run,tt.next_validation, tt.status1
+					from tbl_tool_validation ttv 
+					inner join tbl_tool tt on tt.tool_ref = ttv.tool_ref
+					where ttv.status>0 group by ttv.tool_ref order by tt.status1 asc,tvn_date desc";
+	$list		=	@getMySQLData($sql_plan,"xml","root","lower");
+	$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+?>

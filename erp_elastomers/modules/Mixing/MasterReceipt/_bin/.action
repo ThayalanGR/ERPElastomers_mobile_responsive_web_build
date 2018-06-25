@@ -1,0 +1,47 @@
+<?php
+	session_start();
+	
+	header('Content-Type: text/xml');	
+	
+	switch($_REQUEST["selecttype"]){
+		case "MASTERUPDATE":
+			if( is_array($_REQUEST['batids'])  != "" && is_array($_REQUEST['batchMasterWgts']) != "" && is_array($_REQUEST['batDTemps']) != "")
+			{
+				$batids				=	$_REQUEST['batids'];
+				$batchMasterWgts	=	$_REQUEST['batchMasterWgts'];
+				$batDTemps			=	$_REQUEST['batDTemps'];				
+				for($batCount=0; $batCount<count($batids); $batCount++)
+				{
+					$batchID 		= 	$batids[$batCount];
+					$masterBatWgt 	= 	$batchMasterWgts[$batCount];
+					$dumpTemp 		= 	$batDTemps[$batCount];
+					$output 		= 	@getMySQLData("update tbl_mixing set status=2, masterBatchWgt = ". $masterBatWgt .", dumpTemp = ". $dumpTemp ." where batid='$batchID'","xml");
+				}
+			}
+			else{
+				echo "<mysql><status>Invalid Data / Data Missing</status></mysql>";
+				exit();
+			}
+		break;
+		case "MIXDEL":
+			if($_REQUEST['batid'] != ""){
+				$cpdid			=	$_REQUEST['cpdid'];				
+				$output			=	@getMySQLData("update tbl_mixing set status='0' where batId='".$_REQUEST['batid']."' and status=1;", "xml");
+				$output			=	@getMySQLData("update tbl_invoice_mixplan set status='0' where batId='".$_REQUEST['batid']."' and status=1;", "xml");
+			}
+		break;
+	}
+	
+	$list	=	@getMySQLData("select t1.batId, SUBSTRING_INDEX(t1.batId, '_',-1) as dispBatId, t1.cpdId, t2.cpdName, t2.cpdPolymer, t1.batPlanWgt,  t3.planQty, t4.dispOrder
+									from tbl_mixing t1
+									inner join ( select timi.batId, sum(planQty) as planQty from tbl_invoice_mixplan_items timi inner join tbl_mixing tm on timi.batId = tm.batid and tm.status = 1 inner join tbl_compound_rm tcr on tcr.cpdId = tm.cpdId and timi.ramId = tcr.ramId and tcr.is_final_chemical = 0  group by timi.batId) t3 on t3.batId = t1.batId
+									inner join tbl_compound t2 on t2.cpdId = t1.cpdId  
+									inner join tbl_polymer_order t4 on  t4.polyName = t2.cpdPolymer								
+								where  t1.status=1  group by t1.batId order by dispOrder,cpdName,batId asc", "xml", "root", "lower");
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>

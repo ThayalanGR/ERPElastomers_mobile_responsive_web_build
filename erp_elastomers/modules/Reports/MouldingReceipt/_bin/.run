@@ -1,0 +1,82 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+
+isSelectable	=	true;
+start_day		=	"";
+end_day			=	"";
+
+function updateData(){
+
+	plnLiftsTot		= 	0;
+	actLiftsTot		=	0;
+	plnQtyTot		=	0;
+	actQtyTot		=	0;
+	issQtyTot		=	0;
+	usedQtyTot		=	0;	
+	$("#content_body table tr").each(function(index, element) {
+		plnLifts	= 	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().toNumber()):0;
+		actLifts	=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().toNumber()):0;
+		plnQty		=	($(this).find("td:eq(7)").html())?Number($(this).find("td:eq(7)").html().toNumber()):0;
+		actQty		=	($(this).find("td:eq(8)").html())?Number($(this).find("td:eq(8)").html().toNumber()):0;
+		issQty		=	($(this).find("td:eq(9)").html())?Number($(this).find("td:eq(9)").html().toNumber()):0;
+		usedQty		=	($(this).find("td:eq(10)").html())?Number($(this).find("td:eq(10)").html().toNumber()):0;			
+		plnLiftsTot	= 	plnLiftsTot	+ (isNaN(plnLifts) ?0 :plnLifts);
+		actLiftsTot	=	actLiftsTot	+ (isNaN(actLifts) ?0 :actLifts);
+		plnQtyTot	=	plnQtyTot	+ (isNaN(plnQty) ?0 :plnQty);
+		actQtyTot	=	actQtyTot	+ (isNaN(actQty) ?0 :actQty);
+		issQtyTot	=	issQtyTot	+ (isNaN(issQty) ?0 :issQty);
+		usedQtyTot	=	usedQtyTot	+ (isNaN(usedQty) ?0 :usedQty);			
+    });
+	$("#plnd_lifts_total").html(plnLiftsTot.toCurrency());
+	$("#act_lifts_total").html(actLiftsTot.toCurrency());
+	$("#plnd_qty_total").html(plnQtyTot.toCurrency());
+	$("#act_qty_total").html(actQtyTot.toCurrency());
+	$("#iss_qty_total").html(issQtyTot.toCurrency(3));
+	$("#used_qty_total").html(usedQtyTot.toCurrency(3));	
+}
+
+$(document).ready(function(){
+	//MonthPicker
+	$('#to_date').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	}).bind('monthpicker-click-month', function (e, month) {
+		$(".filter-table").filters('destroy');
+    	updatePageBehaviour();
+	});
+	
+	updatePageBehaviour();
+
+});
+
+function updatePageBehaviour(){
+	var val				=	$("#to_date").val(); 			
+	space_pos 			= 	val.indexOf(' ');
+	month 				= 	val.substring(0,space_pos);
+	cur_year 			= 	val.substring(space_pos+1,val.length);
+	var monthsArray 	= [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+	var LastDaysArray 	= [ 31,28,31,30,31,30,31,31,30,31,30,31 ];
+	monthIndex 			= 	monthsArray.indexOf(month);
+	cur_month			=	monthIndex + 1;
+	cur_month 			= 	(cur_month>9)?cur_month:'0'+cur_month;
+	start_day 			=	cur_year + "-" + cur_month +"-01";
+	last_day 			= 	(Number(cur_year)%4!=0)?LastDaysArray[monthIndex]:LastDaysArray[monthIndex]+1;
+	end_day				=	cur_year + "-" + cur_month +"-" + last_day;	
+	param				=	"startDate="+start_day+"&endDate="+end_day;	
+	var objCompList		=	postback(actionFile,param,"POST","XML");
+	//alert(objCompList);
+	listPageData($("#content_tbl"), objCompList, XSLFile);
+	$(".filter-table").filters({
+		onUpdate:updateData
+	});
+	
+	updateHeader();updateContent();
+	updateData();	
+}
+
+function exportPlanDetailList(){
+	$('#type').val("export");
+	$('#startDate').val(start_day);
+	$('#endDate').val(end_day);
+	document.exportform.action= actionFile;
+	document.exportform.submit();
+}

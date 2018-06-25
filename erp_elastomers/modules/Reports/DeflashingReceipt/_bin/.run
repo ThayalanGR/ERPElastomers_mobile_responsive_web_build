@@ -1,0 +1,72 @@
+start_day		=	"";
+end_day			=	"";
+
+function updateData(){
+	ordQtyTot	=	0;
+	valTot		=	0;
+	
+	$("#content_body table tr").each(function(index, element) {
+        base_poly	=	($(this).find("td:eq(5)").html())?Number($(this).find("td:eq(5)").html().toNumber()):0;
+		vTot		=	($(this).find("td:eq(6)").html())?Number($(this).find("td:eq(6)").html().toNumber()):0;
+		
+		ordQtyTot	=	ordQtyTot + (isNaN(base_poly) ?0 :base_poly);
+		valTot		=	valTot 	  + (isNaN(vTot) ?0 :vTot);
+    });
+	$("#base_qty_total").html(ordQtyTot.toCurrency(0));
+	$("#val_total").html(valTot.toCurrency(0));
+	
+}
+
+function fieldChange(){
+	$(".filter-table").filters('destroy');
+    updatePageBehaviour();
+}
+
+$(document).ready(function(){
+	//MonthPicker
+	$('#to_date').monthpicker({
+		pattern:'mmm yyyy',
+		monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+	}).bind('monthpicker-click-month', function (e, month) {
+		//Destroy filters & rebuild newly
+		$(".filter-table").filters('destroy');
+    	updatePageBehaviour();
+	})
+	updatePageBehaviour();
+});
+
+function updatePageBehaviour(){
+
+	var val				=	$("#to_date").val(); 			
+	space_pos 			= 	val.indexOf(' ');
+	month 				= 	val.substring(0,space_pos);
+	cur_year 			= 	val.substring(space_pos+1,val.length);
+	var monthsArray 	= 	[ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+	var LastDaysArray 	= 	[ 31,28,31,30,31,30,31,31,30,31,30,31 ];
+	monthIndex 			= 	monthsArray.indexOf(month);
+	cur_month			=	monthIndex + 1;
+	cur_month 			= 	(cur_month>9)?cur_month:'0'+cur_month;
+	start_day 			=	cur_year + "-" + cur_month +"-01";
+	last_day 			= 	(Number(cur_year)%4!=0)?LastDaysArray[monthIndex]:LastDaysArray[monthIndex]+1;
+	end_day				=	cur_year + "-" + cur_month +"-" + last_day;	
+	param				=	"startDate="+start_day+"&endDate="+end_day;
+	
+	var mouldList       =	postback(actionFile, param, "POST", "XML");
+	listPageData($("#content_tbl"), mouldList, XSLFile);	
+	updateHeader();updateContent();	
+	updateData();
+
+	$(".filter-table").filters({
+		filterBody:"#content_body",
+		onUpdate:updateData
+	});		
+	
+}
+
+function exportPlanDetailList(){
+	$('#type').val("export");
+	$('#startDate').val(start_day);
+	$('#endDate').val(end_day);
+	document.exportform.action= actionFile;
+	document.exportform.submit();
+}

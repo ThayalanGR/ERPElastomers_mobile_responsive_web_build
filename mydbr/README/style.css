@@ -1,0 +1,41 @@
+body
+{
+	background-color: #fFfFfF;
+	font-family: Verdana;
+	font-size: 11px;
+}
+
+div.lic h1, div.lic h2, div.lic h3 {
+	font-weight: normal;
+}
+
+div.lic h1 {
+	font-size: 22px;
+}
+
+
+div.lic h2 {
+	font-size: 14px;
+}
+
+div.lic h3 {
+	font-size: 13px;
+}
+
+div.lic .licenses {
+  margin-left: 20px;
+}
+
+div.lic hr {
+width: 60%;
+margin-top: 40px;
+margin-bottom: 40px;
+}
+
+p.ind {
+	padding: 0.25em 0.25em 0.25em 2em;
+}
+
+div.scroll {}
+
+div.lic {}

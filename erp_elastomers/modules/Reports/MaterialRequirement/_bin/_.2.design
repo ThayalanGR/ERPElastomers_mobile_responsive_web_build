@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<!-- To Avoid infinite value in calculation -->
+<xsl:decimal-format name='infi' infinity="0" />
+<xsl:template name="recursivesum">
+	<xsl:param name="items" />
+	<xsl:param name="sumos" select="0" />
+	<xsl:variable name="head" select="$items[1]" />
+	<xsl:variable name="tail" select="$items[position()>1]" />
+	<xsl:variable name="thissumos" select="number(translate($head/totrmqty,',',''))" />
+	<xsl:choose>
+		<xsl:when test="not($tail)">
+			<td align="right">
+				<xsl:value-of select="format-number($sumos+$thissumos,'###,###,##0.000')" />
+			</td>			
+		</xsl:when>
+		<xsl:otherwise>
+			<xsl:call-template name="recursivesum">
+				<xsl:with-param name="sumos" select="$sumos+$thissumos" />
+				<xsl:with-param name="items" select="$tail" />
+			</xsl:call-template>
+		</xsl:otherwise>
+	</xsl:choose>
+</xsl:template>
+<xsl:template match="/">
+	<table width="100%" border="0" class="content_table" cellspacing="0" cellpadding="0" >
+		<tr>
+			<th width="5%" align="center">S No.</th>
+			<th width="50%" align="center">Compound Name</th>
+			<th align="center">Required Qty.<sup>Kg</sup></th>
+		</tr>
+		<xsl:for-each select="xmldata/root/data/row" >
+			<tr>
+				<td align="left"><xsl:value-of select="position()" /></td>
+				<td align="left"><xsl:value-of select="ramname" /></td>
+				<td align="right"><xsl:value-of select="format-number(totrmqty,'###,###,##0.000')" /></td>
+			</tr>				
+		</xsl:for-each>
+		<tr style="font-weight:900">
+			<td align="center" colspan="2">Grand Total</td>
+			<xsl:call-template name="recursivesum">
+				<xsl:with-param name="items" select="xmldata/root/data/row" />
+			</xsl:call-template>
+		</tr>			
+	</table>
+</xsl:template>    
+</xsl:stylesheet>

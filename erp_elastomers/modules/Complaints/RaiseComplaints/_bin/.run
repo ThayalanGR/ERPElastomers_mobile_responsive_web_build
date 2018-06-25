@@ -1,0 +1,323 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+custIdList					=	new Array();
+custList					=	new Array();
+errMsg						=	null;
+tableFilters.sort_config	=	{ sort_types:['string','date','string', 'string','string','string','string','string','date','date','date','none'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+function updatePageBehaviour(){
+	
+	objCompList	=	postback(actionFile, "selecttype=GETCOMPLIST", "POST","XML");
+	//alert(objCompList); //return false;
+	listPageData($("#content_body"), objCompList, XSLFile);
+	$(".view_button").click(function(e) {
+		mRecId	=	$(this).attr('compid') ;
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});	
+	if($("#content_body").html() != null && $("#content_body").html() != "")
+	{
+		TF_01	=	setFilterGrid("resultTable",tableFilters);
+		if(needRefresh)
+			TF_01.RefreshGrid();
+		else
+			needRefresh	=	true;
+	}
+}
+
+function getComponents(){
+	cusname		=	$("#new_CustID").val();
+	cusid		=	custIdList[cusname];
+	if(cusid == null || cusid == ""){
+		$("#new_CustID").val("");
+	}
+	var objCmpdList	=	postback(actionFile,"selecttype=CMPDLIST&cusid="+cusid,"POST","XML");
+	cmpdXML			=	parseXMLdoc(objCmpdList);
+	data			= 	"<option val=''></option>";
+	$(cmpdXML).find('row').each(function(index, element) {
+		data		+=	"<option value='"+$(this).find('cmpdid').text()+"'>"+$(this).find('cmpdname').text()+"</option>";
+    });	
+	$("#new_PartNum").html(data);
+}
+
+function handleFormSubmit(){
+	custName		=	$("#new_CustID");
+	custId			=	custIdList[custName.val()];
+	compClass		=	$("#new_Class");
+	compNature		=	$("#new_Nature");
+	compMode		=	$("#new_Mode");	
+	partNum			=	$("#new_PartNum");
+	compDesc 		=	$("#new_Desc");
+	responsibility	=	$("#new_Responsibility");
+	cusCompRef		=	$("#new_CusCompRef");
+	cusCompRefDate	=	$("#new_CusCompRefDate");
+	retQty			=	$("#new_RetQty");
+	retDate			=	$("#new_RetDate");
+	corrTargetDate	=	$("#new_CorrTargetDate");
+	prevTargetDate	=	$("#new_PrevTargetDate");
+	newError		=	$("#error_msg");
+	today 			= 	new Date().toISOString().slice(0, 10);	
+	
+	if(errMsg != null)
+	clearTimeout(errMsg);
+	errMsg			=	setTimeout(function(){
+							newError.css("display", "none");
+						}, 2500);
+	
+	if(custId == "" || custId == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Customer Name Missing or Invalid.");
+		custName.focus();
+		return false;
+	}
+	else if(compClass.val() == "" || compClass.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Complaint Classification Missing.");
+		compClass.focus();
+		return false;
+	}
+	else if(compNature.val() == "" || compNature.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Complaint Nature Missing.");
+		compNature.focus();
+		return false;
+	}
+	else if(compMode.val() == "" || compMode.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Complaint Mode of Receipt Missing.");
+		compMode.focus();
+		return false;
+	}					
+	else if(compDesc.val() == "" || compDesc.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Complaint Description Missing.");
+		compDesc.focus();
+		return false;
+	}
+	else if(responsibility.val().trim() == "" || responsibility.val() == null){
+		displayError(newError, "error", "<strong>Error !</strong> - Complaint Responsibility Missing.");
+		responsibility.focus();
+		return false;
+	}
+	else if((cusCompRef != "" && cusCompRef != null) && (cusCompRefDate.val() == "" || cusCompRefDate.val() == null))
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Invalid Customer Complaint Reference Date.");
+		cusCompRefDate.focus();
+		return false;
+	}	
+	else if(retQty.val() > 0 && (retDate.val() == "" || retDate.val() == null ) )
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Invalid Return Date.");
+		retDate.focus();
+		return false;
+	}	
+	else if(!(corrTargetDate.val() >= today))
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Invalid Corrective Action Date.");
+		corrTargetDate.focus();
+		return false;
+	}
+	else if(!(prevTargetDate.val() >= today))
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Invalid Closure Action Date.");
+		prevTargetDate.focus();
+		return false;
+	}			
+	formdata 		= 	new FormData();
+	prodDrawingFile = 	document.getElementById("new_Sketch");	
+    file 			= 	prodDrawingFile.files[0];
+	if(file)
+	{
+		if (formdata) {
+			formdata.append("file", file,file.name);
+			formdata.append("custname", custName.val());
+			formdata.append("custid", custId);
+			formdata.append("partnum",partNum.val());
+			formdata.append("compclass",compClass.val());
+			formdata.append("compdesc",compDesc.val());
+			formdata.append("compnature",compNature.val());
+			formdata.append("compmode",compMode.val());
+			formdata.append("compresp",responsibility.val());
+			formdata.append("custcompref",cusCompRef.val());
+			formdata.append("custcompdate",cusCompRefDate.val());
+			if(retQty.val() > 0)
+			{
+				formdata.append("retqty",retQty.val());
+				formdata.append("retdocid",$("#new_RetRef").val());
+				formdata.append("retdate",retDate.val());
+			}
+			formdata.append("corrtardate",corrTargetDate.val());
+			formdata.append("closetardate",prevTargetDate.val());					
+		}	
+		$("#button_add").attr("value","Loading, Please Wait...");
+		$("#button_add").attr("disabled","true");
+		// Set up the request.
+		var xhr = new XMLHttpRequest();
+
+		// Open the connection.
+		xhr.open('POST', actionFile, true);
+
+		// Set up a handler for when the request finishes.
+		xhr.onload = function () {
+			if (xhr.status === 200) {
+				// File(s) uploaded.
+				var printObj	=	xhr.response;
+				printData		=	$(printObj);
+				error			=	printData.find("status").html();
+				compid			=	printData.find("compid").html();
+				
+				if(error == "success"){
+					alert("Complaint Id :" + compid + " has been created sucessfully");					
+					window.location.reload();
+				}
+				else{
+					displayError(newError, "error", printObj);
+					$("#button_add").attr("value","Create");
+					$("#button_add").removeAttr("disabled");					
+				}			
+			} 
+			else {
+				displayError(newError, "error", "Unable to upload the file, Please retry again");
+				$("#button_add").attr("value","Create");
+				$("#button_add").removeAttr("disabled");				
+			}
+		};
+		
+		// Send the Data.
+		xhr.send(formdata);
+	}
+	else
+	{
+		param	=	"selecttype=COMPINS&custname=" + custName.val()+
+					"&custid=" + custId +
+					"&partnum=" + partNum.val() +
+					"&compclass=" + compClass.val() +					
+					"&compdesc=" + compDesc.val() +
+					"&compnature=" + compNature.val() +
+					"&compmode=" + compMode.val() +
+					"&compresp=" + responsibility.val() +
+					"&custcompref=" + $("#new_CusCompRef").val() +
+					"&custcompdate=" + cusCompRefDate.val() +
+					"&corrtardate=" + corrTargetDate.val() +
+					"&closetardate=" + prevTargetDate.val();					
+		if(retQty.val() > 0)
+		{
+			param	+=	"&retqty=" + retQty.val() +
+						"&retdocid=" + $("#new_RetRef").val() +
+						"&retdate=" + retDate.val() ;
+		}	
+		//alert(param); //return false;
+		XMLContent			=	postback(actionFile, param, "POST", "XML");
+		alert(XMLContent);
+		xmlData				=	parseXMLdoc(XMLContent);
+		error				=	$(xmlData).find("status").text();
+		compid				=	$(xmlData).find("compid").text();
+		if(error == "success"){																
+			alert("Complaint Id :" + compid + " has been created sucessfully");					
+			window.location.reload();
+		}
+		else{
+			displayError(newError, "error", printObj);
+			return false;															
+		}
+	}		
+}
+
+function handleFormCancel(){
+	$("#new_CustID").val('');
+	$("#new_PartNum").html('');
+	$("#new_Class").val('');	
+	$("#new_Desc").val('');
+	$('#new_Sketch').val('');
+}
+
+$(document).ready(function(){
+
+	updatePageBehaviour();
+	
+	$("#new_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		draggable: true,
+		resizable: false,
+		width: 1000,
+		height:'auto',
+		buttons: [
+			{
+				text: "Create",
+				id:"button_new",
+				tabindex:"16",
+				click: function(){
+					//Nothing
+				}
+			},
+			{
+				text: "Clear",
+				id:"button_cancel",
+				tabindex:"17",
+				click: function(){
+					handleFormCancel();
+				}
+			}
+		],
+		close: function(event, ui) {
+			$("#new_item_form form")[0].reset();	
+			$("#error_msg").html("");
+			$("#error_msg").css("display", "none");
+		} 
+	});	
+	
+	// Set AutoComplete Text Box
+	var objCusList	=	postback(actionFile,"selecttype=CSTATLIST&outtype=xml","POST","XML");
+	cusXML			=	parseXMLdoc(objCusList);	
+	custList		=	new Array();
+	custIdList		=	new Array();
+	$(cusXML).find('row').each(function(index, element) {
+		cusname		=	$(this).find('cusname').text();
+        custList.push(cusname);
+		custIdList[cusname]	=	$(this).find('cusid').text();
+    });
+	
+	$("#new_CustID").autocomplete({
+		source:custList,
+		close:function(event, ui){
+			getComponents();
+		}
+	});
+	
+	$("#button_add").button().click(function(){
+		$("#new_item_form").css('visibility', 'visible');
+		$("#new_item_form").dialog("open");
+		$(".comp_exist").hide();
+	});	
+	
+	$("#button_new").button().click(function(){
+		createCont   =   '<table width="100%" >' +
+						'<tr><td><b>Are you Sure to Create this Complaint ?</b></td></tr>' +
+						'</table>';
+		$('#create_dialog').html(createCont).dialog({
+			title:'Create New Complaint',
+			width:300,
+			height:125,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'YES':function(){
+					$(this).dialog('close');
+					handleFormSubmit();
+				},
+				'NO':function(){
+				   $(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	
+		
+	});
+	
+	$("#button_cancel").button().click(function(){
+		handleFormCancel();
+	});	
+
+});

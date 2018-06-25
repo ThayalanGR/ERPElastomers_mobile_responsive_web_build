@@ -1,0 +1,64 @@
+<?php
+	session_start();
+	global $complaints_upload_dir;
+	header("Content-Type: text/xml");
+	switch($_POST["type"]){
+		case "NEWCOMPLIST":
+			$sql	=	"select complaintId,isInternal, DATE_FORMAT(complaintDate, '%d-%b-%Y') as complaintDate,concat(tcmpd.cmpdname,'(',tcmpd.cmpdrefno,')') as cmpdname,description,cusName,sketch_file_name,tool_comments,cpd_comments,prod_comments,quality_comments,purchase_comments, '/".$complaints_upload_dir."' as filepath,tcomp.status
+						from tbl_complaint tcomp
+							left join tbl_customer tcust on tcomp.cusId=tcust.cusId
+							left join tbl_component tcmpd on tcmpd.cmpdId=tcomp.cmpdId							
+						where tcomp.status > 0 and tcomp.status < 5 and ((isInternal = 0 and (tool_comments = '' or cpd_comments = '' or prod_comments = '')) or (isInternal = 1 and (tool_comments = '' or cpd_comments = '' or prod_comments = '' or quality_comments = '' or purchase_comments = ''))) order by complaintDate";
+			echo '<xmldata>'.getMySQLData($sql,'xml','root','lower').'</xmldata>';
+		break;
+		case "APPRINS":			
+			$compId			=	$_POST['compid'];
+			$type			=	$_POST['acttype'];
+			$remarks		=	$_POST['actremarks'];
+			$corrTarget		=	$_POST['corracttarget'];
+			$closeTarget	=	$_POST['closetarget'];
+			$userId			=	$_SESSION['userdetails']['userId'];
+			$userName		=	$_SESSION['userdetails']['fullName'];
+			if($compId != ""){
+				$sql_comp	=	"";
+				$feildToUpdate	=	"tool_comments";
+				if($type == 'Compound')
+					$feildToUpdate	=	"cpd_comments";
+				else if($type == 'Production')
+					$feildToUpdate	=	"prod_comments";
+				else if($type == 'Purchase')
+					$feildToUpdate	=	"purchase_comments";
+				else if($type == 'Quality')
+					$feildToUpdate	=	"quality_comments";
+				
+				$sql_comp		=	"update tbl_complaint
+										set ".$feildToUpdate." = '$remarks', ".$feildToUpdate."_on = now(),  ".$feildToUpdate."_by = '$userId' " ;
+				if($corrTarget != null && $corrTarget != '')
+				{
+					$sql_comp		.=	", status = if(status = 1, 2,status), corr_action_target = '$corrTarget', closure_target = '$closeTarget', responsibility = '$userName' ";
+				}
+				else
+				{
+					$sql_comp		.=	", status = if(status = 1 and isInternal = 0, 2,status)";
+				
+				}
+				
+				$sql_comp		.=	" where complaintId = '$compId'";
+				
+				$output			=	@getMySQLData($sql_comp, "xml");
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+				}
+				else
+				{
+					$output	.= "<result_set>failed</result_set>";	
+				}
+				echo "<root>$output</root>";
+			}
+			break;
+
+	}
+
+?>

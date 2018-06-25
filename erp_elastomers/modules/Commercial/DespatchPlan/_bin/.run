@@ -1,0 +1,1120 @@
+custList						=	new Array();
+valId							=	new Array();
+valName 						= 	new Array();
+keyArr							=	new Array();
+dutyTypeList					=	new Array();
+tableFilters.col_0				=	"none";
+tableFilters.col_1				=	"none";
+tableFilters.col_12				=	"none";
+tableFilters.sort_config		=	{ sort_types:['none','none','string', 'string','string', 'us', 'us','us','us','string','us','us','none'],sort_col: [0,true] };
+tableFilters.col_operation		=	{ 
+									   id: ["di_qty_total","di_val_total","inv_qty_total","inv_val_total","pend_qty_total","pend_val_total"], 
+									   col: [5,6,7,8,10,11],
+									   operation: ["sum","sum","sum","sum","sum","sum"],
+									   decimal_precision: [0,0,0,0,0,0]
+									};
+tableFilters.on_after_operation	=	formatTotals;
+var objCompList					=	"";
+var TF_01						=	null;
+var needTFRefresh				=	false;
+var XSLFile						=	[XSLPath + "_.1.design", XSLPath + "_.2.design"];
+
+function formatTotals()
+{
+}
+
+$(document).ready(function(){
+
+	$("#new_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		resizable: false,
+		width:300,
+		buttons: [
+			{
+				text: "Create",
+				click: function(){
+					if(typeof addItemFunc == "function"){
+						addItemFunc();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Close",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close: function(event, ui) {
+			$("#new_item_form form")[0].reset();
+			$("#new_item_error").html("");
+			$("#new_item_error").css("display", "none");
+			removeAllList();
+		} 
+	}); $('#new_item_form').prev('.ui-dialog-titlebar').hide();
+	
+	$("#di_submit").button().click(function(){
+		confirmCont =  '<div class="container" >' +
+				'<div class="row justify-content-center"><b>Customer DI</b></div><div class="row">Are you Sure to Upload the DI?</div>' +
+				'</div>';	
+		$('#confirm_dialog').html(confirmCont).dialog({
+			width:230,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Ok':function(){
+					$(this).dialog('close');
+					handleSchSubmit();					
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});	 		
+		$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
+	});		
+	
+	updatePageBehaviour();
+	
+	$("#btn_submit").button().click(function(){	
+		generateReport(0);
+	});	
+
+	$("#btn_availability").button().click(function(){	
+		generateReport(1);
+	});
+
+	$("#btn_multi_invoice").button().click(function(){
+		maxItems	=	<?php echo $maxItemsInInvoice; ?>;
+		invIds 		= 	new Array();
+		errorMsg	=	"";
+		cusId		=	"";
+		hsnCode		=	"";
+		$('.checkbox1').each(function() { 
+			if(this.checked == true)
+			{
+				invIds.push(this.id);	
+				if(cusId != "" && cusId != $(this).attr("cusid"))
+				{
+					errorMsg	=	"<strong>Error !</strong> - Only one customer can be invoiced at time!";
+				}
+				else
+				{
+					cusId	=	$(this).attr("cusid");
+				}
+				
+				if(hsnCode != "" && hsnCode != $(this).attr("hsncode"))				
+				{
+					errorMsg	=	"<strong>Error !</strong> - Only one HSN code can be invoiced at time!";
+				}
+				else
+				{
+					hsnCode	=	$(this).attr("hsncode");
+				}				
+			}
+		});	
+
+		if(errorMsg	!= "")
+		{
+			displayError($("#new_error_msg"), "error", errorMsg);
+			return false;		
+		}
+		
+		if(invIds == null || invIds.length <= 0 )
+		{
+			displayError($("#new_error_msg"), "error", "<strong>Error !</strong> - Please set atleast one component for Creating Invoice!");
+			return false;
+		}
+		else if(invIds.length > maxItems)
+		{
+			displayError($("#new_error_msg"), "error", "<strong>Error !</strong> - Only " + maxItems + " components can be added in one Invoice!");
+			return false;		
+		}		
+		getstring	=	"selecttype=CREATECMPDINVOICE&invtype=cmpd";
+		totVal		=	0;
+		$(invIds).each(function(index, element) {		
+			aplQtyObj	=	$("#"+element);
+			rateObj		=	aplQtyObj.attr("porate");			
+			keyDetObj	=	aplQtyObj.attr("keydetails");
+			rate		=	(rateObj != null && rateObj != "")
+								?(rateObj.indexOf(",") > -1)
+									?Number(rateObj.split(",").join(""))
+									:Number(rateObj)
+								:0;			
+			keyObjArr	=	keyDetObj.split(";");
+			for(bCnt = 0; bCnt < keyObjArr.length; bCnt++)
+			{
+				keyQtyVal	=	keyObjArr[bCnt].split("~");
+				keyId		=	keyQtyVal[0];
+				aplQty		=	keyQtyVal[1];
+				val			=	aplQty * rate;
+
+				if(val > 0 && aplQty > 0){
+					totVal 		+= Number(val);					
+					getstring	+=	"&templatepost[particulars][cmpdcode][]="	+	aplQtyObj.attr("cmpdid") +
+									"&templatepost[particulars][diref][]="		+	aplQtyObj.attr("diref") +
+									"&templatepost[particulars][poref][]="		+	aplQtyObj.attr("poref") +
+									"&templatepost[particulars][podate][]="		+	aplQtyObj.attr("podate") +
+									"&templatepost[particulars][keyid][]="		+	keyId +
+									"&templatepost[particulars][aplqty][]="		+	aplQty +
+									"&templatepost[particulars][rate][]="		+	rate +
+									"&templatepost[particulars][value][]="		+	val;
+				}
+			}	
+			
+		});
+	
+	
+		getstring		+=	"&templatepost[custid]="				+	custId +
+							"&templatepost[hsncode]="				+	hsnCode +
+							"&templatepost[multicmpds]="			+ 	((invIds.length > 1)?1:0) +
+							"&templatepost[total]="					+	totVal ;
+		//alert(getstring);	//return false;
+		createCont =  '<div class="container" >' +
+		'<div class="row justify-content-center"><b>Create Multi-Invoice</b></div><div class="row">Are you Sure to Create this Invoice ?</div>' +
+		'</div>';	
+		$('#confirm_dialog').html(createCont).dialog({
+			width:230,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'YES':function(){
+					$(this).dialog('close');
+					data	=	postback(actionFile,getstring,"POST","XML");
+					//alert(data); //return false;
+					//newError.html(data); return false;
+					error	=	data.split("~");
+					if(error[0] == "success"){
+						openInvoice({mod:'cmpd', invID:error[1]});
+						setTimeout(function(){window.location.reload();}, 500);
+					}
+					else{
+						displayError($("#new_error_msg"), "error", data);
+						return false;
+					}
+				},
+				'NO':function(){
+				   $(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});			
+		$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
+	});
+	
+	$("#button_add").button().click(function(){
+		$("#new_item_form").css('visibility','visible');
+		$("#new_item_form").dialog("open");
+	});	
+	
+	// Set AutoComplete Text Box
+	var objCusList	=	postback(actionFile,"selecttype=CSTATLIST&outtype=xml","POST","XML");
+	cusXML			=	parseXMLdoc(objCusList); 
+	custList		=	new Array();
+	$(cusXML).find('row').each(function(index, element) {
+		custList.push($(this).find('cusname').text() );
+    });
+	
+	$("#di_cust").autocomplete({
+		source:custList,
+		close:function(event, ui){
+			getCustomerDetails();
+		}
+	});		
+	
+	$("#new_RMButton").button().click(function(){getNewItem();});
+});
+
+function updatePageBehaviour(){	
+	objCompList = postback(actionFile, "selecttype=GETVAL", "POST","XML");
+	xmlData		=	$(objCompList);
+	rowCount	=	xmlData.find("root:eq(0) count:eq(0)").text();
+	//alert(objCompList);
+	//$("#content_body").html(objCompList); return false;
+	listPageData($("#content_body"), objCompList, XSLFile[0]);
+	if(rowCount > 0)
+	{			
+		TF_01	=	setFilterGrid("resultTable",tableFilters);
+		if(needTFRefresh)
+			TF_01.RefreshGrid();	
+		needTFRefresh 	=	true;
+	}
+	
+	$(".view_button").click(function(){
+		cmpdId	=	$(this).attr('cmpdid');
+		penQty	=	$(this).attr('pendqty');
+		getStock(cmpdId,penQty);
+	});	
+	
+	$(".edit_di_button").click(function(){
+		diRef	=	$(this).attr('diref');
+		cusId	=	$(this).attr('cusid');
+		cmpdId	=	$(this).attr('cmpdid');
+		getDI(diRef,cusId,cmpdId);
+	});	
+	
+	$(".raise_button").click(function(){
+		cmpdName	=	$(this).attr('cmpdname');
+		cusId		=	$(this).attr('cusid');
+		cmpdId		=	$(this).attr('cmpdid');
+		rate		=	$(this).attr('porate');
+		cusState	=	$(this).attr('cusstate');
+		cusGSTN		=	$(this).attr('cusgstn');
+		cusPAN		=	$(this).attr('cuspan');
+		setKeys		=	$(this).attr('setkeys');
+		getKeys(cusId,cmpdId,cmpdName,rate,cusState,cusGSTN,cusPAN,setKeys,0);
+	});	
+	
+	$(".set_button").click(function(){
+		cmpdName	=	$(this).attr('cmpdname');
+		cusId		=	$(this).attr('cusid');
+		cmpdId		=	$(this).attr('cmpdid');
+		rate		=	$(this).attr('porate');
+		cusState	=	$(this).attr('cusstate');
+		cusGSTN		=	$(this).attr('cusgstn');
+		cusPAN		=	$(this).attr('cuspan');
+		setKeys		=	$(this).attr('setkeys');
+		position	= 	$(this).attr('position');
+		getKeys(cusId,cmpdId,cmpdName,rate,cusState,cusGSTN,cusPAN,setKeys,position);
+	});		
+
+}
+
+function getKeys(cusId,cmpdId,cmpdName,rate,cusState,cusGSTN,cusPAN,setKeys,position){
+
+	if(cusState == "" || cusState == null || cusGSTN == "" || cusGSTN == null || cusPAN == "" || cusPAN == null)
+	{
+		displayError($("#new_error_msg"), "error", "<strong>Error !</strong> - Please set the Customer Supply State/ GST Number/ PAN !!!");
+		return false;
+	}
+	// Get Taxation for this component
+	
+	dutyTypeList	=	[];
+	if(setKeys == 0)
+	{
+		var taxDetails	=	postback(actionFile,"selecttype=GETTAXDETAILS&cmpdid="+cmpdId+"&cusstate="+cusState,"POST","XML");
+		taxDetailsXML	=	parseXMLdoc(taxDetails);
+		cgst			=	$(taxDetailsXML).find('row cgst').text();
+		sgst			=	$(taxDetailsXML).find('row sgst').text();
+		igst			=	$(taxDetailsXML).find('row igst').text();
+		dutyTypeList =	{
+			'cgst':cgst,
+			'sgst':sgst,
+			'igst':igst
+		};
+	}
+	
+
+	// Get DI List
+	var diObj	=	postback(actionFile,"selecttype=GETDIDETAILS&cmpdid="+cmpdId+"&cusid="+cusId+"&outtype=xml","POST","XML");
+	diObjXML	=	parseXMLdoc(diObj);
+	diList		=	new Array();
+	diVal		=	new Array();
+	firstItem	=	$(diObjXML).find('row').first() 
+	despId		=	$(firstItem).find('di_desc').text();
+	penQty		=	(Number($(firstItem).find('qty').text()) - Number($(firstItem).find('despqty').text()));
+
+	keys		=	postback(actionFile,"selecttype=GETKEYS&cmpdid="+cmpdId,"POST","XML");
+	issueCont   =   '<div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="new_inv_error"></div>'+
+						'<form action="" onsubmit="return false;">' +
+							'<table width="100%" id="new_Particulars" cellpadding=0 >' +
+								'<tr height="35px"><td>Component Name</td><td colspan="2" style="font-weight:bold">'+cmpdName+'</td></tr>' +								
+								'<tr height="50px"><td colspan="3" >Enter Qty(s) for Despatch ID:<b id="di_ref" cmpdid="'+cmpdId+'" cusid="'+cusId+'" position="'+position+'" invdate="<?php echo date("d/m/Y"); ?>">'+ despId +'</b> Pending Qty:<b id="pend_qty">'+penQty+'</b></td></tr>';
+	keyArr		=	[];
+	totIssQty	=	0;
+	$(keys).find('row').each(function(index, element) {
+		avlQty		=	$(this).find('avlqty').text();
+		issQty		=	0;
+		if((totIssQty + avlQty.toNumber()) <= penQty)
+		{
+			totIssQty	=	avlQty.toNumber() + totIssQty;
+			issQty		=	avlQty;
+		}
+		else 
+		{
+			issQty		=	penQty - totIssQty;	
+			totIssQty	=	penQty;			
+		}
+		keyId		=	$(this).find('planref').text();
+		issueCont	+=	'<tr>'+
+							'<td style="font-weight:bold" >'+keyId+' ('+avlQty+')</td>'+
+							'<td align="right" width="40%"><input type=text id="'+keyId+'" avlqty="'+avlQty+'"  onkeyup="calcApproved()" style="width:40%;text-align:right;" value="'+issQty+'" class="invisible_text" onkeydown="numbersOnly(event);" onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>'+
+							'<td style="font-weight:bold;text-align:right" id="val_'+keyId+'" >0</td>'+
+						'</tr>';
+		keyArr.push(keyId);
+		
+	});	
+	
+	if(keyArr.length == 0)
+	{
+		displayError($("#new_error_msg"), "error", "<strong>Error !</strong> - No Keys Available for Invoicing");
+		return false;
+	}
+		
+	issueCont	+=		'<tr height="25px"><td colspan="2" align="center">Total Quantity</td><td style="font-weight:bold;text-align:right" id="invqty" >0</td></tr>' +
+						'<tr height="25px"><td colspan="2" align="center">Rate</td><td style="font-weight:bold;text-align:right" id="porate" >'+rate+'</td></tr>' +
+						'<tr height="25px"><td colspan="2" align="center">Taxable Value</td><td style="text-align:right;font-weight:bold;" id="taxableval_out">0.00</td></tr>' ;
+	if(setKeys == 0)
+	{
+		issueCont	+=		'<tr height="25px"><td colspan="2" align="center">CGST <span id="cgst">0</span> %</td><td style="text-align:right;font-weight:bold;" id="cgst_out">0.00</td></tr>' +
+							'<tr height="25px"><td colspan="2" align="center">SGST <span id="sgst">0</span> %</td><td style="text-align:right;font-weight:bold;" id="sgst_out">0.00</td></tr>' +
+							'<tr height="25px"><td colspan="2" align="center">IGST <span id="igst">0</span> %</td><td style="text-align:right;font-weight:bold;" id="igst_out">0.00</td></tr>' +
+							'<tr height="25px"><th colspan="2" align="center" style="font-size:12px;">Grand Total</th><th style="font-family:arial;font-size:18px;text-align:right;" id="grandtotal_out" >0.00</th></tr>' +
+							'<tr><td  align="center">Remarks</td><td colspan="2"><textarea style="width:99%;height:50px" id="new_Remarks" tabindex="8"></textarea></td></tr>' +
+						'</table>' +
+					'</form>';
+
+		$('#invoice_dialog').html(issueCont).dialog({
+			title:'Invoice Issue',
+			width:230,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Create Invoice':function(){
+					if(createInvoiceSubmit())
+						$(this).dialog('close');									
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});
+				$('#invoice_dialog').prev('.ui-dialog-titlebar').hide();
+	}
+	else
+	{
+		issueCont	+=		'</table>' +
+					'</form>';	
+		$('#invoice_dialog').html(issueCont).dialog({
+			title:'Invoice Issue',
+			width:230,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Set Keys':function(){
+					if(setKeysSubmit())
+						$(this).dialog('close');									
+				},
+				'Unset Keys':function(){
+					$(this).dialog('close');
+							createCont =  '<div class="container" >' +
+				'<div class="row justify-content-center"><b>Unset Keys</b></div><div class="row">Are you Sure to Unset the Keys ?</div>' +
+				'</div>';
+					$('#confirm_dialog').html(createCont).dialog({
+						width:230,
+						resizable:false,
+						modal:true,
+						buttons:{
+							'YES':function(){
+								$(this).dialog('close');
+								$("#"+position).removeAttr("totval");
+								$("#"+position).removeAttr("totqty");
+								$("#"+position).removeAttr("keydetails");
+								$("#"+position).attr("checked",false);
+							},
+							'NO':function(){
+							   $(this).dialog('close');
+							}
+						},
+						close:function(){
+							$(this).html('').dialog('destroy');
+						}
+					});	
+					$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();					
+				},
+				'Close':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});
+				$('#invoice_dialog').prev('.ui-dialog-titlebar').hide();
+	}
+	calcApproved();
+}
+
+function calcApproved(){
+	rate		=	$("#porate").html();
+	total		=	0;	
+	$(keyArr).each(function(index, element) {
+		vvl			=	$("#"+element).val().toNumber();
+		availqty	=	$("#"+element).attr('avlqty').toNumber();
+		if(vvl > availqty){
+			$("#"+element).val(availqty);
+			vvl		=	availqty;
+		}
+		$("#val_" + element).html(getCurrency((vvl*rate), 2));
+		total	=	total	+	vvl;
+	});
+	if(isNaN(Number(total))){
+		total	=	0;
+	}
+	$("#invqty").html(getCurrency(total, 0));
+	totalvalue		=	Number(total) * Number(rate);
+	$("#taxableval_out").html(getCurrency(totalvalue, 2));	
+	
+	if(dutyTypeList != null && typeof dutyTypeList == "object"){		
+		cgst			=	dutyTypeList['cgst'];
+		sgst			=	dutyTypeList['sgst'];
+		igst			=	dutyTypeList['igst'];
+				
+		cgstout			=	( cgst * totalvalue ) / 100;
+		sgstout			=	( sgst * totalvalue ) / 100;
+		igstout			=	( igst * totalvalue ) / 100;
+	
+		$("#cgst").html(cgst);
+		$("#sgst").html(sgst);
+		$("#igst").html(igst);
+		$("#cgst_out").html(getCurrency(cgstout, 2));
+		$("#sgst_out").html(getCurrency(sgstout, 2));
+		$("#igst_out").html(getCurrency(igstout, 2));
+		grandtotal	=	(totalvalue + cgstout + sgstout + igstout);
+		grandtotal	=	grandtotal.toFixed(2);
+		$("#grandtotal_out").html(getCurrency(grandtotal, 2));		
+	}
+}
+
+function createInvoiceSubmit(){
+	calcApproved();
+	diref			=	$("#di_ref");
+	cmpdCode		=	diref.attr('cmpdid');
+	custId			=	diref.attr('cusid');
+	invDate			=	diref.attr('invdate');
+	penQty			=	$("#pend_qty").html().toNumber();	
+	grandtotal		=	$("#grandtotal_out");
+	newError		=	$("#new_inv_error");	
+	getstring		=	"selecttype=CREATECMPDINVOICE&invtype=cmpd";
+	totQty			=	0;	
+
+	poDetails		=	postback(actionFile,"selecttype=GETPODETAILS&cmpdid="+cmpdCode+"&cusid="+custId,"POST","XML");
+	poDetailsXML	=	parseXMLdoc(poDetails);
+	poRef			=	$(poDetailsXML).find('poref').text();
+	poDate			=	$(poDetailsXML).find('podate').text();
+	totInvQty		=	$(poDetailsXML).find('totinvqty').text();
+	poQty			=	$(poDetailsXML).find('poqty').text();
+	hsnCode			=	$(poDetailsXML).find('cmpdhsn').text();
+	if(poRef == null || poRef == "")
+	{
+		displayError(newError, "error", "<strong>Error !</strong> No PO Exists for this Component, Please add it !!!.");
+		return false;	
+	}
+	$(keyArr).each(function(index, element) {		
+		aplQtyObj	=	$("#"+element);
+		rateObj		=	$('#porate').html();
+		valObj		=	$("#val_" + element);				
+	
+		aplQty		=	(aplQtyObj.val() != null && aplQtyObj.val() != "")
+							?Number(aplQtyObj.val())
+							:0;
+		rate		=	(rateObj != null && rateObj != "")
+							?(rateObj.indexOf(",") > -1)
+								?Number(rateObj.split(",").join(""))
+								:Number(rateObj)
+							:0;
+		val			=	(valObj.html() != null && valObj.html() != "")
+							?(valObj.html().indexOf(","))
+								?Number(valObj.html().split(",").join(""))
+								:Number(valObj.html())
+							:0;
+
+		if(val > 0 && aplQty > 0){
+			totQty 		+= Number(aplQty);					
+			getstring	+=	"&templatepost[particulars][cmpdcode][]="	+	cmpdCode +
+							"&templatepost[particulars][diref][]="		+	diref.html() +
+							"&templatepost[particulars][poref][]="		+	poRef +
+							"&templatepost[particulars][podate][]="		+	poDate +
+							"&templatepost[particulars][keyid][]="		+	element +
+							"&templatepost[particulars][aplqty][]="		+	aplQty +
+							"&templatepost[particulars][rate][]="		+	rate +
+							"&templatepost[particulars][value][]="		+	val;
+		}
+		
+    });
+	
+	if(grandtotal.html() == "" || Number(grandtotal.html().split(",").join("")) <= 0)
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Grand Total Particulars Missing.");
+		return false;
+	}	
+	else if(totQty <= 0)
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please select atleast 1 item to invoice.");
+		return false;
+	}	
+	else if(penQty < totQty)
+	{
+		displayError(newError, "error", "<strong>Error !</strong> Invoiced Quantity Greater than Despatch Pending Qty.");
+		return false;
+	}	
+	
+	getstring		+=	"&templatepost[custid]="				+	custId +
+						"&templatepost[hsncode]="				+	hsnCode +
+						"&templatepost[multicmpds]="			+ 	"0" +
+						"&templatepost[total]="					+	$("#taxableval_out").html() +
+						"&templatepost[invremarks]="			+	$("#new_Remarks").val();
+	//Check if PO Qty is exceeded if needed
+	if(poQty > 0)
+	{
+		if(totInvQty != null && Number(totInvQty) > 0)
+			totQty		+= Number(totInvQty);
+		if(totQty > poQty)
+		{
+			if(!(confirm("Number of items invoiced under the PO ref: " + poRef + " dated : " + poDate + " is : " + totQty + ", which is greater than the PO quantity : " + poQty + ". Do you want to continue?" )))
+			{
+				return false;
+			}
+		}	
+	}
+
+	//alert(getstring);	//return false;
+				createCont =  '<div class="container" >' +
+				'<div class="row justify-content-center"><b>Create Invoice</b></div><div class="row">Are you Sure to Create this Invoice ?</div>' +
+				'</div>';
+	$('#confirm_dialog').html(createCont).dialog({
+		width:230,
+		resizable:false,
+		modal:true,
+		buttons:{
+			'YES':function(){
+				$(this).dialog('close');
+				data	=	postback(actionFile,getstring,"POST","XML");
+				//alert(data); //return false;
+				//newError.html(data); return false;
+				error	=	data.split("~");
+				if(error[0] == "success"){
+					openInvoice({mod:'cmpd', invID:error[1]});
+					setTimeout(function(){window.location.reload();}, 500);
+				}
+				else{
+					displayError($("#new_error_msg"), "error", data);
+					return false;
+				}					
+			},
+			'NO':function(){
+			   $(this).dialog('close');
+			}
+		},
+		close:function(){
+			$(this).html('').dialog('destroy');
+		}
+	});	
+			$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
+}
+
+function setKeysSubmit(){
+	calcApproved();
+	diref			=	$("#di_ref");
+	cmpdId			=	diref.attr('cmpdid');
+	custId			=	diref.attr('cusid');
+	position		=	diref.attr('position');
+	penQty			=	$("#pend_qty").html().toNumber();	
+	valTotal		=	$("#taxableval_out");
+	newError		=	$("#new_inv_error");	
+	output			=	"";
+	totQty			=	0;	
+
+	poDetails		=	postback(actionFile,"selecttype=GETPODETAILS&cmpdid="+cmpdId+"&cusid="+custId,"POST","XML");
+	poDetailsXML	=	parseXMLdoc(poDetails);
+	poRef			=	$(poDetailsXML).find('poref').text();
+	poDate			=	$(poDetailsXML).find('podate').text();
+	totInvQty		=	Number($(poDetailsXML).find('totinvqty').text());
+	poQty			=	$(poDetailsXML).find('poqty').text();
+	if(poRef == null || poRef == "")
+	{
+		displayError(newError, "error", "<strong>Error !</strong> No PO Exists for this Component, Please add it !!!.");
+		return false;	
+	}
+	$(keyArr).each(function(index, element) {		
+		aplQtyObj	=	$("#"+element);	
+		aplQty		=	(aplQtyObj.val() != null && aplQtyObj.val() != "")
+							?Number(aplQtyObj.val())
+							:0;
+		if(aplQty > 0){
+			totQty 	+= Number(aplQty);					
+			if(output != "")
+				output	+=	";" + element + "~" + aplQty;
+			else
+				output	=	element + "~" + aplQty;			
+		}
+		
+    });
+	
+	if(valTotal.html() == "" || Number(valTotal.html().split(",").join("")) <= 0)
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Total Particulars Missing.");
+		return false;
+	}	
+	else if(totQty <= 0)
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please select atleast 1 item to set.");
+		return false;
+	}	
+	else if(penQty < totQty)
+	{
+		displayError(newError, "error", "<strong>Error !</strong> Total Quantity Greater than Despatch Pending Qty.");
+		return false;
+	}	
+
+	//Check if PO Qty is exceeded if needed
+	if(poQty > 0)
+	{
+		if(totInvQty > 0)
+			totInvQty		+= totQty;
+		if(totInvQty > poQty)
+		{
+			if(!(confirm("Number of items invoiced under the PO ref: " + poRef + " dated : " + poDate + " is : " + totInvQty + ", which is greater than the PO quantity : " + poQty + ". Do you want to continue?" )))
+			{
+				return false;
+			}
+		}	
+	}
+
+	//alert(output);	return false;
+	createCont =  '<div class="container" >' +
+				'<div class="row justify-content-center"><b>Set Keys</b></div><div class="row">Are you Sure to Set the Keys ?</div>' +
+				'</div>';
+	$('#confirm_dialog').html(createCont).dialog({
+		width:230,
+		resizable:false,
+		modal:true,
+		buttons:{
+			'YES':function(){
+				$(this).dialog('close');
+				$("#"+position).attr("diref",diref.html());
+				$("#"+position).attr("poref",poRef);
+				$("#"+position).attr("podate",poDate);
+				$("#"+position).attr("keydetails",output);
+				$("#"+position).attr("checked",true);
+				$('#invoice_dialog').dialog('close');
+			},
+			'NO':function(){
+			   $(this).dialog('close');
+			}
+		},
+		close:function(){
+			$(this).html('').dialog('destroy');
+		}
+	});	
+		$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
+}
+
+function getStock(cmpdId,penQty){
+			param			=	"selecttype=" + "GETCMPDSTOCK" +
+								"&cmpdId=" + cmpdId ;
+			//alert(param); return false;
+			var XMLContent	=	postback(actionFile,param,"POST","XML");
+			//alert(XMLContent);
+			xmlData			=	parseXMLdoc(XMLContent);
+			confirmCont 	=	'<table width="100%" border="1" >' +
+									'<tr>' +
+										'<th>Plan Id</th>' +
+										'<th>Operator</th>' + 
+										'<th>Qty</th>' +
+									'</tr>' +
+									'<tr>' +
+										'<td colspan="2" align="center"> Total Pending Qty</td>' +
+										'<td align="right"><b>'+ penQty +'</b></td>' +
+									'</tr>' ;									
+			currDesc		=	"";
+			totQty			=	0;
+			grdTot			=	0;
+			$(xmlData).find("row").each(function(index, element) {
+				avlQty	=	element.childNodes[2].firstChild.nodeValue;
+				grdTot	+=	avlQty.toNumber();	
+				if(currDesc != "" && currDesc != element.childNodes[3].firstChild.nodeValue)
+				{
+					confirmCont +=	'<tr>' +
+										'<td colspan="2" align="center"> Total '+ currDesc + '</td>' +
+										'<td align="right"><b>'+ totQty +'</b></td>' +
+									'</tr>' ;				
+					currDesc	=	element.childNodes[3].firstChild.nodeValue;
+					totQty		=	0;
+				}
+				else if(currDesc == "")
+				{
+					currDesc = element.childNodes[3].firstChild.nodeValue;
+				}
+				totQty	+= avlQty.toNumber();
+				
+				confirmCont +='<tr>' +
+								'<td>'+ element.childNodes[0].firstChild.nodeValue + '</td>' +
+								'<td>'+ element.childNodes[1].firstChild.nodeValue + '</td>' +
+								'<td align="right"><b>'+ avlQty +'</b></td>' +
+							 '</tr>' ;				
+			});
+			confirmCont 	+=	'<tr>' +
+									'<td colspan="2" align="center"> Total '+ currDesc + '</td>' +
+									'<td align="right"><b>'+ totQty +'</b></td>' +
+								'</tr>' +
+								'<tr>' +
+									'<td colspan="2" align="center"> Shortage Qty</td>' +
+									'<td align="right"><b>'+ (penQty - grdTot) +'</b></td>' +
+								'</tr>' +
+								'</table>' ;		
+			$("#stock_dialog").html(confirmCont).dialog({
+													title:'Component Stock',
+													width:230,
+													resizable:false,
+													modal:true,
+													buttons: [
+														{
+															text: "Ok",
+															click: function(){
+																$(this).dialog("close");		
+															}
+														}
+													],
+													open: function() {
+														jQuery('.ui-widget-overlay').bind('click', function() {
+															jQuery('#stock_dialog').dialog('close');
+														})
+													},
+													close: function(event, ui) {
+															$(this).dialog("destroy");
+														} 
+													});
+															$('#stock_dialog').prev('.ui-dialog-titlebar').hide();
+}
+
+function getDI(diRef,cusId,cmpdId){
+			param			=	"selecttype=GETDIQTY" +
+								"&cmpdid=" + cmpdId +
+								"&cusid=" + cusId +
+								"&diref=" + diRef ;
+			//alert(param); return false;
+			var XMLContent	=	postback(actionFile,param,"POST","XML");
+			//alert(XMLContent); //return false;
+			xmlData			=	parseXMLdoc(XMLContent);
+			confirmCont 	=	'<div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="update_item_error"></div>' +
+								'<table width="100%" border="0" >' ;
+			$(xmlData).find("row").each(function(index, element) {
+				confirmCont +='<tr>' +
+								'<td align="center"> Enter updated qty for <b>'+ element.childNodes[1].firstChild.nodeValue + ' </b> <input type="hidden" value="'+ element.childNodes[0].firstChild.nodeValue + '" id="disno"></td>' +
+								'<td align="left"><input type="text" value="'+ element.childNodes[2].firstChild.nodeValue + '" style="width:30%;text-align:right" id="diqty" /></td>' +
+							 '</tr>' ;				
+			});
+			confirmCont 	+=	'</table>' ;		
+			$("#dichange_dialog").html(confirmCont).dialog({
+													title:'DI Qty Change',
+													width:230,
+													resizable:false,
+													modal:true,
+													buttons:
+														{
+															"Update": function(){
+																confirmCont = '<table width="100%" >' +
+																			'<tr><td><b>Are you Sure to update the DI?</b></td></tr>' +
+																			'</table>'
+																$('#confirm_dialog').html(confirmCont).dialog({
+																	title:'Customer DI Update',
+																	width:230,
+																	resizable:false,
+																	modal:true,
+																	buttons:{
+																		'Ok':function(){
+																			$(this).dialog('close');
+																			updateDIQty();					
+																		},
+																		'Cancel':function(){
+																			$(this).dialog('close');
+																		}
+																	},
+																	close:function(){
+																		$(this).html('').dialog('destroy');
+																	}
+																});	 		
+																		$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();															
+															},
+															"Cancel": function(){
+																$(this).dialog("close");
+															},															
+														}
+													,													
+													close: function(event, ui) {
+															$(this).dialog("destroy");
+													} 
+												});
+}
+
+function generateReport(type)
+{
+		$("#print_item_form").css('visibility', 'visible');			
+		$("#print_item_form").dialog({
+										modal:true,
+										minWidth:'1200',
+										resizable:false,									
+										open: function(event, ui) {												
+											listPageData($("#print_body"), objCompList, XSLFile[type]);
+											var today 		= 	new Date();	
+											var todayDate	=	today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear();
+											$("#hdr_date").html(todayDate);
+											if(type == 0)
+											{
+												$("#hdr_title").html("Plan Vs Actual Report for " + todayDate );
+												$("#reportTot").show();
+											}
+											else
+											{
+												$("#hdr_title").html("Component Availability Report for " + todayDate );
+												$("#reportTot").hide();
+											}
+											$("#imgpath").attr("src","<?php echo (ISO_IS_REWRITE)?'/':'../../../' ?>images/company_logo.png");												
+										}									
+									});	
+		var DocumentContainer = document.getElementById('print_item_form');
+		$("#print_item_form").dialog('close');
+		var WindowObject = window.open("","PrintWindow");
+		WindowObject.document.writeln(DocumentContainer.innerHTML);
+		loader = document.createElement('link');
+		loader.href = "/style/printTable.css";
+		loader.rel = "stylesheet";
+		WindowObject.document.head.appendChild(loader);	
+		WindowObject.document.close();
+		WindowObject.focus();
+}
+
+function getCustomerDetails(){
+	if($("#di_cust").val() != null && $("#di_cust").val() != "")
+	{		
+		cusid	=	$("#di_cust").val();		
+		if(cusid != null && cusid != "")
+		{			
+			param			= 	"selecttype=CSTDTLLIST&cusid="+cusid+"&outtype=xml";				
+			var objCusList	=	postback(actionFile,param,"POST","XML");
+			cusXML			=	parseXMLdoc(objCusList); 
+			valId			=	new Array();
+			valName 		= 	new Array();			
+			$(cusXML).find('row').each(function(index, element)
+			{ 	
+				cmpdName	=	$(this).find('cmpdname').text();
+				valName.push(cmpdName);
+				valId[cmpdName]		=	$(this).find('cmpdid').text();
+			});			
+			
+		}
+	}
+
+}
+
+function getNewItem(){
+	if(valName.length > 0 ){
+		ndate			=	new Date();
+		timenow			=	ndate.getTime();
+		ol				=	$("#new_ItemList table tr").length;
+		
+		if(ol == 1){			
+			rmList	=	new Array();
+			for(rl=0; rl<valName.length; rl++){
+				rmList.push(valName[rl]);
+			}
+		}
+		
+		$("#new_ItemList table tr:last").after(
+			"<tr class='" + ((ol%2)?'content_rows_dark':'content_rows_light') + "' id='new_list_" + timenow + "'>" +
+				"<td><input type='text' id='new_mat_" + timenow +"' style='width:80%;' tabindex='2'/></td>" +
+				"<td align='left'><input type='text' id='new_desc_" + timenow + "' style='width:100%' tabindex='2' /></td>" +
+				"<td align='right'><input type='text' id='new_val_" + timenow + "' value='0' style='width:80%;text-align:right;' tabindex='2' /></td>" +
+				"<td align='center'><div class='removebtn' id='delrm_" + timenow + "' target='absmiddle' /></td>" +
+			"</tr>"		
+		);
+		if(ol > 0)
+			$("#delrm_" + timenow).click(new Function("$(\"#new_list_"+timenow+"\").remove(); updateAllItems();"));
+			
+		// Set AutoComplete Text Box		
+		$("#new_mat_" + timenow).autocomplete({
+			source:rmList
+		});		
+	}
+	else
+	{
+		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Customer Name Missing Or No Part Number allocated for this customer!!!");
+		$("#di_cust").focus();
+	}
+	
+}
+
+function updateAllItems(){
+	$("#new_ItemList table tr:gt(0)").each(function(index, element) {
+		$(element).removeClass((index%2)?'content_rows_dark':'content_rows_light');
+        $(element).addClass((index%2)?'content_rows_light':'content_rows_dark');
+    });
+}
+
+function removeAllList(){
+	$("#new_ItemList tr:gt(0)").remove();	
+}
+
+function handleSchSubmit(){
+	var filedata 	= 	document.getElementById("file");
+	formdata 		= 	false;
+	newError		=	$('#new_item_error');
+	custName		=	$("#di_cust");
+	if(custName.val() == null || custName.val() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Customer Name Missing" );
+		custName.focus()								
+		return false;
+	}
+	formdata = new FormData();
+    file = filedata.files[0];
+	if(file)
+	{
+		if (formdata) {
+			formdata.append("file", file,file.name);
+			formdata.append("cusname", $("#di_cust").val());
+			formdata.append("didate", $("#di_date").val());
+		}
+		
+		$("#di_submit").attr("value","Loading, Please Wait...");
+		$("#di_submit").attr("disabled","true");
+		// Set up the request.
+		var xhr = new XMLHttpRequest();
+
+		// Open the connection.
+		xhr.open('POST', actionFile, true);
+
+		// Set up a handler for when the request finishes.
+		xhr.onload = function () {
+			if (xhr.status === 200) {
+				// File(s) uploaded.
+				var printObj	=	xhr.response;
+				printData		=	$(printObj);
+				error			=	printData.find("status").html();
+				dicust			=	printData.find("dicust").html();
+				didate			=	printData.find("didate").html();
+			
+				if(error == "success"){
+					//alert("DI for " + dicust + " on " + didate + " has been created sucessfully");					
+					window.location.reload();
+				}				
+				else{
+					displayError(newError, "error", error);
+					$("#di_submit").attr("value","Upload DI");
+					$("#di_submit").removeAttr("disabled");					
+				}
+			} 
+			else {
+				displayError(newError, "error", "Unable to upload the file, Please retry again");
+				$("#di_submit").attr("value","Upload DI");
+				$("#di_submit").removeAttr("disabled");				
+			}
+		};
+		
+		// Send the Data.
+		xhr.send(formdata);
+	}
+	else
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please Select a File.");
+		$("#file").focus();	
+	}
+}
+
+function updateDIQty(){	
+	newError	=	$('#update_item_error');
+	displayError(newError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");
+	diQty		=	$("#diqty");
+	if(isNaN(Number(diQty.val())) || Number(diQty.val()) <= 0){
+		displayError(newError, "error", "<strong>Error !</strong> - Invalid DI Qty !!! ");
+		diQty.focus()
+		return false;
+	}
+	param		=	"selecttype=DIUPDATE&disno="+$("#disno").val()+"&diqty="+diQty.val();
+	//alert(param);
+	XMLContent	=	postback(actionFile, param, "POST", "XML");
+	//alert(XMLContent);
+	xmlData		=	$(XMLContent);
+	error		=	xmlData.find("status").text();
+	if(error == "success"){
+		displayError(newError, "highlight", "DI has been Updated!!!");
+		$("#dichange_dialog").dialog("close");
+		updatePageBehaviour();		
+	}
+	else{
+		displayError(newError, "error", "<strong>Error !</strong> - Unable to update the DI due to " + decodeURI(xmlData.find("errtxt").text()));
+	}
+}
+
+function addItemFunc(){
+	newError		=	$('#new_item_error');
+	displayError(newError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");
+	custName		=	$("#di_cust");
+	if(custName.val() == null || custName.val() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Customer Name Missing" );
+		custName.focus()								
+		return false;
+	}	
+	param			=	"selecttype=" + "DIADD&cust="+custName.val()+"&didate="+$("#di_date").val();
+	diList			=	'';
+	numItems		=	0;
+	notOk			=	false;
+	//cmpdIdsArr		=	new Array();
+	$("#new_ItemList table tr:gt(0)").each(function(index, element) {
+		diPartNum		=	$(element).find("td:eq(0) input:text");
+		diDesc			=	$(element).find("td:eq(1) input:text");
+		diQty			=	$(element).find("td:eq(2) input:text");
+		numItems++;
+		
+		if(diPartNum.val() == null || diPartNum.val() == "" || valId[diPartNum.val()] == null || valId[diPartNum.val()] == ""){
+			displayError(newError, "error", "<strong>Error !</strong> - Part Number Missing or Invalid Part Number at Row " + (index+1) );
+			diPartNum.focus()
+			notOk	=	true;
+			return false;
+		}
+		else if(isNaN(Number(diQty.val())) || Number(diQty.val()) <= 0){
+			displayError(newError, "error", "<strong>Error !</strong> - Invalid DI Qty at Row " + (index+1) );
+			diQty.focus()
+			notOk	=	true;
+			return false;
+		}		
+		
+		/*if(	cmpdIdsArr.indexOf(valId[diPartNum.val()]) > -1)
+		{
+			displayError(newError, "error", "<strong>Error !</strong> - Part Number Duplicated at Row " + (index+1) );
+			diPartNum.focus()
+			notOk	=	true;
+			return false;		
+		}
+		else
+			cmpdIdsArr.push(valId[diPartNum.val()]);*/
+		
+		diList		+=	"&ditems[" + index + "][dicmpdid]=" + valId[diPartNum.val()];
+		diList		+=	"&ditems[" + index + "][didesc]=" + diDesc.val();
+		diList		+=	"&ditems[" + index + "][diqty]=" + diQty.val();
+
+	});
+	if(notOk)
+		return false;
+	if(numItems == 0)
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - No DI details Added !!!");
+		return false;	
+	}
+		
+	param			+=	diList;
+	XMLContent	=	postback(actionFile, param, "POST", "XML");
+	//alert(XMLContent);
+	xmlData		=	$(XMLContent);
+	error		=	xmlData.find("mysql:eq(0) status:eq(0)").text();
+	if(error == "success"){
+		//alert("DI Items has been created...");
+		updatePageBehaviour();
+		$("#new_item_form").dialog("close");
+	}
+	else{
+		displayError(newError, "error", decodeURI(xmlData.find("mysql:eq(0) errtxt:eq(0)").text()));
+	}
+}

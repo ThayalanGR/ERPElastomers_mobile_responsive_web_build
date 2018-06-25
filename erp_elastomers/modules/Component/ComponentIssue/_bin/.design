@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0"
+xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+<div class="row" >
+	<xsl:for-each select="xmldata/root/data/row">
+		<xsl:for-each select="row/planDetail" >
+			<div class="col-12 mt-2">
+				<div class="container shadow text-left">
+					<div class="row bg-light">
+						<div class="col-5 " >Key Ref.</div>
+						<div class="col-7 text-success "><xsl:value-of select="planid" /></div>
+					</div>
+					<div class="row">
+						<div class="col-5">Plan Date</div>
+						<div class="col-7 text-success"><xsl:value-of select="plandate" /></div>
+					</div>
+					<div class="row bg-light">
+						<div class="col-5">Part No</div>
+						<div class="col-7 text-success"><xsl:value-of select="cmpdname" /></div>
+					</div>
+					<div class="row">
+						<div class="col-5"> Part Desc.</div>
+						<div class="col-7 text-success"><xsl:value-of select="cmpdrefno" /></div>
+					</div>
+					<div class="row bg-light">
+						<div class="col-5"> Plnd Lif.</div>
+						<div class="col-7 text-success"><xsl:value-of select='format-number(liftplanned,"###,###,##0")' /></div>
+					</div>
+					<div class="row">
+						<div class="col-5">Plnd Qty</div>
+						<div class="col-7 text-success"><xsl:value-of select='format-number(liftplanned * no_of_active_cavities,"###,###,##0")' /></div>
+					</div>
+					<div class="row bg-light">
+						<div class="col-5"> Blk Wgt(gm)</div> 
+						<div class="col-7 text-success"><xsl:value-of select='format-number(cmpd_blank_wgt,"###,###,##0.000")' /></div>
+					</div>
+					<div class="row">
+						<div class="col-5">Adv. Qty(kg)</div>
+						<div class="col-7 text-success"><xsl:value-of select='format-number(((no_of_active_cavities * cmpd_blank_wgt* liftplanned) div 1000), "###,###,##0.000")' /></div>
+					</div>
+					<div class="row bg-light">
+						<div class="col-5"> #</div>
+						<div class="col-7 "><a>
+								<xsl:attribute name="href">javascript:void(0)</xsl:attribute>
+								<xsl:attribute name="class">btn btn-sm btn-danger</xsl:attribute>
+								<xsl:attribute name="planid"><xsl:value-of select="planid" /></xsl:attribute>
+								<xsl:attribute name="job">delete</xsl:attribute>
+								Delete
+							</a>
+						</div>
+					</div>
+				</div> 
+			</div>
+		</xsl:for-each>
+			<div class="col-12 mt-2">
+				<div class="container shadow text-left">
+						<div class="row bg-light">
+							<div class="col-5 bg-dark" ><xsl:value-of select="title" /></div>
+							<div class="col-7 bg-dark"><xsl:value-of select="cpdName" /></div>
+						</div>
+						<div class="row ">
+							<div class="col-5">In-Stock Qty</div>
+							<div class="col-7 text-success"><xsl:value-of select="format-number(avlQty,'###,###,##0.000')" /></div>
+						</div>
+						<div class="row bg-light">
+							<div class="col-5">Total Advised Qty</div>
+							<div class="col-7 text-success"><xsl:value-of select="format-number(cpdTotWeight,'###,###,##0.000')" /></div>
+						</div>
+						<!-- if($_SESSION['issueMemory']['CPD0034']){echo $_SESSION['issueMemory']['CPD0034'];}else{ echo '0';} -->
+						<div class="row ">
+							<div class="col-5">Iss. Qty(kg)</div>
+							<div class="col-7 text-success">
+								<input>
+									<xsl:attribute name="id"><xsl:value-of select="cpdId"/></xsl:attribute>
+									<xsl:attribute name="class">invisible_text</xsl:attribute>
+									<xsl:attribute name="value"><xsl:value-of select="issQty"/></xsl:attribute>
+									<xsl:attribute name="readonly">true</xsl:attribute>
+									<xsl:attribute name="style">width:100%;text-align:right</xsl:attribute>
+									<xsl:attribute name="batches"><xsl:value-of select="batch"/></xsl:attribute>
+								</input>
+							</div>
+						</div>
+						<div class="row bg-light">
+							<div class="col-5"> #</div>
+							<div class="col-7 ">	
+								<a>
+									<xsl:attribute name="href">javascript:void(0)</xsl:attribute>
+									<xsl:attribute name="cpdid"><xsl:value-of select="cpdId" /></xsl:attribute>
+									<xsl:attribute name="advqty"><xsl:value-of select="cpdTotWeight" /></xsl:attribute>
+									<xsl:attribute name="avlqty"><xsl:value-of select="avlQty" /></xsl:attribute>
+									<xsl:attribute name="cpdname"><xsl:value-of select="cpdName" /></xsl:attribute>
+									<xsl:attribute name="class">btn btn-sm btn-primary</xsl:attribute>
+									<xsl:attribute name="job">issue</xsl:attribute>Issue
+								</a>
+							</div>
+						</div>
+				</div> 
+			</div>
+	</xsl:for-each>
+</div>
+</xsl:template>
+</xsl:stylesheet>
+
+
+
+
+
+
+
+
+
+
+<!-- 
+<table border="0" cellpadding="6" cellspacing="0" width="100%">
+	<xsl:for-each select="xmldata/root/data/row">
+		<xsl:for-each select="row/planDetail" >
+			<tr>
+			<xsl:if test="position() mod 2 != 0">
+				<xsl:attribute name="class">content_rows_light</xsl:attribute>
+			</xsl:if>
+			<xsl:if test="position() mod 2 != 1">
+				<xsl:attribute name="class">content_rows_dark</xsl:attribute>
+			</xsl:if>    
+					<td width="6%"><xsl:value-of select="planid" /></td>
+					<td width="10%" align="left"><xsl:value-of select="plandate" /></td>
+					<td width="10%"><xsl:value-of select="cmpdname" /></td>
+					<td width="12%"><xsl:value-of select="cmpdrefno" /></td>
+					<td width="6%" align="right"><xsl:value-of select='format-number(liftplanned,"###,###,##0")' /></td>
+					<td width="10%" align="right"><xsl:value-of select='format-number(liftplanned * no_of_active_cavities,"###,###,##0")' /></td>
+					<td width="10%" align="right"><xsl:value-of select='format-number(cmpd_blank_wgt,"###,###,##0.000")' /></td>
+					<td width="10%" align="right"><xsl:value-of select='format-number(((no_of_active_cavities * cmpd_blank_wgt* liftplanned) div 1000), "###,###,##0.000")' /></td>
+					<td colspan="2" align="right">
+						<a>
+							<xsl:attribute name="href">javascript:void(0)</xsl:attribute>
+							<xsl:attribute name="planid"><xsl:value-of select="planid" /></xsl:attribute>
+							<xsl:attribute name="job">delete</xsl:attribute>
+							Delete
+						</a>
+					</td>
+				</tr>
+		</xsl:for-each>
+				<tr style="font-weight:bold">
+					<xsl:attribute name="class">content_rows_dark cust_subtot</xsl:attribute>
+					<td align="left" colspan="2"><xsl:value-of select="title" /></td>
+					<td align="left"><xsl:value-of select="cpdName" /></td>
+					<td align="right">In-Stock Qty</td>
+					<td align="right"><xsl:value-of select="format-number(avlQty,'###,###,##0.000')" /></td>
+					<td align="right" colspan="2">Total Advised Qty</td>
+					<td align="right"><xsl:value-of select="format-number(cpdTotWeight,'###,###,##0.000')" /></td>
+					<td align="right" width="15%">
+						<input>
+							<xsl:attribute name="id"><xsl:value-of select="cpdId" /></xsl:attribute>
+							<xsl:attribute name="class">invisible_text</xsl:attribute>
+							<xsl:attribute name="value">0</xsl:attribute>
+							<xsl:attribute name="readonly">true</xsl:attribute>
+							<xsl:attribute name="style">width:50%;text-align:right</xsl:attribute>
+						</input>					
+					</td>
+					<td align="right">
+						<a>
+							<xsl:attribute name="href">javascript:void(0)</xsl:attribute>
+							<xsl:attribute name="cpdid"><xsl:value-of select="cpdId" /></xsl:attribute>
+							<xsl:attribute name="advqty"><xsl:value-of select="cpdTotWeight" /></xsl:attribute>
+							<xsl:attribute name="avlqty"><xsl:value-of select="avlQty" /></xsl:attribute>
+							<xsl:attribute name="cpdname"><xsl:value-of select="cpdName" /></xsl:attribute>
+							<xsl:attribute name="job">issue</xsl:attribute>
+							Issue
+						</a>						
+					</td>						
+				</tr>			
+	</xsl:for-each>
+</table>
+
+</xsl:template>
+</xsl:stylesheet> -->

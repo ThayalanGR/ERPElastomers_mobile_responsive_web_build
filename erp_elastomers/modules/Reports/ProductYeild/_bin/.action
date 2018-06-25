@@ -1,0 +1,104 @@
+<?php
+	session_start();
+	header('Content-Type: text/xml');
+	switch($_REQUEST["selecttype"]){
+		case "GETDETAIL":
+			$groupBy			=	$_REQUEST['group_by'];
+			$fromDate			=	$_REQUEST['from_date'];
+			$toDate				=	$_REQUEST['to_date'];
+			$return				=	"";
+			$lastGrp			=	"";
+			$mouldQtyGrdTot		=	0;
+			$blankWgtGrd		=	0;
+			$blankWgtGrdTot		=	0;
+			$prodWgtGrd			=	0;
+			$prodWgtGrdTot		=	0;
+			$mouldQtyGrpTot		=	0;
+			$blankWgtGrp		=	0;
+			$blankWgtGrpTot		=	0;
+			$prodWgtGrp			=	0;
+			$prodWgtGrpTot		=	0;
+			$grpCount			=	0;
+			// Get Component List
+			$sql				=	"select timp.cmpdName,timp.cmpdRefNo,tcust.cusGroup,timp.cmpdCpdName, timp.cmpdBlankWgt , if(timp.cmpdProdWgt>0,timp.cmpdProdWgt,tc.cmpdProdWgt) as cmpdProdWgt, sum(tmr.mouldQty) as mouldQty
+										from tbl_moulding_receive tmr
+										inner join tbl_invoice_mould_plan timp on timp.planid = tmr.planRef
+										inner join tbl_polymer_order tpo on tpo.polyName =	timp.cmpdPolymer
+										inner join tbl_component tc on tc.cmpdId = timp.cmpdId
+										inner join (select * from (SELECT cusId, cmpdId  FROM tbl_customer_cmpd_po_rate where status = 1 order by update_on desc) tpo group by cmpdId)tccpr on tccpr.cmpdId = timp.cmpdId
+										inner join tbl_customer tcust on tccpr.cusId = tcust.cusId
+									where tmr.status>2  and DATE_FORMAT(tmr.entry_on,'%Y-%m-%d') between '$fromDate' and '$toDate'
+									group by timp.cmpdName
+									order by ".(($groupBy == 'cusGroup')?"tcust.cusGroup":"tpo.dispOrder,timp.cmpdCpdName");
+			//echo $sql; exit();
+			$cmpddata			=	@getMySQLData($sql);
+			$rowCount			=	$cmpddata['count'];
+
+			for($r=0; $r<$rowCount; $r++){
+				$cmpdName			=	$cmpddata['data'][$r]['cmpdName'];
+				$cmpdDesc			=	$cmpddata['data'][$r]['cmpdRefNo'];
+				$cmpdGrpVal			=	$cmpddata['data'][$r][$groupBy];
+				$cmpdMouldQty		=	$cmpddata['data'][$r]['mouldQty'];
+				$blankWgt			=	$cmpddata['data'][$r]['cmpdBlankWgt'];
+				$blankWgtTot		=	$blankWgt * $cmpdMouldQty;
+				$prodWgt			=	$cmpddata['data'][$r]['cmpdProdWgt'];
+				$prodWgtTot			=	$cmpdMouldQty * $prodWgt;				
+				if($lastGrp	==	"")
+				{
+					$lastGrp	=	$cmpdGrpVal;
+					$return		=	"<rowGrp><cmpdGrpVal>$cmpdGrpVal</cmpdGrpVal>";
+				}
+				else if($lastGrp != $cmpdGrpVal)
+				{	
+					$return				.=	"<mouldQtyGrpTot>$mouldQtyGrpTot</mouldQtyGrpTot>
+											<blankWgtGrp>".($blankWgtGrp/$grpCount)."</blankWgtGrp>
+											<blankWgtGrpTot>$blankWgtGrpTot</blankWgtGrpTot>
+											<prodWgtGrp>".($prodWgtGrp/$grpCount)."</prodWgtGrp>
+											<prodWgtGrpTot>$prodWgtGrpTot</prodWgtGrpTot>
+											</rowGrp>
+											<rowGrp><cmpdGrpVal>$cmpdGrpVal</cmpdGrpVal>";
+					$lastGrp			=	$cmpdGrpVal;
+					$mouldQtyGrpTot		=	0;
+					$blankWgtGrp		=	0;
+					$blankWgtGrpTot		=	0;
+					$prodWgtGrp			=	0;
+					$prodWgtGrpTot		=	0;
+					$grpCount			=	0;								
+				}
+				$mouldQtyGrdTot		+=	$cmpdMouldQty;				
+				$mouldQtyGrpTot		+=	$cmpdMouldQty;
+				$blankWgtGrd		+=	$blankWgt;	
+				$blankWgtGrp		+=	$blankWgt;
+				$blankWgtGrdTot		+=	$blankWgtTot;
+				$blankWgtGrpTot		+=	$blankWgtTot;
+				$prodWgtGrd			+=	$prodWgt;				
+				$prodWgtGrp			+=	$prodWgt;
+				$prodWgtGrdTot		+=	$prodWgtTot;					
+				$prodWgtGrpTot		+=	$prodWgtTot;
+				$grpCount++;
+				$return		.="
+								<row>
+									<cmpdpart>$cmpdName</cmpdpart>
+									<cmpddesc>$cmpdDesc</cmpddesc>
+									<cmpdmoldqty>$cmpdMouldQty</cmpdmoldqty>
+									<cmpdblankwgt>$blankWgt</cmpdblankwgt>
+									<cmpdblankwgttot>$blankWgtTot</cmpdblankwgttot>
+									<cmpdprodwgt>$prodWgt</cmpdprodwgt>
+									<cmpdprodwgttot>$prodWgtTot</cmpdprodwgttot>									
+								</row>";
+			}
+			$return		.=	"<mouldQtyGrpTot>$mouldQtyGrpTot</mouldQtyGrpTot>
+							<blankWgtGrp>".($blankWgtGrp/$grpCount)."</blankWgtGrp>
+							<blankWgtGrpTot>$blankWgtGrpTot</blankWgtGrpTot>
+							<prodWgtGrp>".($prodWgtGrp/$grpCount)."</prodWgtGrp>
+							<prodWgtGrpTot>$prodWgtGrpTot</prodWgtGrpTot>
+							</rowGrp>";	
+			echo "<rootxml><root><count>$rowCount</count><status>".$cmpddata['status']."</status>".$return."<mouldQtyGrdTot>$mouldQtyGrdTot</mouldQtyGrdTot>
+											<blankWgtGrd>".($blankWgtGrd/$rowCount)."</blankWgtGrd>
+											<blankWgtGrdTot>$blankWgtGrdTot</blankWgtGrdTot>
+											<prodWgtGrd>".($prodWgtGrd/$rowCount)."</prodWgtGrd>
+											<prodWgtGrdTot>$prodWgtGrdTot</prodWgtGrdTot></root></rootxml>";
+		break;		
+	}
+
+?>

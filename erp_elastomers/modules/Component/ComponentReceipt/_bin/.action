@@ -1,0 +1,145 @@
+<?php
+	session_start();
+	global $cmpdreceipt_upload_dir;
+	$today		=	date('Y-m-d');	
+	$operator	=	$_POST['operator'];
+	header('Content-Type: text/xml');
+	if ( isset($_FILES['file'])) {
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$cmpdreceipt_upload_dir;
+		$ticket = uniqid(rand(), true);
+		$storagename 	= $ticket."uploaded_file.csv";
+		try {
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			 }
+
+			 // You should also check filesize here. 
+			 if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			 }
+
+			 if( 'text/csv' == $_FILES['file']['type'] ||  'application/vnd.ms-excel' == $_FILES['file']['type'] ) 
+			 {
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					echo $_FILES['file']["name"] . " already exists. ";
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath . $storagename))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+					$schArray 		= 	array();
+					$delimiter 		= 	",";
+					if (($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+					{
+						while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE)
+						{
+							$schArray[] = $row ; 
+						}
+						fclose($handle);
+					}
+					$cmpdName	= 	"";					
+					$dcFillArr	=	array();
+					$invId		=	$schArray[0][0];
+					for($i=0;$i<count($schArray);$i++)
+					{
+						if($cmpdName != $schArray[$i][2])
+						{
+							$cmpdName 	= 	$schArray[$i][2];
+							$cmpdIdArr	=  	@getMySQLData("select cmpdId from tbl_component where upper(cmpdName) = upper('".$cmpdName."')" );
+							$cmpdId		=	$cmpdIdArr['data'][0]['cmpdId'];
+						}
+						if($cmpdId != null && $cmpdId != "")
+						{
+							$dcFillArr[$i]['cmpdId'] 	= 	$cmpdId;
+							if($schArray[$i][0] != null && $schArray[$i][0] != '' && $schArray[$i][1] != null && $schArray[$i][1] != '' && $schArray[$i][3] != null && $schArray[$i][3] != '' )
+							{
+								$dcFillArr[$i]['invId']		=	$schArray[$i][0];
+								$dcFillArr[$i]['invDate']	=	date('Y-m-d', strtotime($schArray[$i][1]));
+								if($dcFillArr[$i]['invDate'] > $today )
+								{
+									throw new RuntimeException("DC date greater than today's date in row number : ". ($i+1));
+								}
+								$dcFillArr[$i]['planId']	=	$schArray[$i][3]; 
+							}
+							else
+							{
+								throw new RuntimeException('Details like DC number, date or plan id missing in row number : '. ($i+1));
+							}								
+							if(str2num($schArray[$i][4]) > 0 )
+							{
+								$dcFillArr[$i]['recvQty']	=	str2num($schArray[$i][4]);
+							}	
+							else
+							{
+								throw new RuntimeException('Qty missing in row number : '. ($i+1));
+							}								
+						}
+						else
+						{
+							throw new RuntimeException('No Compound such as : ' .$cmpdName. ' in row number : '. ($i+1));
+						}
+					}
+					$insertsql				=	"insert into tbl_component_recv(invId, invDate, cmpdId, planId, operator, recvQty) values";
+					$sql_sub				=	"";
+					for($lp=0;$lp<count($dcFillArr);$lp++){
+						$sql_sub	.=	" ('".$dcFillArr[$lp]['invId']."', '".$dcFillArr[$lp]['invDate']."', '".$dcFillArr[$lp]['cmpdId']."',
+						'".strtoupper(substr($operator,0,1)).$dcFillArr[$lp]['planId']."', '$operator', '".$dcFillArr[$lp]['recvQty']."') ";
+						
+						if($lp < count($dcFillArr)-1){
+							$sql_sub	.=	" , ";	
+						}
+					}
+					
+					$insertsql	=	$insertsql.$sql_sub;
+					//echo $insertsql; exit();
+					$sql_query = @getMySQLData($insertsql);
+					
+					$output = "<cpdinvadd>
+									<sql>$insertsql</sql>
+									<status>".$sql_query['status']."</status>
+									<invid>$invId</invid>
+								</cpdinvadd>";
+						//echo $output; exit();
+					if($sql_query['status'] == "success"){
+						//print_r ($order_sch );
+						if(!rename($uploadPath . $storagename, $uploadPath.$_FILES['file']["name"]))
+						{
+							throw new RuntimeException('Warning! Failed to rename the file: '.$uploadPath . $storagename.' to :'.$uploadPath.$_FILES['file']["name"]);
+						}							
+					}
+					else{
+						throw new RuntimeException('update of Component DC failed due to :'.$sql_query['status']);						
+					}						
+					
+					echo $output;									
+				}	
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			if(($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+			{	
+				fclose($handle);
+				$thefile = $uploadPath . $storagename;
+				unlink($thefile);
+			}				
+			echo $e->getMessage();
+		}      
+    } 
+
+?>

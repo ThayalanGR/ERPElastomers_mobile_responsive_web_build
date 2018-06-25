@@ -1,0 +1,16 @@
+Thank you for downloading myDBR. We do hope that you will find the 
+product useful. 
+
+We have worked hard to make sure that the product is as good as possible.
+In case you still find problems in the product or in the documentation,
+please share the findings at http://www.mydbr.com/forums
+
+INSTALL:
+========
+
+To proceed to the installation, please point your browser to mydbr-directory. 
+Detailed instructions can be found at http://www.mydbr.com/doc
+and in the downloaded copy of the documentation.
+
+-- 
+myDBR Team

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+   <xsl:template match="/"> 
+		<table id="resultTable" class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="3%">SNo</th>
+					<th width="12%">Part Number</th> 
+					<th width="10%">Customer</th>
+					<th width="7%">Enquiry Date</th>
+					<th width="3%">Feasible?</th>    
+					<th width="7%">Feas. Date</th>
+					<th width="3%">Quoted?</th>
+					<th width="7%">Quote Date</th>
+					<th width="3%">Price Apprvd?</th>
+					<th width="7%">App. Date</th>
+					<th width="3%">Tl PO?</th>
+					<th width="7%">PO Date</th> 
+					<th width="3%">Tl Recvd?</th>
+					<th width="7%">TRN Date</th> 					
+					<th width="3%">Tl Apprvd?</th>
+					<th width="7%">App. Date</th>    
+					<th>Remarks</th>					
+				</tr>
+			</thead>
+			<tbody>
+            <xsl:for-each select="xmldata/root/data/row">
+				<tr style="font-size:8px;">
+					<td>
+						<xsl:value-of select="position()"/>
+					</td>					
+					<td>
+						<xsl:value-of select="part_number"/> (<xsl:value-of select='part_description' />)
+					</td>					  
+					<td>
+						<xsl:value-of select='cusname' />
+					</td>
+					<td align="center">
+						<xsl:value-of select='enquirydate' />
+					</td>
+					<td align="center">
+						<xsl:if test="notfeasible != 1">
+							&#10004;
+						</xsl:if>
+						<xsl:if test="notfeasible != 0">
+							&#10006;
+						</xsl:if>						
+					</td>
+					<td align="center">
+						<xsl:value-of select='feasdate' />
+					</td>
+					<td align="center">
+						<xsl:if test="quotesubmitted != 0">
+							&#10004;
+						</xsl:if>
+						<xsl:if test="quotesubmitted != 1">
+							NA
+						</xsl:if>					
+					</td>
+					<td align="center">
+						<xsl:value-of select='quotesubdate' />
+					</td>
+					<td align="center">
+						<xsl:if test="priceapproved != 0">
+							&#10004;
+						</xsl:if>
+						<xsl:if test="priceapproved != 1">
+							NA
+						</xsl:if>						
+					</td>
+					<td align="center">
+						<xsl:value-of select='approvaldate' />
+					</td>	
+					<td align="center">
+						<xsl:if test="toolordered != 0">
+							&#10004;
+						</xsl:if>
+						<xsl:if test="toolordered != 1">
+							NA
+						</xsl:if>						
+					</td>
+					<td align="center">
+						<xsl:value-of select='toolpodate' />						
+					</td>
+					<td align="center">
+						<xsl:if test="toolreceived != 0">
+							&#10004;
+						</xsl:if>
+						<xsl:if test="toolreceived != 1">
+							NA
+						</xsl:if>						
+					</td>
+					<td align="center">
+						<xsl:value-of select='trndate' />
+					</td>
+					<td align="center">
+						<xsl:if test="devcompleted != 0">
+							&#10004;
+						</xsl:if>
+						<xsl:if test="devcompleted != 1">
+							NA
+						</xsl:if>						
+					</td>	
+					<td align="center">
+						<xsl:value-of select='tool_appr_date' />
+					</td>
+					<td>
+						<xsl:if test="status = 0">
+							ABANDONED:
+						</xsl:if>					
+						<xsl:value-of select='remarks' />&nbsp;
+					</td>						
+				</tr>
+            </xsl:for-each>		
+			</tbody> 
+		</table>
+    </xsl:template>		
+</xsl:stylesheet>
+		

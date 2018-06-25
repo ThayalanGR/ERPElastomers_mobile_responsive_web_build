@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0"
+xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+<div style="overflow-x:auto;">
+<table id="resultTable" border="0" cellpadding="6" cellspacing="0">
+	<thead>
+		<tr>
+			<th align="left" title="Key Reference">Key/Tool Ref.</th>
+			<th align="left" title="Issue date">Iss. Date</th>
+			<th align="left">Part No</th>
+			<th align="left" title="Part Description">Part Desc.</th>
+			<th align="right" title="Issue Quantity">Iss. Qty.</th>
+			<th align="right" title="Pending Receipt">Pen. Qty.</th>
+			<th align="left">Recv. Qty</th>
+			<th align="right" style="padding-right:70px;">Delete</th>
+		</tr>	
+	</thead>
+	<tbody>
+    <xsl:for-each select="xmldata/root/data/row">
+        <tr>
+            <td align="left"><xsl:value-of select="defiss" /></td>
+            <td align="left"><xsl:value-of select="issdatef" /></td>
+            <td align="left"><xsl:value-of select="cmpdname" /></td>
+            <td align="left"><xsl:value-of select="cmpdrefno" /></td>
+            <td align="right"><xsl:value-of select='format-number(issqty, "##,##,##0")' /></td>
+            <td align="right"><xsl:value-of select='format-number(pendqty, "##,##,##0")' /></td>
+            <td align="left">
+				<input>
+					<xsl:attribute name="id">input_<xsl:value-of select="sno" /></xsl:attribute>
+					<xsl:attribute name="defiss"><xsl:value-of select="defiss" /></xsl:attribute>
+					<xsl:attribute name="sno"><xsl:value-of select="sno" /></xsl:attribute>
+					<xsl:attribute name="mouldref"><xsl:value-of select="mouldref" /></xsl:attribute>
+					<xsl:attribute name="issqty"><xsl:value-of select="issqty" /></xsl:attribute>
+					<xsl:attribute name="pendqty"><xsl:value-of select="pendqty" /></xsl:attribute>
+					<xsl:attribute name="doctype"><xsl:value-of select="doctype" /></xsl:attribute>
+					<xsl:attribute name="type">text</xsl:attribute>
+					<xsl:attribute name="style">text-align:right;width:55%</xsl:attribute>
+					<xsl:attribute name="class">invisible_text</xsl:attribute>
+					<xsl:attribute name="value">0</xsl:attribute>
+					<xsl:attribute name="tabindex">2</xsl:attribute>
+					<xsl:attribute name="onfocus">FieldHiddenValue(this, 'in', '0')</xsl:attribute>
+					<xsl:attribute name="onblur">FieldHiddenValue(this, 'out', '0')</xsl:attribute>
+				</input>
+			</td>			
+            <td align="right">&#160;
+				<xsl:if test="issqty = pendqty and doctype != 'tool' ">
+					<a>
+						<xsl:attribute name="href">javascript:void(0)</xsl:attribute>
+						<xsl:attribute name="sno"><xsl:value-of select="sno" /></xsl:attribute>
+						<xsl:attribute name="planid"><xsl:value-of select="defiss" /></xsl:attribute>
+						<xsl:attribute name="mouldref"><xsl:value-of select="mouldref" /></xsl:attribute>
+						<xsl:attribute name="doctype"><xsl:value-of select="doctype" /></xsl:attribute>
+						<xsl:attribute name="class">delete_button link</xsl:attribute>
+						<i class="fa fa-trash"></i>
+					</a>
+				</xsl:if>				
+            </td>
+        </tr>
+    </xsl:for-each>
+	</tbody>
+</table>
+</div>
+</xsl:template>
+</xsl:stylesheet>
+
+

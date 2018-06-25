@@ -1,0 +1,30 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+isSelectable	=	true;
+
+function updateData(){
+	$(".view_button").click(function(){
+		mRecId	=	$(this).attr('invid');
+		if(mRecId != null && mRecId != ""){
+			openInvoice({invID:mRecId});
+		}
+	});	
+}
+
+$(document).ready(function(){
+	updatePageBehaviour();
+});
+
+function updatePageBehaviour(){
+	$(".filter-table").filters('destroy');
+	var XMLContent	=	postback(actionFile, "fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST", "XML");
+	//alert(XMLContent);
+	listPageData($("#content_tbl"), XMLContent, XSLFile);
+	
+	$(".filter-table").filters({
+		onUpdate:updateData
+	});
+	
+	updateHeader();updateContent();
+	updateData();
+	
+}

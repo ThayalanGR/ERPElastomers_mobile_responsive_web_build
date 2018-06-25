@@ -1,0 +1,518 @@
+<?php
+	session_start();
+	global $cmpddi_upload_dir, $stateList, $HSN, $taxRate, $homeState,$despValidDays;
+	header("Content-Type: text/xml");
+	
+if ( isset($_FILES['file'])) {
+		$uploadPath 	= 	$_SESSION['app']['iso_dir'].$cmpddi_upload_dir;
+		$ticket 		= 	uniqid(rand(), true);
+		$storagename 	= 	$ticket."uploaded_file.csv";		
+		try {
+			 // Check $_FILES['file']['error'] value.
+			 switch ($_FILES['file']['error']) {
+				 case UPLOAD_ERR_OK:
+					 break;
+				 case UPLOAD_ERR_NO_FILE:
+					 throw new RuntimeException('No file sent.');
+				 case UPLOAD_ERR_INI_SIZE:
+				 case UPLOAD_ERR_FORM_SIZE:
+					 throw new RuntimeException('Exceeded filesize limit.');
+				 default:
+					 throw new RuntimeException('Unknown errors.');
+			 }
+
+			 // You should also check filesize here. 
+			 if ($_FILES['file']['size'] > $max_upload_filesize) {
+				 throw new RuntimeException('Exceeded filesize limit.');
+			 }
+
+			 if( 'text/csv' == $_FILES['file']['type'] ||  'application/vnd.ms-excel' == $_FILES['file']['type'] ) 
+			 {
+				//if file already exists
+				if (file_exists( $uploadPath. $_FILES['file']["name"])) {
+					echo $_FILES['file']["name"] . " already exists. ";
+				}
+				else 
+				{
+					if(!move_uploaded_file($_FILES['file']["tmp_name"], $uploadPath . $storagename))
+					{
+						throw new RuntimeException('Failed to move uploaded file.');
+					}
+					$schArray 		= 	array();
+					$delimiter 		= 	",";
+					if (($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+					{
+						while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE)
+						{
+							$schArray[] = $row ; 
+						}
+						fclose($handle);
+					}
+					$custName	=	$_POST['cusname'];					
+					$cusIdArr	=  	@getMySQLData("select cusId from tbl_customer where upper(cusName) = upper('".$custName."')" );
+					$cusId		=	$cusIdArr['data'][0]['cusId'];
+					$partName	= 	"";
+					$schFillArr	=	array();
+					for($i=0;$i<count($schArray);$i++)
+					{
+						if($cusId != null && $cusId != "")
+						{
+							$partName 		= 	$schArray[$i][0];
+							$partDetails	=  	@getMySQLData("select cmpdId,cmpdRefNo,cmpdName  from tbl_component where upper(cmpdName) = upper('".$partName."')" );
+							$partId			=	$partDetails['data'][0]['cmpdId'];
+							if($partId != null && $partId != "")
+							{
+								$rateArr	=  	@getMySQLData("select poRate  from tbl_customer_cmpd_po_rate where cusId  = '".$cusId."' and cmpdId = '".$partId."' and status >0 order by update_on desc limit 1" );
+								$rate		=	$rateArr['data'][0]['poRate'];
+								if($rate != null && $rate != "")
+								{
+									if($schArray[$i][2] != null && str2num($schArray[$i][2]) > 0)
+									{
+										$diDesc	=	$schArray[$i][1];
+										$diQty	=	str2num($schArray[$i][2]);
+									}
+									else
+									{
+										$diDesc	=	"";
+										$diQty	=	str2num($schArray[$i][1]);									
+									}
+									if($diQty > 0)
+									{
+										$schFillArr[$i]['cmpdId']	=	$partId;
+										$schFillArr[$i]['diDesc']	=	$diDesc; 
+										$schFillArr[$i]['diQty']	=	$diQty;
+									}
+								}
+								else
+								{
+									throw new RuntimeException('The Part Number : ' .$partName. ' is not approved  for customer: '.$custName.' in row number : '. ($i+1));
+								}	
+							}
+							else
+							{
+								throw new RuntimeException('No Part Number such as : ' .$partName. ' in row number : '. ($i+1));
+							}							
+						}
+						else
+						{
+							throw new RuntimeException('No Customer such as : ' .$custName);
+						}
+					}
+					if(count($schFillArr) > 0)
+					{
+						$codeArray	=	@getSettingsData("despcode");											
+						$di_date	=	$_POST['didate'];
+						$disql		=	"insert into tbl_component_di(cusid, cmpdid, di_desc, di_date,qty) values";
+						$sql_sub	=	"";
+						for($lp=0;$lp<count($schFillArr);$lp++){
+							$despIns	=	$schFillArr[$lp]['diDesc'];
+							if($despIns == null || trim($despIns) == "")
+							{
+								$codeNo		=	@getRegisterNo($codeArray[0], $codeArray[1]);
+								$despIns	=	$codeNo;
+								$codeArray[1]++;
+							}
+							$sql_sub	.=	" ('$cusId', '".$schFillArr[$lp]['cmpdId']."', '$despIns', '$di_date', '".$schFillArr[$lp]['diQty']."') ";
+											if($lp < count($schFillArr)-1){
+												$sql_sub	.=	" , ";	
+											}
+						}
+						
+						$disql		.=	$sql_sub;
+						$sql_query 	= @getMySQLData($disql);
+						
+						$output = "<diupload>
+										<sql>$disql</sql>
+										<status>".$sql_query['status']."</status>
+										<dicust>$custName</dicust>
+										<didate>$di_date</didate>
+									</diupload>";
+						if($sql_query['status'] == "success"){
+							@getMySQLData("update tbl_settings set auto_inc='".$codeArray[1]."' where name='despcode'");
+							if(!rename($uploadPath . $storagename, $uploadPath.$_FILES['file']["name"]))
+							{
+								throw new RuntimeException('Warning! Failed to rename the file: '.$uploadPath . $storagename.' to :'.$uploadPath.$_FILES['file']["name"]);
+							}							
+						}
+						else{
+							throw new RuntimeException('Insertion of schedule data failed due to :'.$sql_query['errtxt']);						
+						}						
+						
+						echo $output;	
+					}
+					else
+					{	
+						throw new RuntimeException("No Records to update!");									
+					}						
+				}	
+			}
+			else
+			{
+				throw new RuntimeException('Invalid file format.');			 
+			}
+		} 
+		catch (RuntimeException $e) {
+			if(($handle = fopen($uploadPath . $storagename, 'r')) !== FALSE)
+			{	
+				fclose($handle);
+				$thefile = $uploadPath . $storagename;
+				unlink($thefile);
+			}
+			$output = "<diupload>
+							<status>".$e->getMessage()."</status>							
+						</diupload>";				
+			echo $output;
+		}      
+     } 
+	 else 
+	 { 	
+	
+		switch($_POST["selecttype"]){
+			case "GETVAL":						
+				$sql_invoice	=	"select porate,di_desc,tc.cusId, cusmultiinvoice, cusname, cusstate, cusgstn, cuspan, concat(partnum,' - ',partdesc) as partnum,di_qty,sum(invqty) as invqty,group_concat(ifnull(dispinvid,'-')) as dispinvid, ifnull(cmpdAwtMldRec,0) as cmpdAwtMldRec, ifnull(cmpdAwtDefIss,0) as cmpdAwtDefIss, ifnull(cmpdAwtDefRec,0) as cmpdAwtDefRec, ifnull(cmpdAwtQualRec,0) as cmpdAwtQualRec, ifnull(cmpdTotStock,0) as cmpdTotStock, cmpdStdPckQty, tccpr.cmpdid,cmpdHSN
+										from (select dispinvid, ifnull(cmpdid,invcode) as cmpdid,ifnull(cusid,invcusid) as cusid,partnum,partdesc,invqty,ifnull(qty - despQty,0) as di_qty,di_desc from (select ici.invName as partnum, sum(ici.invqty) as invqty, ici.invDesc as partdesc, ici.invRate, invcode,invcusid,invdate,tic.invid as dispinvid
+														from tbl_invoice_sales tic 										
+															inner join tbl_invoice_sales_items ici on tic.invId=ici.invId  
+														where tic.invdate = CURDATE() and tic.status > 0 and ici.invtype = 'cmpd'
+														group by tic.invId,ici.invcode) tblA
+													left outer join 
+													(select cusid,cmpdid,group_concat(if(di_desc != '',di_desc,'-')) as di_desc,sum(qty) as qty , sum(despQty) as despQty
+															from (select tcd.cusid,tcd.cmpdid,di_desc,qty, ifnull(sum(invQty),0) as despQty  from tbl_component_di tcd
+																	left join ( select invDespId, invQty, invCusId, invCode
+																					from tbl_invoice_sales_items tici 
+																						inner join tbl_invoice_sales  tic on tici.invId = tic.invId and tic.status = 1 and tic.invDate > DATE_ADD(CURDATE(), INTERVAL -".$despValidDays." day) and tic.invDate != CURDATE()) tbli on di_desc = invDespId  and cusId = invCusId and cmpdId = invCode 
+																	where tcd.status  = 1 and di_date > DATE_ADD(CURDATE(), INTERVAL -".$despValidDays." day) group by tcd.cusid,tcd.cmpdid,tcd.di_desc)tt1 
+														where (qty - despQty) > 0	group by cusid,cmpdid) tcd0 on cmpdid = tblA.invcode and cusid = tblA.invcusid 
+												UNION ALL
+													select dispinvid, ifnull(tcomp.cmpdid,invcode) as cmpdid,ifnull(cusid,invcusid) as cusid,cmpdName as partnum,cmpdRefNo as partdesc,ifnull(invqty,0) as invqty,ifnull(qty - despQty,0) as di_qty,di_desc from (select tic.invid as dispinvid,ici.invName as partnum, sum(ici.invqty) as invqty, ici.invDesc as partdesc, ici.invRate, invcode,invcusid,invdate
+														from tbl_invoice_sales tic 										
+															inner join tbl_invoice_sales_items ici on tic.invId=ici.invId  
+														where tic.invdate = CURDATE() and tic.status > 0 and ici.invtype = 'cmpd'
+														group by tic.invId,ici.invcode) tblB
+													right outer join (select cusid,cmpdid,group_concat(if(di_desc != '',di_desc,'-')) as di_desc,sum(qty) as qty , sum(despQty) as despQty
+															from (select tcd.cusid,tcd.cmpdid,di_desc,qty, ifnull(sum(invQty),0) as despQty  from tbl_component_di tcd
+																	left join ( select invDespId, invQty, invCusId, invCode
+																					from tbl_invoice_sales_items tici 
+																						inner join tbl_invoice_sales  tic on tici.invId = tic.invId and tic.status = 1 and tic.invDate > DATE_ADD(CURDATE(), INTERVAL -".$despValidDays." day) and tic.invDate != CURDATE()) tbli on di_desc = invDespId  and cusId = invCusId and cmpdId = invCode 
+																	where tcd.status  = 1 and di_date > DATE_ADD(CURDATE(), INTERVAL -".$despValidDays." day) group by tcd.cusid,tcd.cmpdid,tcd.di_desc)tt1 
+														where (qty - despQty) > 0	group by cusid,cmpdid) tcd1 on tcd1.cmpdid = tblB.invcode and tcd1.cusid = tblB.invcusid 
+													inner join tbl_component tcomp on tcd1.cmpdid = tcomp.cmpdid
+													Where tblB.invcode is NULL and tblB.invcusid is NULL and tblB.invdate is NULL) table1
+										inner join tbl_customer tc on table1.cusid = tc.cusId 
+										inner join (select * from (select * from tbl_customer_cmpd_po_rate order by update_on desc)tabl1 group by cusid,cmpdid) tccpr on table1.cusid = tccpr.cusId and table1.cmpdid = tccpr.cmpdid
+										left join (select cmpdid, sum(sumIssued) as cmpdAwtMldRec, sum(sumMoldQty) as cmpdAwtDefIss, sum(sumDefIssued) as cmpdAwtDefRec ,sum(sumAwtQual) as cmpdAwtQualRec, sum(stockinHand) as cmpdTotStock  
+																from ( 
+																	select cmpdid, quantity as sumIssued, 0 as sumMoldQty, 0 as sumDefIssued,0 as sumAwtQual, 0 as stockinHand from tbl_moulding_receive tmr inner join tbl_invoice_mould_plan timp on tmr.planref = timp.planid where tmr.status = 2 group by tmr.planref
+																	UNION ALL
+																	select cmpdid, 0 as sumIssued, sum(mouldQty) as sumMoldQty, 0 as sumDefIssued,0 as sumAwtQual, 0 as stockinHand from tbl_moulding_receive tmr inner join tbl_invoice_mould_plan timp on tmr.planref = timp.planid where tmr.status = 3 group by tmr.planref
+																	UNION ALL 
+																	select cmpdid, 0 as sumIssued, quantity as sumMoldQty, 0 as sumDefIssued,0 as sumAwtQual, 0 as stockinHand from tbl_rework where status = 1 
+																	UNION ALL 
+																	select cmpdid, 0 as sumIssued, 0 as sumMoldQty, (issqty - recvQty) as sumDefIssued,0 as sumAwtQual, 0 as stockinHand from (select di.cmpdid, di.issqty, if(sum(currrec) > 0,sum(currrec),0) as recvQty from tbl_deflash_issue di left outer join tbl_deflash_reciept dr on dr.defissref=di.sno where di.status = 1 group by dr.defissref) tdi
+																	UNION ALL 
+																	select cmpdid,0 as sumIssued, 0 as sumMoldQty, 0 as sumDefIssued,(currrec - ifnull(mq.receiptqty,0)) as sumAwtQual, 0 as stockinHand from tbl_deflash_reciept dr inner join tbl_deflash_issue di on di.sno = dr.defissref left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 0 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = dr.sno where dr.status = 1
+																	UNION ALL 
+																	select cmpdid,0 as sumIssued, 0 as sumMoldQty, 0 as sumDefIssued,(recvqty - ifnull(mq.receiptqty,0)) as sumAwtQual, 0 as stockinHand from tbl_component_recv cr left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 1 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = cr.sno where cr.status = 1																	
+																	UNION ALL 
+																	select cmpdid, 0 as sumIssued, 0 as sumMoldQty, 0 as sumDefIssued,0 as sumAwtQual, avlQty as stockinHand from tbl_mould_store where status = 1 and avlQty > 0 
+																)table1
+																group by cmpdid) tcs  on tcs.cmpdid = tccpr.cmpdid
+										inner join tbl_component tcmpd on tcmpd.cmpdid = tccpr.cmpdid
+									group by table1.cmpdid,table1.cusid
+									order by tc.cusname,table1.partnum";
+				//echo $sql_invoice; exit();
+				$list	=	@getMySQLData($sql_invoice,"xml","root","lower");
+				$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+				echo "<xmldata>
+					$list
+					$output
+				</xmldata>";
+			break;
+			case "GETDIDETAILS":
+				$cmpdId		=	$_POST['cmpdid'];
+				$cusId		=	$_POST['cusid'];
+				$sql		=	"select *  
+									from (select di_desc,qty, ifnull(sum(invqty),0) as despQty 								 
+											from (select di_desc,qty, invqty   
+													from tbl_component_di tcd
+													left join ( select invDespId, invQty 
+																	from tbl_invoice_sales_items tici 
+																		inner join tbl_invoice_sales  tic on tici.invId = tic.invId and tic.status = 1 
+																where invCode = '$cmpdId' and invCusId = '$cusId') tbli on di_desc = invDespId 
+													where tcd.status  = 1 and cmpdId = '$cmpdId' and cusid = '$cusId' and di_date > DATE_ADD(CURDATE(), INTERVAL -".$despValidDays." day))tbl1 
+										group by di_desc )tbl2
+								where (qty - despQty) > 0
+								order by di_desc";
+				echo getXML($sql,false);
+				exit();
+			break;
+			case "GETTAXDETAILS":
+				$resultXML	=	"";
+				$hsn_sql	=	@getMySQLData("select cmpdHSN from tbl_component where cmpdId='".$_POST['cmpdid']."'");
+				$hsnCode	=	$hsn_sql['data'][0]['cmpdHSN'];				
+				$taxPercent	=	($hsnCode == $HSN['cmpd'])?$taxRate['cmpd']:$taxRate[$hsnCode];
+				if($_POST['cusstate'] == $homeState)
+					$resultXML	=	"<row><cgst>".($taxPercent/2)."</cgst><sgst>".($taxPercent/2)."</sgst><igst>0</igst></row>";
+				else
+					$resultXML	=	"<row><cgst>0</cgst><sgst>0</sgst><igst>".$taxPercent."</igst></row>";
+				echo $resultXML;
+				exit();	
+			break;
+			case "GETDIQTY":
+				echo getXML("select sno,di_desc,qty from tbl_component_di where status>0 and cusid = '".$_REQUEST['cusid']."' and cmpdid = '".$_REQUEST['cmpdid']."' and di_desc = '".$_REQUEST['diref']."'",false);
+				exit();
+			break;
+			case "GETKEYS":
+				echo getXML("select planref,avlQty from tbl_mould_store where cmpdId='".$_REQUEST['cmpdid']."' and status>0 and avlQty > 0	order by planref",false); ;
+				exit();
+			break;	
+			case "GETPODETAILS":
+				$cmpdid		=	$_POST['cmpdid'];
+				$cusid		=	$_POST['cusid'];
+				echo @getXML("SELECT poref,podate, poqty, sum(ifnull(invQty,0)) as totinvqty, tc.cmpdhsn
+								FROM (select cmpdId, poref, podate, poqty from  tbl_customer_cmpd_po_rate where cusId='$cusid' and cmpdId = '$cmpdid' and status=1 group by cmpdId order by update_on) tccpr
+									left join (select invPORef, invQty from tbl_invoice_sales_items tici inner join tbl_invoice_sales tic on tic.invId = tici.invId and tici.invCode = '$cmpdid' and tic.status > 0  ) ici on tccpr.poref = ici.invPORef 
+									inner join tbl_component tc on tc.cmpdId = tccpr.cmpdId
+								group by poref", false);
+				exit();	
+			break;		
+			case "CSTATLIST":
+				$output		=	getXML("select cusId, cusName from tbl_customer where status>0",false);
+				echo $output;
+				exit();
+			break;
+			case "CSTDTLLIST":
+				$custname	= 	$_POST['cusid'];
+				$cus_sql	=	@getMySQLData("select cusId from tbl_customer where cusName='$custname'");
+				$cusid		=	$cus_sql['data'][0]['cusId'];
+				$sql		=	"select cpr.cmpdId, tc.cmpdName
+									from (select * from  tbl_customer_cmpd_po_rate where cusId='$cusid' and status=1 group by cmpdId order by update_on) cpr
+									inner join tbl_component tc on cpr.cmpdId=tc.cmpdId	";
+				$output		=	getXML($sql,false);
+				echo $output;
+				exit();
+			break;
+			case "DIUPDATE":
+				echo @getMySQLData("update tbl_component_di set qty='".$_REQUEST['diqty']."' where sno='".$_REQUEST['disno']."'", "xml");
+			break;
+			case "DIADD":
+				$codeArray	=	@getSettingsData("despcode");
+				$output		=	"";
+				$custname	= 	$_REQUEST['cust'];
+				$di_date	=	$_REQUEST['didate'];
+				$cus_sql	=	@getMySQLData("select cusId from tbl_customer where cusName='$custname'");
+				$cusid		=	$cus_sql['data'][0]['cusId'];		
+				if($cusid != "" && $cusid != null){
+					$ditems	=	$_REQUEST['ditems'];
+					if(is_array($ditems) && count($ditems) > 0){
+						$sql	=	"insert into tbl_component_di(cusid, cmpdid, di_desc, di_date,qty) values";
+						for($rsl=0; $rsl<count($ditems); $rsl++){
+							$diCmpdId	=	$ditems[$rsl]['dicmpdid'];
+							$diDesc		=	$ditems[$rsl]['didesc'];
+							if($diDesc == null || trim($diDesc) == "")
+							{
+								$codeNo		=	@getRegisterNo($codeArray[0], $codeArray[1]);
+								$diDesc		=	$codeNo;
+								$codeArray[1]++;
+							}						
+							$diQty		=	$ditems[$rsl]['diqty'];
+							$sql		.=	"('$cusid', '$diCmpdId', '$diDesc', '$di_date',$diQty)".(($rsl<count($ditems)-1)?',':'')." ";							
+						}
+						$output		.=	@getMySQLData($sql, "xml");
+						if($output != ""){
+							$status		=	split("<status>", $output);
+							$status		=	split("</status>", $status[1]);
+							$status		=	$status[0];				
+							if($status == "success"){
+								@getMySQLData("update tbl_settings set auto_inc='".$codeArray[1]."' where name='despcode'");
+							}
+						}						
+					}				
+				}
+				else{
+					$output		=	"<mysql><status>Invalid Customer</status></mysql>";
+				}
+				$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+				echo "<xmldata>
+					$list
+					$output
+				</xmldata>";			
+			break;	
+			case "GETCMPDSTOCK":
+				$cmpdId		=	$_REQUEST['cmpdId'];
+				$sql_list	=	"select *  
+									from ( 
+											SELECT tmr.modRecRef as planId, tmp.operator, (tmp.no_of_active_cavities * tmr.plannedLifts) as issqty, 'Awaiting Moulding Receipt' as status
+											FROM tbl_moulding_receive tmr
+												inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+												left join tbl_moulding_plan tm on tm.planid = tmr.planRef
+											WHERE tmr.STATUS = 2 and tmp.cmpdid = '$cmpdId'
+											UNION ALL
+											SELECT tmr.modRecRef as planId, 'NA' as operator, tmr.mouldQty as issqty, 'Awaiting Deflashing Issue' as status
+												FROM tbl_moulding_receive tmr
+													inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef 
+												WHERE tmr.STATUS = 3 and tmp.cmpdid = '$cmpdId'
+											UNION ALL 
+											select planid, 'NA' as operator, quantity as  issqty, 'Awaiting Deflashing Issue' as status
+												FROM tbl_rework tr 
+												WHERE tr.status = 1  and tr.cmpdid = '$cmpdId'
+											UNION ALL 
+											SELECT tmr.modRecRef as planId, tdi.operator, (tdi.issqty - ifnull((select sum(currrec) from tbl_deflash_reciept where issref = tmr.modRecRef),0)) as issqty,  'Awaiting Deflashing Receipt' as status 
+												FROM tbl_moulding_receive tmr
+													inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+													inner join tbl_deflash_issue tdi on tdi.defiss = tmr.modRecRef
+												WHERE tmr.STATUS = 4  and tmp.cmpdid = '$cmpdId'
+											UNION ALL 
+											SELECT tmr.modRecRef as planId, 'NA' as operator,  (tdr.currrec - ifnull(mq.receiptqty,0)) as issqty, 'Awaiting Inspection' as status
+												FROM tbl_moulding_receive tmr
+													inner join tbl_invoice_mould_plan tmp on tmp.planid = tmr.planRef
+													inner join tbl_deflash_reciept tdr on tdr.issref = tmr.modRecRef
+													inner join tbl_deflash_issue tdi on tdi.defiss = tmr.modRecRef
+													left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 0 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = tdr.sno
+												WHERE (tmr.STATUS = 5 or tmr.STATUS = 4)  and tmp.cmpdid = '$cmpdId'
+											UNION ALL 
+											SELECT tcr.planId, 'NA' as operator,  (tcr.recvqty - ifnull(mq.receiptqty,0)) as issqty, 'Awaiting Inspection' as status
+												FROM tbl_component_recv tcr
+													inner join tbl_component tc on tcr.cmpdid=tc.cmpdId
+													left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 1 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = tcr.sno
+												WHERE tcr.STATUS = 1  and tc.cmpdid = '$cmpdId'
+											UNION ALL 
+											select planRef as planId, 'NA' as operator, avlQty as issqty, 'Awaiting Despatch' as status 
+												From tbl_mould_store tms
+												WHERE tms.status = 1 and avlQty > 0  and tms.cmpdid = '$cmpdId'
+										)tcs";
+										
+					echo getXML($sql_list, false);
+					exit();
+			break;
+			case "CREATECMPDINVOICE":
+				$output						=	'';
+				$data						=	$_POST['templatepost'];
+				$invType					=	$_POST['invtype'];
+				$codeArray					=	@getSettingsData("cmpdInv");
+				$codeNo						=	@getRegisterNo($codeArray[0], $codeArray[1]);
+				$cusId						=	$data['custid'];
+				$custData					=	@getMySQLData("select * from tbl_customer where cusId='".$cusId."'");
+				$settings					=	@getMySQLData("select name,value from tbl_settings where name in ('gstn','pan') order by name");
+				$custData					=	$custData['data'][0];
+				$cusAddress					=	$custData['cusAdd1']. "<br />".	((trim($custData['cusAdd2']) != '')?$custData['cusAdd2']. "<br />":"").$custData['cusPlace']. " - " .	$custData['cusPincode']	;
+				$settings					=	$settings['data'];				
+				$data['total']				=	@preg_replace("/[,]/", "", $data['total']);
+				$hsnCode					=	$data['hsncode'];
+				
+				$taxPercent					=	($hsnCode == $HSN[$invType])?$taxRate[$invType]:$taxRate[$hsnCode];
+				$cgstRate					=	0;
+				$sgstRate					=	0;
+				$igstRate					=	0;
+				if($custData['cusState'] == $homeState)
+				{
+					$cgstRate	=	$taxPercent/2;
+					$sgstRate	=	$taxPercent/2;
+				}
+				else
+				{
+					$igstRate	=	$taxPercent;
+				}
+				$data['cgst']				=	$cgstRate;
+				$data['cgst_out']			=	round(($data['total'] * $cgstRate)/100,2);				
+				$data['sgst']				=	$sgstRate;
+				$data['sgst_out']			=	round(($data['total'] * $sgstRate)/100,2);
+				$data['igst']				=	$igstRate;
+				$data['igst_out']			=	round(($data['total'] * $igstRate)/100,2);
+				$data['grandtotal_out']		=	$data['total'] + $data['cgst_out'] + $data['sgst_out'] + $data['igst_out'];
+				
+				$cmpdIdArr					=	$data['particulars']['cmpdcode'];
+				$aplQtyArr					=	$data['particulars']['aplqty'];
+				for($sq=0;$sq<count($cmpdIdArr);$sq++){
+					$key						=	$cmpdIdArr[$sq];
+					$compNameSQL				=	@getMySQLData("select cmpdName from tbl_component where cmpdId='$key'");
+					$cmpdName					=	$compNameSQL['data'][0]['cmpdName'];
+					$despQty					=	$aplQtyArr[$sq];
+					$schqty						=	0;
+					$sql_schqty					=	@getMySQLData("select schqty from tbl_scheduling where cpdId_cmpdId='$key' and status>0 and cusId = '$cusId' and schMonth = '".date('F Y')."' order by sno desc limit 1");
+					if($sql_schqty['data'][0]['schqty'] > 0)
+						$schqty					=	$sql_schqty['data'][0]['schqty'];
+						
+					$sql_despQty				=	@getMySQLData("select ifnull(sum(invQty),0) as despQty 
+																	from tbl_invoice_sales_items t1 
+																	inner join tbl_invoice_sales t2 on t1.invId = t2.invId and t2.status > 0
+																where t1.invCode='$key' and t2.invCusId = '$cusId' and DATE_FORMAT(t2.invDate, '%M %Y') = '".date('F Y')."'");
+					if($sql_despQty['data'][0]['despQty'] > 0)
+						$despQty				+=	$sql_despQty['data'][0]['despQty'];				
+					//Verify if Schedule is up to date
+					if(!($despQty <= round((1.1 * $schqty),0)))
+					{			
+						$output		=	'failure~Total Despatch Quantity Greater than 110% of Schedule Quanity for '.$cmpdName.'. Please Update the Schedule Quantity!!!';
+						$sq			=	count($cmpdIdArr);
+					}
+				}
+
+				if($output == '')
+				{
+					$sql_ins		=	"insert into tbl_invoice_sales (
+											invId, invDate, invCusId, invConsignee, invConsigneePerson,	invPayTerms, invShipDate, invMultiItems,
+											invTotalAmt, invCGST, invCGSTAmt, invSGST, invSGSTAmt, invGrandTotal, invIGSTAmt, invIGST, invTaxableValAmt,
+											invCustRefNo, invPAN, invGSTN, invBGSTN, invBPAN, invSupplyPlace, invRemarks, entry_on, entry_by)
+										values(
+											'$codeNo', now(), '".$custData['cusId']."', '".$custData['cusName']."|".$cusAddress."', '".$custData['cusContName']."|".$custData['cusMobile']."|".$custData['cusPhone'].", ".$custData['cusFax']."|".$custData['cusEmail']."', '".$custData['cusCreditDays']."', now(), '".$data['multicmpds']."',
+											'".$data['total']."', '".$data['cgst']."', '".$data['cgst_out']."', '".$data['sgst']."', '".$data['sgst_out']."',  '".$data['grandtotal_out']."', '".$data['igst_out']."', '".$data['igst']."', '".$data['total']."',
+											'".$custData['cusRefNo']."', '".$settings[1]['value']."', '".$settings[0]['value']."', '".$custData['cusGSTN']."', '".$custData['cusPan']."', '".$stateList[$custData['cusState']]."','".(($data['invremarks'])?$data['invremarks']:"")."', now(), '".$_SESSION['userdetails']['userId']."')";
+					//echo "$sql_ins\n\n";exit();
+					$out0	=	@getMySQLData($sql_ins,"arr");
+					if ($out0['status'] == 'success')
+					{
+						$sql_ins_items	=	"insert into tbl_invoice_sales_items
+												(invId, invPORef, invPODate, invDespId, invPlanRef,
+												invRate, invQty, invAmt, invTariff, invCode,
+												invName, invDesc, invtype) 
+											values	";
+						$subsql		=	array();
+						foreach($data['particulars'] as $key => $value){
+							for($sq=0;$sq<count($value);$sq++){
+								if($key == 'cmpdcode'){ $subsql[$sq]['cmpdcode'] = $value[$sq]; }
+								else if($key == 'poref'){ $subsql[$sq]['poref'] = $value[$sq]; }
+								else if($key == 'podate'){ $subsql[$sq]['podate'] = date("Y-m-d", @strtotime(@preg_replace("/[\/]/", "-", $value[$sq]))); }
+								else if($key == 'keyid'){ $subsql[$sq]['keyid'] = $value[$sq]; }
+								else if($key == 'code'){ $subsql[$sq]['code'] = $value[$sq]; }
+								else if($key == 'diref'){ $subsql[$sq]['diref'] = $value[$sq]; }
+								else if($key == 'aplqty'){ $subsql[$sq]['aplqty'] =  $value[$sq]; }
+								else if($key == 'rate'){ $subsql[$sq]['rate'] = @preg_replace("/[,]/", "", $value[$sq]); }
+								else if($key == 'value'){ $subsql[$sq]['value'] = @preg_replace("/[,]/", "", $value[$sq]); }
+							}
+						}
+						$sql_sub	=	"";
+						for($lp=0;$lp<count($subsql);$lp++){
+							$cmpdid		=	$subsql[$lp]['cmpdcode'];
+							$component	=	@getMySQLData("select cmpdName, cmpdRefNo from tbl_component where cmpdId='$cmpdid'");
+							$component	=	$component['data'][0];						
+							
+							$sql_ins_items	.=	" ('$codeNo', '".$subsql[$lp]['poref']."', '".$subsql[$lp]['podate']."', '".$subsql[$lp]['diref']."', '".$subsql[$lp]['keyid']."',
+							'".$subsql[$lp]['rate']."', '".$subsql[$lp]['aplqty']."', '".$subsql[$lp]['value']."', '$hsnCode', '$cmpdid',
+							'".$component['cmpdName']."', '".$component['cmpdRefNo']."', '$invType')";
+							if($lp < count($subsql)-1){
+								$sql_ins_items	.=	" ,
+							";
+							}
+						}
+						//echo $sql_ins_items."\n\n";	exit();
+						$out1		=	@getMySQLData($sql_ins_items, "arr");
+					}
+					
+					if($out1['status'] == 'success' && $out0['status'] == 'success'){
+						for($lp=0;$lp<count($subsql);$lp++){
+							@getMySQLData("update tbl_mould_store set avlQty= avlQty - ".$subsql[$lp]['aplqty']." where planref='".$subsql[$lp]['keyid']."' and cmpdid='".$subsql[$lp]['cmpdcode']."'");
+						}
+						$output = 'success~'.$codeNo;						
+						@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='cmpdInv'");
+					}
+					else
+					{
+						$output = 'failure~'.$out0['errtxt'].$out1['errtxt'];
+					}
+				}
+				echo $output;
+			break;	
+		}
+	}
+
+?>

@@ -1,0 +1,244 @@
+tableFilters.sort_config		=	{ sort_types:['string','date', 'string','string','string','none','none'] };
+var TF_01						=	null;
+var needRefresh					=	false;
+<?php global $stdforms_upload_dir; ?>
+var	stdFormsDir					=	"/<?php echo $stdforms_upload_dir; ?>";
+
+
+$(document).ready(function(){
+
+	$("#closure_popup").dialog({
+		autoOpen:false, 
+		width:700,
+		modal:true,		
+		resizable:false,
+		buttons:[
+			{ 
+				id:"button-upload",
+				text:"Apply Closure",
+				tabindex:2,
+				click: function(){
+					closeComplaint();
+				}
+			},
+			{ 
+				text: "Cancel",
+				tabindex:3,
+				click: function(){
+					$(this).dialog('close');
+				}
+			}
+		],
+		close:function(){
+			$("#raise_error").css('display','none');
+			$(this).find("form")[0].reset();
+		}
+	});
+
+	getPageData();
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+function getPageData(){
+	XMLContent	=	postback(actionFile,"type=NEWCOMPLIST","POST","XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+}
+
+function updatePageBehaviour(){
+
+	$(".close_button").click(function(e) {
+		$("#closure_popup").dialog('open');
+		$("#closure_popup").attr("compid",$(this).attr('compid'));
+		$("#closure_popup").attr("isfr",$(this).attr('isinternal'));
+		
+		toolComm	=	$(this).attr('tool_comments');
+		$("#tool_comments").html(toolComm);
+		if(toolComm != null && toolComm != '')
+			$("#tool_comm_row").show();
+		else
+			$("#tool_comm_row").hide();	
+	
+		cpdComm	=	$(this).attr('cpd_comments');
+		$("#cpd_comments").html(cpdComm);
+		if(cpdComm != null && cpdComm != '')
+			$("#cpd_comm_row").show();
+		else
+			$("#cpd_comm_row").hide();	
+		
+		prodComm	=	$(this).attr('prod_comments');
+		$("#prod_comments").html(prodComm);
+		if(prodComm != null && prodComm != '')
+			$("#prod_comm_row").show();
+		else
+			$("#prod_comm_row").hide();
+			
+		qualComm	=	$(this).attr('quality_comments');
+		$("#quality_comments").html(qualComm);
+		if(qualComm != null && qualComm != '')
+			$("#qual_comm_row").show();
+		else
+			$("#qual_comm_row").hide();	
+		
+		purComm	=	$(this).attr('purchase_comments');
+		$("#purchase_comments").html(purComm);	
+		if(purComm != null && purComm != '')
+			$("#pur_comm_row").show();
+		else
+			$("#pur_comm_row").hide();
+			
+		$("#corr_action").html($(this).attr('corr_action'));
+		$("#anal_method").html("<a href='"+$(this).attr('rcafilepath')+"' target='_blank'>"+$(this).attr('anal_method')+"</a>");
+		$("#prev_action").html($(this).attr('prev_action'));
+		$("#close_target").html($(this).attr('close_target'));
+    });	
+	
+	TF_01	=	setFilterGrid("resultTable",tableFilters);	
+	if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;	
+}
+
+function closeComplaint(){
+	
+	closeError		=	$("#raise_error");
+	compId			=	$("#closure_popup").attr('compid');
+	isFR			=	$("#closure_popup").attr('isfr');
+	compDes			=	((isFR == 1)?"Flash Report":"Complaint");	
+	param			=	"type=CLOSECOMPLAINT&compid=" + compId  ;
+	closeRemarks	=	$("#close_remarks");
+	toolRemarks		=	$("#tool_comments").html().trim();
+	cpdRemarks		=	$("#cpd_comments").html().trim();
+	prodRemarks		=	$("#cpd_comments").html().trim();
+	
+	if(closeRemarks.val() == null || closeRemarks.val().trim() == ''){
+		displayError(closeError, "error", "<strong>Error !</strong> - Please enter the Closure Comments for this "+compDes+"!!!");
+		closeRemarks.focus();
+		return false;
+	}
+	if(isFR == 0)
+	{
+		if ( toolRemarks == null || toolRemarks == "" )
+		{
+			displayError(closeError, "error", "<strong>Error !</strong> - Comments from Tooling is missing!!!");
+			return false;	
+		}
+		else if ( cpdRemarks == null || cpdRemarks == "" )
+		{
+			displayError(closeError, "error", "<strong>Error !</strong> - Comments from Compounding is missing!!!");
+			return false;	
+		}
+		else if ( prodRemarks == null || prodRemarks == "")
+		{
+			displayError(closeError, "error", "<strong>Error !</strong> - Comments from Production is missing!!!");
+			return false;	
+		}
+	}	
+	param	+=	"&closeremarks=" + closeRemarks.val() ;
+	
+	formdata 		= 	new FormData();
+	rcaDocFile 		= 	document.getElementById("cmpl_file");	
+    file 			= 	rcaDocFile.files[0];
+	if(file)
+	{
+		if (formdata) {
+			formdata.append("file", file,file.name);
+			formdata.append("compid", compId);
+			formdata.append("closeremarks", closeRemarks.val());
+		}	
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Update the '+compDes+'?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+														title:'Close '+compDes,
+														width:450,
+														height:'auto',
+														resizable:false,
+														modal:true,
+														buttons:{
+															'Ok':function(){														
+																$(this).dialog('close');
+																$("#button-upload").attr("disabled","true");
+																// Set up the request.
+																var xhr = new XMLHttpRequest();
+																// Open the connection.
+																xhr.open('POST', actionFile, true);
+																// Set up a handler for when the request finishes.
+																xhr.onload = function () {
+																	if (xhr.status === 200) {
+																		// File uploaded.
+																		var printObj	=	xhr.response;
+																		printData		=	$(printObj);
+																		error			=	printData.find("status").html();
+																		if(error == "success"){
+																			alert(compDes + ":"+ compId +" Closed Successfully");
+																			$("#closure_popup").dialog("close");															
+																			getPageData();
+																		}
+																		else{
+																			displayError(closeError, "error", "<strong>Error !</strong> - Unable to close the "+compDes+" due to: " + printObj);
+																			$("#button-upload").removeAttr("disabled");					
+																		}			
+																	} 
+																	else {
+																		displayError(closeError, "error", "Unable to upload the file, Please retry again");
+																		$("#button-upload").removeAttr("disabled");				
+																	}
+																};															
+																// Send the Data.
+																xhr.send(formdata);
+															},
+															'Cancel':function(){
+																$(this).dialog('close');
+															}
+														},
+														close:function(){
+															$(this).html('').dialog('destroy');
+														}
+													});
+	}
+	else 
+	{
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Close the '+compDes+'?</b></td></tr>' +
+					'</table>'	;
+		$("#confirm_dialog").html(confirmCont).dialog({
+														title:'Close '+compDes,
+														width:450,
+														height:'auto',
+														resizable:false,
+														modal:true,
+														buttons:{
+															'Ok':function(){														
+																$(this).dialog('close');
+																//alert(param); return false;
+																XMLContent		=	postback(actionFile, param, "POST", "XML");
+																printData		=	$(XMLContent);
+																error			=	printData.find("status").html();
+																if(error == "success"){
+																	alert(compDes +":"+ compId +" Closed Successfully");
+																	$("#closure_popup").dialog("close");															
+																	getPageData();
+																}
+																else{
+																	displayError(closeError, "error", "<strong>Error !</strong> - Unable to close the "+compDes+" due to: " + XMLContent);
+																}			
+															},
+															'Cancel':function(){
+																$(this).dialog('close');
+															}
+														},
+														close:function(){
+															$(this).html('').dialog('destroy');
+														}
+													});
+	}
+
+}
+
+
+
+

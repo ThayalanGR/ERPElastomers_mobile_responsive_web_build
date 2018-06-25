@@ -1,0 +1,516 @@
+// ----- Default Functions---------------------------------------------------------------------------------------------------------------- //
+batchList		=	new Array();
+itemData		=	new Array();
+batchData		=	new Array();
+compHTML		=	'';
+custId			=	"";
+custEmail		=	"";
+custSelect		=	false;
+partNo			=	30;
+errMsg			=	null;
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+function getCustomerDetails(){
+	dcitemtype	=	$('#new_DCType').val();
+	incMaster	=	(($('#new_IncMaster').attr('checked'))?1:0)
+	if(dcitemtype == "ram")
+		$("#new_DCRemarks").val("Returned without Processing");
+	else
+		$("#new_DCRemarks").val("Returned after Processing");
+	if($("#new_CustID").val() != null && $("#new_CustID").val() != ""){
+		cusid		=	$("#new_CustID").val();
+		if(cusid != null && cusid != ""){
+			var objCusList	=	postback(actionFile,"selecttype=CSTDTLLIST&cusid="+cusid+"&outtype=xml","POST","XML");
+			cusXML			=	parseXMLdoc(objCusList);
+			rowXML			=	cusXML.getElementsByTagName("row");
+			if (rowXML.length > 0)
+			{
+				row				=	rowXML[0].childNodes;
+				data			=	new Array();
+				for(cx=0; cx<row.length; cx++){	
+					data[row[cx].nodeName]	=	(row[cx].firstChild)?row[cx].firstChild.nodeValue:'';
+				}			
+				custId			=	data['cusid'];
+				custEmail		=	data['cusemail'];
+				custSelect		=	true;		
+				itemList		=	new Array();
+				itemData		=	new Array();
+				$("#new_Particulars table tr").each(function(index, element) {
+					if(index > 0)
+					$(element).remove();
+				});			
+				var compDetail	=	postback(actionFile,"selecttype=GETITEM&cusid="+custId+"&dctype="+dcitemtype+"&customer="+data['cusgroup']+"&incmaster="+incMaster,"POST","XML");
+				//$('#test').html(compDetail);
+				//alert(compDetail); //return false;
+				compDetailXML	=	parseXMLdoc(compDetail);
+				if(dcitemtype == "ram")
+				{
+					$(compDetailXML).find('row').each(function(index, element) {
+						itemId		=	$(this).find('itemid').text();
+						itemName	=	$(this).find('itemname').text();
+						if(itemId != "" && itemId != null && itemName != "" && itemName != null){
+							if(!itemList.inArray(itemName)){
+								itemList.push(itemName);
+								itemData[itemName]	=	{
+									'id':itemId
+								};
+							}
+						}
+					});
+					for(cpd=0; cpd<partNo; cpd++){
+						date			=	new Date();
+						idNum			=	date.getTime();
+						totLen			=	$("#new_Particulars table tr").length;
+						tabClass		=	(totLen%2)?'content_rows_light':'content_rows_dark';
+						tabData			=	"<tr class='"+tabClass+"' id='addbat_" + idNum + "'>" +
+												"<td align='center'>"+totLen+"</td>" +
+												"<td><input type='text' tabindex='5' id='cpdcode_" + idNum + "' idtxt='" + idNum + "' style='width:90%' onchange=\"if(this.value==''){getCompoundDetails(this)}\" /></td>" +
+												"<td><input type='text' tabindex='5' id='batref_" + idNum + "' idtxt='" + idNum + "' style='width:90%' onchange=\"if(this.value==''){getBatchDetails(this)}\" disabled /></td>" +
+												"<td align='right' id='avlqty_" + idNum + "'>0.000</td>" +
+												"<td align='right'><input type='text' tabindex='5' id='quan_" + idNum + "' idtxt='" + idNum + "' class='invisible_text' style='text-align:right;width:90%'  onkeyup=calculateTotal() onfocus=\"FieldHiddenValue(this, 'in', '0.000')\" onblur=\"FieldHiddenValue(this, 'out', '0.000')\" disabled /></td>" +
+												"<td align='center'><input id=sel_'"+idNum+"' type='checkbox' style='display:none' value='0'></td>" +
+											"</tr>";
+						$("#new_Particulars table tr:last").after(tabData);
+						$("#new_Particulars table tr").each(function(index, element) {
+							$(this).find("td:eq(1) input:text").autocomplete({
+								source:itemList,
+								close:function(event, ui){
+									getCompoundDetails(this);
+								}
+							});
+							$(this).find("td:eq(4) input:text").keyup(function(){
+								id			=	$(this).attr("idtxt");
+								availqty	=	String($("#avlqty_" + id).html().split(",").join("")).toNumber();
+								quantity	=	$(this).val().toNumber();
+								if(quantity > availqty){
+									$(this).val(availqty);
+									quantity	=	availqty;
+								}
+								calculateTotal();
+							});
+						});				
+					}
+				}
+				else
+				{
+					$(compDetailXML).find('row').each(function(index, element) {
+						cpdId			=	$(this).find('cpdid').text();
+						cpdName			=	$(this).find('cpdname').text();
+						batId			=	$(this).find('batid').text();
+						batdate			=	$(this).find('batdate').text();
+						avlQty			=	$(this).find('avlqty').text();
+						btchVal			=	batId + ((batdate)?" - " + batdate:"");
+						date			=	new Date();
+						idNum			=	date.getTime();
+						totLen			=	$("#new_Particulars table tr").length;
+						tabClass		=	(totLen%2)?'content_rows_light':'content_rows_dark';
+						tabData			=	"<tr class='"+tabClass+"' id='addbat_" + idNum + "'>" +
+												"<td align='center'>"+totLen+"</td>" +
+												"<td><input type='text' tabindex='5' id='cpdcode_" + idNum + "' idtxt='" + idNum + "' value='" + cpdName + "' cpdid='" + cpdId + "' style='width:90%' disabled /></td>" +
+												"<td><input type='text' tabindex='5' id='batref_" + idNum + "' idtxt='" + idNum + "' value='" + btchVal + "' style='width:90%' disabled /></td>" +
+												"<td align='right' id='avlqty_" + idNum + "'>"+avlQty+"</td>" +
+												"<td align='right'><input type='text' tabindex='5' id='quan_" + idNum + "' idtxt='" + idNum + "' value='" + avlQty + "' class='invisible_text' style='text-align:right;width:90%'  onkeyup=calculateTotal() onfocus=\"FieldHiddenValue(this, 'in', '0.000')\" onblur=\"FieldHiddenValue(this, 'out', '0.000')\" /></td>" +
+												"<td align='center'><input id=sel_'"+idNum+"' type='checkbox' class='checkbox1' value='1'></td>" +
+											"</tr>";
+						$("#new_Particulars table tr:last").after(tabData);
+						$("#new_Particulars table tr").each(function(index, element) {
+							$(this).find("td:eq(4) input:text").keyup(function(){
+								id			=	$(this).attr("idtxt");
+								availqty	=	String($("#avlqty_" + id).html().split(",").join("")).toNumber();
+								quantity	=	$(this).val().toNumber();
+								if(quantity > availqty){
+									$(this).val(availqty);
+									quantity	=	availqty;
+								}
+								calculateTotal();
+							});
+						});						
+					});
+					calculateTotal();
+				}
+			}
+		}
+		else{
+			clearCustomerDetails();
+		}
+	}
+	else{
+		clearCustomerDetails();
+	}
+}
+
+
+
+function clearCustomerDetails(){
+	$("#new_Particulars table tr").each(function(index, element) {
+        if(index > 0)
+		$(element).remove();
+    });
+	// List Particulars
+	for(cpd=0; cpd<partNo; cpd++){
+		date		=	new Date();
+		idNum		=	date.getTime();
+		totLen		=	$("#new_Particulars table tr").length;
+		tabClass	=	(totLen%2)?'content_rows_light':'content_rows_dark';
+		tabData		=	"<tr class='"+tabClass+"' id='addbat_" + idNum + "'>" +
+							"<td align='center'>"+totLen+"</td>" +
+							"<td><input type='text' tabindex='5' id='cpdcode_" + idNum + "' idtxt='" + idNum + "' style='width:90%' onchange=\"if(this.value==''){getCompoundDetails(this)}\" disabled /></td>" +
+							"<td><input type='text' tabindex='5' id='batref_" + idNum + "' idtxt='" + idNum + "' style='width:90%' onchange=\"if(this.value==''){getBatchDetails(this)}\" disabled /></td>" +
+							"<td align='right' id='avlqty_" + idNum + "'>0.000</td>" +
+							"<td align='right'><input type='text' tabindex='5' id='quan_" + idNum + "' idtxt='" + idNum + "' value='0.000' class='invisible_text' style='text-align:right;width:90%'  onkeyup=calculateTotal() onfocus=\"FieldHiddenValue(this, 'in', '0.000')\" onblur=\"FieldHiddenValue(this, 'out', '0.000')\" disabled /></td>" +
+						"</tr>";
+		$("#new_Particulars table tr:last").after(tabData);
+	}	
+	custId		=	"";
+	custEmail	=	"";
+	custSelect	=	false;
+	$("#new_DCRemarks").val("");
+}
+
+function getCompoundDetails(obj){
+	cpdName = $(obj).val();
+	dcitemtype	=	$('#new_DCType').val();
+	if(cpdName != null && cpdName != ""){
+		cpdId		=	(itemData[cpdName])?itemData[cpdName]['id']:''
+		id			=	$(obj).attr("idtxt");
+		$(obj).attr("cpdid", cpdId);
+		if(dcitemtype == "ram")
+		{
+			batchAtList	=	[];
+			$("#new_Particulars table tr:gt(0)").each(function(index, element) {
+				inpVal	=	$(element).find("td:eq(2) input[type=text]").val();
+				if(inpVal != null && inpVal != ""){
+					batchAtList.push(inpVal);
+				}
+			});
+			// Get Batch List
+			var batchObj	=	postback(actionFile,"selecttype=GETBATCH4CUS&cpdid="+cpdId,"POST","XML");
+			batchObjXML		=	parseXMLdoc(batchObj);
+			batchList		=	new Array();
+			batchData		=	new Array();
+			$(batchObjXML).find('row').each(function(index, element) {
+				bid			=	$(this).find('batid').text();
+				batchid		=	$(this).find('batid').text();
+				batdate		=	$(this).find('batdate').text();
+				avlQty		=	$(this).find('avlqty').text(); 
+				if(batchid != "" && batchid != null && avlQty>0){
+					btchVal	=	batchid + ((batdate)?" - " + batdate:"");
+					if(!batchAtList.inArray(btchVal))
+					batchList.push(btchVal);
+					batchData[batchid] = {'batchId' : bid};
+				}
+			});
+			$("#batref_" + id).val("");
+			$("#batref_" + id)
+				.attr({"autocomp":batchList.join("|")})
+				.autocomplete({
+					source:batchList,
+					close:function(event, ui){
+						getBatchDetails(this);
+					}
+				});
+			$("#batref_" + id).removeAttr("disabled");
+			$("#quan_" + id).val("0.000");
+			$("#quan_" + id).attr("disabled");
+		}
+	}
+	else{
+		clearCompoundDetails(obj);
+	}
+}
+
+function clearCompoundDetails(obj){
+	id	=	$(obj).attr("idtxt");	
+	clearBatchDetails($("#batref_" + id));	
+	$("#cpdcode_" + id).removeAttr('cpdid');
+	$("#batref_" + id).val('');
+	$("#quan_" + id).val('0.00');
+	$("#avlqty_" + id).html('0.00');	
+	$("#quan_" + id).removeClass("normal_text").addClass("invisible_text");
+	$("#batref_" + id).autocomplete('destroy');
+	$("#batref_" + id).attr("disabled", 'disable');
+	$("#quan_" + id).attr("disabled", 'disable');
+	
+}
+
+function getBatchDetails(obj){
+	dcitemtype	=	$('#new_DCType').val();
+	id			=	$(obj).attr("idtxt");
+	if(dcitemtype == "cpd")
+	{
+		batDet		=	$(obj).val().split("-");
+		batId		=	(batDet[0].trim()=='Opening Stock')?batchData[batDet[0].trim()]['batchId']:batDet[0].trim();
+	}
+	else
+	{
+		batId		=	$(obj).val();
+	}
+	if(batId != null && batId != ""){
+		$(obj).attr("seltext", $(obj).val());
+		$("#quan_" + id).removeAttr("disabled");
+		var batchObj	=	postback(actionFile,"selecttype=GETBATCHAVLQTY&dctype="+dcitemtype+"&batid="+batId+"&outtype=xml","POST","XML");
+		batchObjXML		=	parseXMLdoc(batchObj);
+		batchList		=	new Array();
+		$(batchObjXML).find('row').each(function(index, element) {
+			avlqty		=	$(this).find('avlqty').text();
+		});
+		$("#avlqty_" + id).text(getCurrency(avlqty,3));
+		$("#quan_" + id).val(getCurrency(avlqty,3));
+		$("#new_Particulars table tr:gt(0)").each(function(index, element) {
+			thisObj			=	$(element);
+			thisCpdId		=	$(element).find("td:eq(1) input[type=text]").attr("cpdid");
+			thisCpdName		=	$(element).find("td:eq(1) input[type=text]").val();
+			thisObjId		=	$(element).find("td:eq(1) input[type=text]").attr("idtxt");
+			thisInpObj		=	$(element).find("td:eq(2) input[type=text]");
+			if(thisCpdId != null && thisCpdId != "" && thisInpObj.val() != null && thisInpObj.val() != ""){
+				$("#new_Particulars table tr:gt(0)").each(function(index, element) {
+					innObj			=	$(element);
+					innCpdId		=	$(element).find("td:eq(1) input[type=text]").attr("cpdid");
+					innCpdName		=	$(element).find("td:eq(1) input[type=text]").val();
+					innObjId		=	$(element).find("td:eq(1) input[type=text]").attr("idtxt");
+					innInpObj		=	$(element).find("td:eq(2) input[type=text]");
+					
+					if(thisObjId != innObjId && innCpdId != null && innCpdId != "" &&
+						thisCpdId == innCpdId && innInpObj.attr("autocomp") != ""){
+						batchList	=	innInpObj.attr("autocomp").split("|");
+						batchRow	=	batchList.inArrayNo(thisInpObj.val());
+						if(batchRow > -1){
+							batchList.splice(batchRow, 1);
+							innInpObj
+								.attr("autocomp", batchList.join("|"))
+								.autocomplete({source:batchList});
+						}
+					}
+				});
+			}
+		});
+	calculateTotal();
+	}
+	else{
+		clearBatchDetails(obj);
+	}
+}
+
+function clearBatchDetails(obj){
+	id		=	$(obj).attr("idtxt");
+	scpdId	=	$(obj).parent().parent().find("td:eq(1) input[type=text]").attr("cpdid");
+	selText	=	$(obj).attr("seltext");
+	$("#quan_" + id).val("0.000");
+	$("#quan_" + id).removeClass("normal_text").addClass("invisible_text");
+	$("#quan_" + id).attr("disabled", "disable");
+	$("#avlqty_" + id).html("0.000");
+	
+	if(scpdId != null && scpdId != "" && selText != null && selText != ""){
+		$("#new_Particulars table tr:gt(0)").each(function(index, element) {
+			cpdId		=	$(element).find("td:eq(1) input[type=text]").attr("cpdid");
+			cpdName		=	$(element).find("td:eq(1) input[type=text]").val();
+			objId		=	$(element).find("td:eq(1) input[type=text]").attr("idtxt");
+			inpObj		=	$(element).find("td:eq(2) input[type=text]");
+			if(objId != id && cpdId != null && cpdId != "" && scpdId == cpdId){
+				batchList	=	(inpObj.attr("autocomp") == '')?[selText]:inpObj.attr("autocomp").split("|");
+				if(!batchList.inArray(selText))
+				batchList.push(selText);
+				inpObj
+					.attr("autocomp", batchList.join("|"))
+					.autocomplete({source:batchList});
+			}
+		});
+	}
+	$(obj).removeAttr("seltext");
+	calculateTotal();
+}
+
+function calculateTotal(){
+	total	=	0;
+	$("#new_Particulars table tr:gt(0)").each(function(index, element) {
+		totTxt	=	$(this).find('td:eq(4) input[type="text"]').val();
+		isCheck	=	$(this).find('td:eq(5) input[type="checkbox"]');
+		if(isCheck.val() == 0 || isCheck.attr('checked'))
+		{
+			totNum	=	Number(
+							(totTxt)
+								?totTxt
+								:0
+						);
+			total	+=	totNum;
+		}
+    });
+	if($('#new_DCType').val() == 'cmpd')
+		$("#total_field").html(getCurrency(total, 0));
+	else
+		$("#total_field").html(getCurrency(total, 3));
+}
+
+function handleFormSubmit(doAdd){
+	dcitemtype	=	$('#new_DCType').val();	
+	custName	=	$("#new_CustID");
+	shipdate	=	$("#new_ShipDate");
+	newError	=	$("#error_msg");
+	stat		=	true;
+	noRows		=	0;	
+	getstring	=	"selecttype=" + "ADDDC";
+	
+	if(errMsg != null)
+		clearTimeout(errMsg);
+	errMsg			=	setTimeout(function(){
+							newError.css("display", "none");
+						}, 2500);
+	if(doAdd == 1 && dcitemtype != "cpd"){
+		displayError(newError, "error", "<strong>Error !</strong> - Only Compounds Can be Added to Moulding Compound Store.");
+		$('#new_DCType').focus();
+		return false;	
+	}
+	else if(custName.val() == null || custName.val() == ""){
+		displayError(newError, "error", "<strong>Error !</strong> - Customer Name Missing.");
+		custName.focus();
+		return false;
+	}
+	else if(shipdate.val() == null || shipdate.val() == "" ){
+		displayError(newError, "error", "<strong>Error !</strong> - Shipment Date Missing.");
+		shipdate.focus();
+		return false;
+	}
+	
+	$("#new_Particulars").find('table tr:gt(0)').each(function(index, element) {
+		itemCodeObj	=	$(this).find('td:eq(1) input');
+		batRefObj	=	$(this).find('td:eq(2) input');
+		aplQtyObj	=	$(this).find('td:eq(4) input');
+		isCheck		=	$(this).find('td:eq(5) input[type="checkbox"]');
+		if(isCheck.val() == 0 || isCheck.attr('checked'))
+		{		
+			var_split	=	(isRewrite)?"/":"&";
+			batRefDtl	=	batRefObj.val().split("-");
+			batRef		=	(dcitemtype == "cpd")?(batRefDtl[0].trim()=='Opening Stock')?batchData[batRefDtl[0].trim()]['batchId']:batRefDtl[0].trim():batRefObj.val();	
+			aplQty		=	(aplQtyObj.val() != null && aplQtyObj.val() != "")
+								?Number(aplQtyObj.val())
+								:0;
+			
+			if(itemCodeObj.val() != null && itemCodeObj.val() != ""){
+				itemCode		=	itemCodeObj.attr("cpdid");
+				if(itemCode == null || itemCode == ""){
+					displayError(newError, "error", "<strong>Error !</strong> - Row " + (index+1) + " - Please enter a Proper Compound.");
+					itemCodeObj.focus();
+					stat = false;
+					return false;			
+				}
+				else if(batRef == null || batRef == ""){
+					displayError(newError, "error", "<strong>Error !</strong> - Row " + (index+1) + " - Batch/Plan/GRN Reference Missing.");
+					batRefObj.focus();
+					stat = false;
+					return false;
+				}
+				if(aplQty > 0)
+				{
+					getstring	+=	"&templatepost[particulars][itemcode][]="	+	itemCode +
+									"&templatepost[particulars][batref][]="		+	batRef +
+									"&templatepost[particulars][aplqty][]="		+	aplQty ;
+				}
+				noRows++;
+			}
+		}
+    });
+	
+	if(stat == false){
+		return false;
+	}	
+	
+	if(noRows == 0)
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Atleast One Item needs to be entered.");
+		return false;		
+	}
+
+	getstring		+=	"&templatepost[custid]="			+	custId +
+						"&templatepost[dcdate]="			+	$("#new_DCDate").html() +
+						"&templatepost[dcremarks]="			+	$("#new_DCRemarks").val() +
+						"&templatepost[shipmentdate]="		+	$("#new_ShipDate").val() +
+						"&templatepost[addcmpdstore]="		+	doAdd +
+						"&templatepost[dctype]="			+	dcitemtype;
+	
+	//open(getstring);
+	//open(actionFile+"?"+getstring);
+	//alert(getstring); //exit();
+	//return false;
+	
+	var printObj		=	postback(actionFile,getstring,"POST","XML");
+	printData			=	parseXMLdoc(printObj);
+	error				=	printData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;	
+	if(error == "success"){
+		dcref	=	printData.getElementsByTagName("mysql")[0].getElementsByTagName("dcref")[0].firstChild.nodeValue;
+		if(doAdd != 1)
+			openInvoice({mod:$("#new_DCType").val(), invID:dcref});
+			
+		if(doAdd != 1 && $("#new_DCType").val() != 'ram')
+		{
+			openInvoice({mod:$("#new_DCType").val(), invID:dcref,cusEmail:custEmail});
+		}
+		
+		setTimeout(function(){window.location.reload();}, 500);	
+	}
+	else{
+		displayError(newError, "error", error);
+	}
+}
+
+function handleFormCancel(){
+
+	$("#new_CustID").val('');
+	clearCustomerDetails();
+	clearCompoundDetails();
+	clearBatchDetails();	
+	$("#total_field").html('0.000');
+}
+
+$(document).ready(function(){
+	
+	var objCusList	=	postback(actionFile,"selecttype=CSTATLIST&outtype=xml","POST","XML");
+	cusXML			=	parseXMLdoc(objCusList);
+	custList		=	new Array();
+	$(cusXML).find('row').each(function(index, element) {
+		if($(this).find('iscpdcust').text() > 0)
+			custList.push($(this).find('cusname').text() );
+    });
+	
+	$("#new_CustID").autocomplete({
+		source:custList,
+		close:function(event, ui){
+			getCustomerDetails();
+			$('#input_select_all').click(function(event) {  
+				if(this.checked) { 
+					$('.checkbox1').each(function() { 
+						this.checked = true;                
+					});
+				}else{
+					$('.checkbox1').each(function() { 
+						this.checked = false;                        
+					});         
+				}
+				calculateTotal();
+			});
+
+			$(".checkbox1").click(function(e){
+				if(this.checked) {
+						this.checked = true;                
+				}else{
+						this.checked = false;                        
+				}
+				calculateTotal();
+			});						
+		}
+	});		
+	
+	$("#button_add").button().click(function(){
+		handleFormSubmit(0);
+	});
+	
+	$("#button_adddc").button().click(function(){
+		handleFormSubmit(1);
+	});
+	$("#button_cancel").button().click(function(){
+		handleFormCancel();
+	});	
+	
+	
+	clearCustomerDetails();
+});

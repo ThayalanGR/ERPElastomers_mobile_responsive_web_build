@@ -1,0 +1,352 @@
+<?php
+	session_start();
+	global 	$moldCutoffDate;
+	header('Content-Type: text/xml');
+	switch($_REQUEST["selecttype"]){
+		case 'GETCOMPONENT':
+			$sql	=	" select cmpdId,cmpdName,cmpdRefNo from tbl_component where status = 1 ";
+			echo getXML($sql);
+		break;
+		case "GETDETAIL":
+			$one_day			=	24 * 60 * 60;
+			$cmpdId				=	$_REQUEST['compcode'];
+			$fromDate			=	$_REQUEST['from_date'];
+			$toDate				=	$_REQUEST['to_date'];
+			$order				=	"/";
+			$replace			=	"-";
+			$fromDate			=	str_replace($order,$replace,$fromDate);
+			$toDate				=	str_replace($order,$replace,$toDate);
+			$fromdate			=	date("Y-m-d",strtotime($fromDate));
+			$todate				=	date("Y-m-d",strtotime($toDate));
+			$from_time			=	strtotime($fromdate);
+			$to_time			=	strtotime($todate);
+			$return				=	"";
+			$lastCust			=	"";
+			$opnStockGrdTot		=	0;
+			$recieptsGrdTot		=	0;
+			$issuesGrdTot		=	0;
+			$clsStockGrdTot		=	0;	
+			$opnStockCustTot	=	0;
+			$opnStockCustVal	=	0;			
+			$recieptsCustTot	=	0;
+			$recieptsCustVal	=	0;
+			$issuesCustTot		=	0;
+			$issuesCustVal		=	0;
+			$clsStockCustTot	=	0;
+			$clsStockCustVal	=	0;			
+			// Get Component List
+			$sql				=	"select tc.cmpdId,tc.cmpdRefNo,tc.cmpdName,tc.entry_on, tccpr.poRate, tcust.cusGroup
+										from tbl_component tc
+										inner join (select * from (SELECT cusId, cmpdId, poRate  FROM tbl_customer_cmpd_po_rate where status = 1 order by update_on desc) tpo group by cmpdId)tccpr on tccpr.cmpdId = tc.cmpdId
+										inner join tbl_customer tcust on tccpr.cusId = tcust.cusId
+									where tc.status>0 ".((isset($cmpdId) && $cmpdId != "")?" and tc.cmpdId='$cmpdId'":"")." 
+									order by tcust.cusGroup,tc.cmpdName";
+			$cmpddata			=	@getMySQLData($sql);
+			
+			for($r=0; $r<$cmpddata['count']; $r++){
+				$stock				=	0;
+				$tot_receipt		=	0;
+				$tot_issue			=	0;
+				$open_stock			=	0;
+				
+				$cmpdid				=	$cmpddata['data'][$r]['cmpdId'];
+				$cmpdPart			=	$cmpddata['data'][$r]['cmpdName'];
+				$cmpdDesc			=	$cmpddata['data'][$r]['cmpdRefNo'];
+				$cmpdRate			=	$cmpddata['data'][$r]['poRate'];
+				$cmpdCustGroup		=	$cmpddata['data'][$r]['cusGroup'];				
+				$open_stock_date	=	strtotime($cmpddata['data'][$r]['entry_on']);
+				// Get Stock List before Start Date
+				$sql			=	"SELECT appqty
+									FROM tbl_moulding_quality
+									WHERE qualitydate > '$moldCutoffDate'
+									AND qualitydate < '$fromdate'
+									AND cmpdId = '$cmpdid'
+									AND status >0
+									GROUP BY qualityref";
+				$stockopen		=	@getMySQLData($sql, "arr");
+				
+				// Stock Total for Opening
+				$stock_list_open	=	0;
+				for($os=0; $os<$stockopen['count']; $os++){
+					$stock_list_open	+=	$stockopen['data'][$os]['appqty'];
+				}
+				
+				// Get SAN Before Start Date
+				$sql			=	"select exc_shrt from tbl_moulding_san where cmpdid='$cmpdid' and sanDate>'$moldCutoffDate' and
+									sanDate<'$fromdate' and status>0";
+				$sanopen		=	@getMySQLData($sql, "arr");
+				// Stock Total for Opening
+				for($osa=0; $osa<$sanopen['count']; $osa++){
+					$stock_list_open	+=	$sanopen['data'][$osa]['exc_shrt'];
+				}
+			
+				// Get Issues Before Start Date
+				$sql			=	"SELECT sum(t1.invQty) as invQty FROM tbl_invoice_sales_items t1
+									inner join tbl_invoice_sales t2 on t1.invId=t2.invId and t2.status > 0
+									where t1.invtype='cmpd' and invCode='$cmpdid'
+									and t2.invDate>'$moldCutoffDate' and t2.invDate<'$fromdate' group by t1.invId
+									UNION ALL
+									SELECT sum(t1.dcQty) as invQty FROM tbl_invoice_dc_items t1
+									inner join tbl_invoice_dc t2 on t1.dcId=t2.dcId and t2.status > 0
+									where t2.dcType='cmpd' and dcCode='$cmpdid'
+									and t2.dcDate>'$moldCutoffDate' and t2.dcDate<'$fromdate' group by t1.dcId;";
+				$issueopen			=	@getMySQLData($sql, "arr");
+				// Issue Total for Opening
+				$issue_list_open	=	0;
+				for($oi=0; $oi<$issueopen['count']; $oi++){
+					$issue_list_open	+=	$issueopen['data'][$oi]['invQty'];
+				}
+				
+				// Get Opening Stock
+				$stock			=	$stock_list_open - $issue_list_open;
+				$opnStockGrdTot	+= 	$stock;
+				$open_stock		=	$stock;
+				//added "round" for preventing "-0" display
+				$opening_stock	=	"<opening_stock>".round($stock, 0)."</opening_stock>";
+				
+				// Get Stock Information
+				$sql		=	"SELECT appqty,if(is_open_stock = 1,concat(planref,'(Open Stock)'),planref) as planref,qualitydate
+									FROM tbl_moulding_quality
+									WHERE (qualitydate between '$fromdate' and '$todate')
+									AND qualitydate > '$moldCutoffDate'
+									AND cmpdId = '$cmpdid'
+									AND status >0
+									GROUP BY qualityref";
+				$stockdat	=	@getMySQLData($sql, "arr");
+				
+				$sql		=	"SELECT t1.invId, t2.invDate, sum(t1.invQty) as invQty FROM tbl_invoice_sales_items t1
+									inner join tbl_invoice_sales t2 on t1.invId=t2.invId and t2.status > 0
+									where t1.invtype='cmpd' and invCode='$cmpdid' and t2.invDate>'$moldCutoffDate'
+									and (t2.invDate between '$fromdate' and '$todate') group by t1.invId
+									UNION ALL
+									SELECT t2.dcId as invId, t2.dcDate as invDate,  sum(t1.dcQty) as invQty FROM tbl_invoice_dc_items t1
+									inner join tbl_invoice_dc t2 on t1.dcId=t2.dcId and t2.status > 0
+									where t2.dcType='cmpd' and dcCode='$cmpdid'
+									and t2.dcDate>'$moldCutoffDate' and (t2.dcDate between '$fromdate' and '$todate') group by t1.dcId;";
+				$issue		=	@getMySQLData($sql, "arr");
+				
+				$sql		=	"select sanId, sanDate, sum(exc_shrt) as exc_shrt from tbl_moulding_san
+									where cmpdid='$cmpdid' and sanDate>'$moldCutoffDate' and	(sanDate between '$fromdate' and '$todate') and status>0 group by sanId";
+				$san		=	@getMySQLData($sql, "arr");
+				
+				// Get Dates
+				$from_date	=	$from_time;
+				$to_date	=	$to_time;
+				$date_now	=	$from_date;
+				$count		=	0;
+				$stock_list	=	'';
+			
+				if($stockdat['status']=="success" && $issue['status']=="success" && $san['status']=="success" ){
+					
+					if($open_stock_date >= $from_time && $stock > 0){
+						$stock_list		.=	"<row>
+							<txn_date>".date("d-M-Y", $open_stock_date)."</txn_date>
+							<txn_doc>Opening Stock</txn_doc>
+							<receipt>-</receipt>
+							<issue>-</issue>
+							<stock>".@number_format($stock, 0)."</stock>
+						</row>";
+						$count++;
+					}
+					
+					while($date_now <= $to_date){
+						$slist			=	array();
+						$slist_time		=	array();
+						
+						// Get Stock Data
+						for($sd=0; $sd<$stockdat['count']; $sd++){
+							$thisdate	=	strtotime(date("Y-m-d", strtotime($stockdat['data'][$sd]['qualitydate'])));
+							if($thisdate == $date_now){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$stockdat['data'][$sd]['planref'];
+								$slist[$nxt]['receipt']			=	$stockdat['data'][$sd]['appqty'];
+								$slist[$nxt]['issue']			=	0;
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						// Get Issue Data
+						for($isd=0; $isd<$issue['count']; $isd++){
+							$thisdate	=	strtotime($issue['data'][$isd]['invDate']);
+							$nxtdate	=	$date_now + $one_day;
+							if($thisdate >= $date_now && $thisdate < $nxtdate){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$issue['data'][$isd]['invId'];
+								$slist[$nxt]['receipt']			=	0;
+								$slist[$nxt]['issue']			=	$issue['data'][$isd]['invQty'];
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						// Get Stock Adjustments Note
+						for($stk=0; $stk<$san['count']; $stk++){
+							$thisdate	=	strtotime($san['data'][$stk]['sanDate']);
+							$nxtdate	=	$date_now + $one_day;
+							if($thisdate >= $date_now && $thisdate < $nxtdate){
+								array_push($slist_time, $thisdate);
+								$nxt	=	count($slist);
+								$san_no	=	$san['data'][$stk]['exc_shrt'] + 0;
+								$slist[$nxt]['txn_date']		=	date("d-M-Y", $date_now);
+								$slist[$nxt]['txn_doc']			=	$san['data'][$stk]['sanId'];
+								$slist[$nxt]['receipt']			=	($san_no > 0)?$san_no:0;
+								$slist[$nxt]['issue']			=	($san_no < 0)?preg_replace("/[-]/", "", $san_no):0;
+								$slist[$nxt]['time']			=	$thisdate;
+							}
+						}
+						
+						@array_multisort($slist_time, SORT_ASC, SORT_NUMERIC);
+						
+						for($sa=0; $sa<count($slist_time); $sa++){
+							for($sl=0; $sl<count($slist); $sl++){
+								if($slist[$sl]['time'] == $slist_time[$sa]){
+									$stock			=	(($stock + $slist[$sl]['receipt']) - $slist[$sl]['issue']);
+									$stock_list		.=	"\n\t\t<row>
+											<txn_date>".$slist[$sl]['txn_date']."</txn_date>
+											<txn_doc>".$slist[$sl]['txn_doc']."</txn_doc>
+											<receipt>".(($slist[$sl]['receipt'] >= 0 && $slist[$sl]['issue'] == "-")?@number_format($slist[$sl]['receipt'], 0):"-")."</receipt>
+											<issue>".(($slist[$sl]['receipt'] == "-" && $slist[$sl]['issue'] >= 0)?@number_format($slist[$sl]['issue'], 0):"-")."</issue>
+											<stock>".@number_format($stock, 0)."</stock>
+										</row>";
+									$tot_receipt	+=	$slist[$sl]['receipt'];
+									$tot_issue		+=	$slist[$sl]['issue'];
+									$count++;
+									array_splice($slist, $sl, 1);
+									break;
+								}
+							}
+						}
+						
+						$date_now	+=	$one_day;
+					}
+					
+					$statusTab	=	"<status>success</status>";
+					$countTab	=	"<count>$count</count>";
+				}
+				else if($stockdat['status']!="success"){
+					$statusTab	=	"<error>".$stockdat['errno']."</error>";
+				}
+				else if($issue['status']!="success"){
+					$statusTab	=	"<error>".$issue['errno']."</error>";	
+				}
+				else if($san['status']!="success"){
+					$statusTab	=	"<error>".$san['errno']."</error>";
+				}
+				$open_stock			=	round($open_stock,3);
+				$tot_receipt		=	round($tot_receipt,3);
+				$tot_issue			=	round($tot_issue,3);
+				$stock				=	round($stock,3);				
+				$recieptsGrdTot		+=	$tot_receipt;
+				$issuesGrdTot		+=	$tot_issue;
+				$clsStockGrdTot		+=	$stock;					
+				
+				$total_receipt		=	"<total_receipt>".@number_format($tot_receipt, 0)."</total_receipt>";
+				$total_issue		=	"<total_issue>".@number_format($tot_issue, 0)."</total_issue>";
+				
+				if($cmpdId	!= ""){
+					$return		.=	"<rootxml><root>
+									$data
+									$opening_stock
+									$countTab
+									$statusTab
+									$data
+									<closing_stock>".@number_format($stock, 0)."</closing_stock>
+									$total_receipt
+									$total_issue
+									<stock_list>
+									<data>$stock_list</data>
+									</stock_list>
+									</root>
+								</rootxml>";
+				}else{
+					if(!($open_stock == 0 && $stock == 0 && $tot_receipt == 0 && $tot_issue == 0 ))
+					{
+						if($lastCust	==	"")
+						{
+							$lastCust	=	$cmpdCustGroup;
+							$return		=	"<rowCustGrp><custGroup>$cmpdCustGroup</custGroup>";
+						}
+						else if($lastCust != $cmpdCustGroup)
+						{	
+							$return				.=	"<openStockCustTot>$opnStockCustTot</openStockCustTot>
+													<openStockCustVal>$opnStockCustVal</openStockCustVal>
+													<recieptsCustTot>$recieptsCustTot</recieptsCustTot>
+													<recieptsCustVal>$recieptsCustVal</recieptsCustVal>
+													<issuesCustTot>$issuesCustTot</issuesCustTot>
+													<issuesCustVal>$issuesCustVal</issuesCustVal>
+													<clsStockCustTot>$clsStockCustTot</clsStockCustTot>
+													<clsStockCustVal>$clsStockCustVal</clsStockCustVal>
+													</rowCustGrp>
+													<rowCustGrp><custGroup>$cmpdCustGroup</custGroup>";
+							$lastCust			=	$cmpdCustGroup;
+							$opnStockCustTot	=	0;
+							$opnStockCustVal	=	0;			
+							$recieptsCustTot	=	0;
+							$recieptsCustVal	=	0;
+							$issuesCustTot		=	0;
+							$issuesCustVal		=	0;
+							$clsStockCustTot	=	0;
+							$clsStockCustVal	=	0;								
+						}
+						$opnStockCustTot	+=	$open_stock;
+						$opnStockCustVal	+=	$open_stock * $cmpdRate;
+						$recieptsCustTot	+=	$tot_receipt;
+						$recieptsCustVal	+=	$tot_receipt * $cmpdRate;
+						$issuesCustTot		+=	$tot_issue;
+						$issuesCustVal		+=	$tot_issue * $cmpdRate;
+						$clsStockCustTot	+=	$stock;
+						$clsStockCustVal	+=	$stock * $cmpdRate;
+						$key_list_open		=	"";
+						$sql		=	"select planref,avlQty from tbl_mould_store where cmpdId = '$cmpdid' and avlQty > 0";
+						$stockopen	=	@getMySQLData($sql, "arr");
+						for($os=0; $os<$stockopen['count']; $os++){
+							if($key_list_open != "")
+							{
+								$key_list_open	= $key_list_open .  "\n";
+							}
+							$key_list_open	=	$key_list_open . $stockopen['data'][$os]['planref'] . "(" . $stockopen['data'][$os]['avlQty']. ")";											
+						}						
+						$return		.="
+						<row>
+							<cmpdid>$cmpdid</cmpdid>
+							<cmpdpart>$cmpdPart</cmpdpart>
+							<cmpddesc>$cmpdDesc</cmpddesc>
+							<cmpdrate>$cmpdRate</cmpdrate>
+							$opening_stock
+							$countTab
+							$statusTab
+							<closing_stock>".@number_format($stock, 0)."</closing_stock>
+							<keydetails>".$key_list_open."</keydetails>
+							$total_receipt
+							$total_issue
+						</row>";
+					}
+				}
+			}
+			if(isset($cmpdId) && $cmpdId != "")
+			{ 
+				echo $return;
+			}
+			else
+			{
+				$return		.=	"<openStockCustTot>$opnStockCustTot</openStockCustTot>
+								<openStockCustVal>$opnStockCustVal</openStockCustVal>
+								<recieptsCustTot>$recieptsCustTot</recieptsCustTot>
+								<recieptsCustVal>$recieptsCustVal</recieptsCustVal>
+								<issuesCustTot>$issuesCustTot</issuesCustTot>
+								<issuesCustVal>$issuesCustVal</issuesCustVal>
+								<clsStockCustTot>$clsStockCustTot</clsStockCustTot>
+								<clsStockCustVal>$clsStockCustVal</clsStockCustVal>
+								</rowCustGrp>";	
+				echo "<rootxml><root><count>".$cmpddata['count']."</count><status>".$cmpddata['status']."</status>".$return."<openStockGrdTot>$opnStockGrdTot</openStockGrdTot>
+													<recieptsGrdTot>$recieptsGrdTot</recieptsGrdTot>
+													<issuesGrdTot>$issuesGrdTot</issuesGrdTot>
+													<clsStockGrdTot>$clsStockGrdTot</clsStockGrdTot></root></rootxml>";
+			}
+		break;		
+	}
+
+?>

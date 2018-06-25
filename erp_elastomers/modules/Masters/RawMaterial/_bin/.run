@@ -1,0 +1,1016 @@
+supplierId		=	new Array();
+supplierList	=	new Array();
+qanParamIds		=	new Array();
+qanParamList	=	new Array();
+addSupList		=	new Array();
+editSupList		=	new Array();
+baseRMList		=	new Array();
+baseRMData		=	new Array();
+paramNo			=	0;
+isEditOpen		=	false;
+
+function openAccordion(obj, ev, type, no){
+	ev = ev || window.event;			// gets the event in ie or ns
+	kCode = ev.keyCode || ev.which;		// gets the keycode in ie or ns
+	if(ev != null && no != null && no >= 0){
+		if(!ev.shiftKey && kCode == 9){
+			switch(type){
+				case 'new':	
+					$("#new_item_accord").accordion("option", "active", no);
+				break;
+				case 'edit':	
+					$("#edit_item_accord").accordion("option", "active", no);	
+				break;
+			}
+		}
+	}	
+}
+
+function submitPrint(){
+	invIds 		= 	new Array();
+	$('.checkbox1').each(function() { 
+		if(this.checked == true)
+		{
+			invIds.push(this.id);				
+		}
+	});		
+	
+	if(invIds == null || invIds.length <= 0 )
+	{
+		alert("Please select atleast one Raw Material for Printing");
+		return false;
+	}
+	openInvoice({invID:invIds});
+}
+
+function getParamList(){
+	var objParamList=postback(actionFile, "selecttype=RMPARAMATLIST&outtype=xml", "POST", "XML");
+	paramXML			=	parseXMLdoc(objParamList);
+	qanParamIds			=	new Array();
+	qanParamList		=	new Array();
+	$(paramXML).find("row").each(function(index, element) {
+        qanParamIds.push(element.childNodes[0].firstChild.nodeValue);
+        qanParamList.push(element.childNodes[1].firstChild.nodeValue);
+    });
+}
+
+function getParamDetail(obj){
+	paramid			=	$(obj).val();
+	rowNo			= 	$(obj).attr('id').substring(6);
+	var objParList	=	postback(actionFile, "selecttype=PARAMDETAIL&paramid="+paramid+"&outtype=xml", "POST", "XML");
+	paramXML		=	parseXMLdoc(objParList);
+	rowXML			=	paramXML.getElementsByTagName("row");	
+	$("#sr_"+rowNo).html($(rowXML).find("paramStdRef").text());
+	$("#uom_"+rowNo).html($(rowXML).find("paramUOM").text());
+	$("#tm_"+rowNo).html($(rowXML).find("paramTestMethod").text());
+}
+
+function getPageData(){
+	XMLContent	=	postback(actionFile, "selecttype=RMVIEW&outtype=xml", "POST", "XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();
+	getSupplierAutoList();
+	getParamList();
+}
+
+function updatePageBehaviour(){
+	$('#input_select_all').click(function(event) {  
+		if(this.checked) { 
+			$('.checkbox1').each(function() { 
+				this.checked = true;                
+			});
+		}else{
+			$('.checkbox1').each(function() { 
+				this.checked = false;                        
+			});         
+		}
+	});	
+	
+	$(".checkbox1").click(function(e){
+		if(this.checked) {
+				this.checked = true;                
+		}else{
+				this.checked = false;                        
+		}
+		e.stopImmediatePropagation();
+	});	
+	
+	$(".edit_button").click(function(e) {
+        editForm($(this).attr('ramid'));
+    });
+	
+	$(".delete_button").click(function(e) {
+        deleteForm($(this).attr('ramid'));
+    });
+	
+	updateHeader();updateContent();
+}
+
+
+function getSupplierAutoList(){
+	var objSupList	=	postback(actionFile, "selecttype=RMSUPATLIST&outtype=xml", "POST", "XML");
+	supXML			=	parseXMLdoc(objSupList);
+	supplierId		=	new Array();
+	supplierList	=	new Array();
+	$(supXML).find("row").each(function(index, element) {
+        supplierId.push(element.childNodes[0].firstChild.nodeValue);
+        supplierList.push(element.childNodes[1].firstChild.nodeValue);
+    });
+}
+
+function getSupplierList(rmid){
+	supList			=	$("edit_SuppliersList");
+	var objSupList	=	postback(actionFile, "selecttype=RMSUPLIST&rmid="+rmid+"&outtype=xml", "POST", "XML");
+	supXML			=	parseXMLdoc(objSupList);
+	rowXML			=	supXML.getElementsByTagName("row");
+	editSupList		=	new Array();
+	for(sl=0; sl<rowXML.length; sl++){
+		supVal				=	{
+			id:rowXML[sl].childNodes[0].firstChild.nodeValue,
+			name:rowXML[sl].childNodes[1].firstChild.nodeValue
+		};
+		editSupList[sl]		=	supVal;
+		for(esl=0; esl<supplierList.length; esl++){
+			if(supplierList[esl] == supVal.name){
+				supplierId.splice(esl, 1);
+				supplierList.splice(esl, 1);
+				$("#edit_Suppliers").autocomplete({source:supplierList});
+				break;
+			}
+		}
+	}
+	listSupplierData('edit');
+}
+
+function getBaseRawMaterialList(){
+	var objRMList=postback(actionFile, "selecttype=BASERMATLIST&outtype=xml", "POST", "XML");
+	rmXML			=	parseXMLdoc(objRMList);
+	rowXML			=	rmXML.getElementsByTagName("row");
+	baseRMList		=	new Array();
+	baseRMData		=	new Array();
+	for(rm=0; rm<rowXML.length; rm++){
+		baseRMList[rm]	=	rowXML[rm].childNodes[0].firstChild.nodeValue;
+		baseRMData[baseRMList[rm]]	=	{
+			uomid:rowXML[rm].childNodes[1].firstChild.nodeValue,
+			uom:rowXML[rm].childNodes[2].firstChild.nodeValue,
+			classid:rowXML[rm].childNodes[3].firstChild.nodeValue,
+			class:rowXML[rm].childNodes[4].firstChild.nodeValue
+		};
+	}
+}
+
+function setBaseRawMaterial(chk){
+	rmOpen	=	(isEditOpen)?"edit":"new";
+	rmName	=	$("#"+rmOpen+"_RMName").val().toUpperCase();
+	
+	$("#"+rmOpen+"_units_text").text("");
+	$("#"+rmOpen+"_class_text").text("");
+	$("#"+rmOpen+"_Units").val("");
+	$("#"+rmOpen+"_Class").val("");
+	
+	if(rmName != null && rmName != ""){
+		for(brm=0; brm<baseRMList.length; brm++){
+			if( baseRMList[brm] == rmName){
+				$("#"+rmOpen+"_units_text").text(baseRMData[rmName].uom);
+				$("#"+rmOpen+"_class_text").text(baseRMData[rmName].class);
+				$("#"+rmOpen+"_Units").val(baseRMData[rmName].uomid);
+				$("#"+rmOpen+"_Class").val(baseRMData[rmName].classid);
+				
+				if(chk == true)
+				return true;
+				
+				break;
+			}
+		}
+	}
+	
+	if(chk == true)
+	return false;
+}
+
+function checkBaseRawMaterial(){
+	rmOpen	=	(isEditOpen)?"edit":"new";
+	rmName	=	$("#"+rmOpen+"_RMName").val();
+	chkData	=	setBaseRawMaterial(true);
+	
+	if(rmName != null && rmName != "" && !chkData){
+		chkRM = confirm("Material \"" + rmName + "\" does not exist, do you want to create?");
+		if(chkRM){
+			$("#add_base_ram_form").dialog("open");
+			$("#new_BaseRMName").val(rmName);
+		}
+		else{
+			
+		}
+	}
+}
+
+function listSupplierData(type){
+	type		=	(type)?type:'new';
+	supList		=	$("#"+type+"_SuppliersList");
+	supData		=	(type=='edit')?editSupList:addSupList;
+	htmlTxt		=	'';
+	for(sd=0; sd<supData.length; sd++){
+		htmlTxt		+=	"<div class='" + ((sd%2!=1)?'content_rows_light':'content_rows_dark') + "' supid='"+supData[sd].id+"' style='font-size:11px;'>" +
+							"<div class='removebtn' onclick='delSupplierData(\""+type+"\", "+sd+")' />" +
+							"<div style='width:90%;height:14px;overflow:hidden;' title='" + supData[sd].name + "'>" + supData[sd].name + "</div>" +
+						"</div>";
+	}
+	supList.html(htmlTxt);
+}
+
+function delSupplierData(type, no){
+	if(type != null && no >= 0){
+		if(type == 'edit'){
+			supplierList.push(editSupList[no].name);
+			editSupList.splice(no, 1);
+		}
+		else{
+			supplierList.push(addSupList[no].name);
+			addSupList.splice(no, 1);
+		}
+		$((type=='edit')?"edit_Suppliers":"new_Suppliers").autocomplete({source:supplierList});
+		listSupplierData(type);
+	}
+}
+
+function getSubmitButton(fid){
+	if(fid != null){
+		fid			=	(typeof fid == "object")?fid:document.getElementById(fid);
+		if(fid){
+			nsib		=	fid.nextSibling;
+			if(nsib){
+				buttons		=	nsib.getElementsByTagName("button");
+				if(buttons.length > 0){
+					buttons[0].click();
+				}
+			}
+		}
+	}
+}
+
+function editForm(no){
+	$("#edit_item_form").css('visibility', 'visible');
+	$("#edit_item_form").dialog("open");
+	EditNo		=	(no)?no:null;
+	
+	getSupplierList(no);
+	listAllParameters(no)
+	
+	if(typeof setEditFunc == "function")
+	setEditFunc();
+}
+
+function deleteForm(no){
+	$("#del_item_form").css('visibility', 'visible');
+	$("#del_item_form").dialog("open");
+	DeleteNo	=	(no)?no:null;
+}
+
+function listAllParameters(no){
+	paramList		=	$("#edit_ParameterList");
+	param			=	"selecttype=RMPARAMLIST&rmid=" + no;
+	paramData		=	postback(actionFile, param, "POST", "XML");
+	paramXML		=	parseXMLdoc(paramData);
+	rowXML			=	paramXML.getElementsByTagName("row");
+	
+	for(rx=0; rx<rowXML.length; rx++){
+		row			=	rowXML[rx].childNodes;
+		paramArray	=	new Array();
+		for(rxa=0; rxa<row.length; rxa++){
+			paramArray[row[rxa].nodeName]	=	(row[rxa].firstChild)?row[rxa].firstChild.nodeValue:"";
+		}
+		tabClass	=	((rx+1)%2)?'content_rows_light':'content_rows_dark';
+		tableRow	=	"<tr class='"+tabClass+"' id='ermparam_"+paramNo+"'>" +
+							//'<td><input type="text" id="param_'+paramNo+'" value="' + paramArray['ramQanParam'] + '" onMouseOver="this.title=this.value" style="width:90%" /></td>' +
+							'<td>' + qanParamList.toSelectWithValue(qanParamIds, "param_"+paramNo, "param_"+paramNo, paramArray['ramQanParamRef'], "width:100%", "", "onchange='getParamDetail(this);'", true) + '</td>' +							
+							'<td id="sr_'+paramNo+'">'+paramArray['paramStdRef']+'</td>' +
+							'<td id="uom_'+paramNo+'">'+paramArray['uom_short_name']+'</td>' +
+							'<td id="tm_'+paramNo+'">'+paramArray['paramTestMethod']+'</td>' +
+							'<td><input type="text" id="spec_'+paramNo+'" value="' + paramArray['ramQanSpec'] + '" class="' + ((paramArray['ramQanSpec']=='0.000')?"invisible_text":"normal_text") + '" style="width:90%;text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" /></td>' +
+							'<td><input type="text" id="ll_'+paramNo+'" value="' + paramArray['ramQanLLimit'] + '" class="' + ((paramArray['ramQanLLimit']=='0.000')?"invisible_text":"normal_text") + '" style="width:90%;text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" /></td>' +
+							'<td><input type="text" id="ul_'+paramNo+'" value="' + paramArray['ramQanULimit'] + '" class="' + ((paramArray['ramQanULimit']=='0.000')?"invisible_text":"normal_text") + '" style="width:90%;text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" /></td>' +
+							'<td><input type="text" id="sp_'+paramNo+'" value="' + paramArray['ramSamPlan'] + '" class="' + ((paramArray['samplePlan']=='0')?"invisible_text":"normal_text") + '" style="width:90%;text-align:right" onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></td>' +
+							"<td><div id='drmparam_"+paramNo+"' class='removebtn' /></td>" +
+						"</tr>";
+		paramList.find("table tr:last").after(tableRow);
+		eval("$(\"#drmparam_"+paramNo+"\").click(function(){ $(\"#ermparam_"+paramNo+"\").remove(); updateParamTable() });");
+		paramNo++;
+	}
+	updateParamTable();
+}
+
+function addParameter(t){
+	paramList	=	$("#"+t+"_ParameterList");
+	tableRow	=	"<tr id='ermparam_"+paramNo+"'>" +
+						'<td>' + qanParamList.toSelectWithValue(qanParamIds, "param_"+paramNo, "param_"+paramNo, "", "width:100%", "", "onchange='getParamDetail(this);'", true) + '</td>' +
+						'<td id="sr_'+paramNo+'"></td>' +
+						'<td id="uom_'+paramNo+'"></td>' +
+						'<td id="tm_'+paramNo+'"></td>' +
+						'<td><input type="text" id="spec_'+paramNo+'" class="invisible_text" value="0.000" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" style="text-align:right;width:90%" /></td>' +
+						'<td><input type="text" id="ll_'+paramNo+'" class="invisible_text" value="0.000" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" style="text-align:right;width:90%" /></td>' +
+						'<td><input type="text" id="ul_'+paramNo+'" class="invisible_text" value="0.000" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" style="text-align:right;width:90%" /></td>' +
+						'<td><input type="text" id="sp_'+paramNo+'" class="invisible_text" value="0" onfocus="FieldHiddenValue(this, \'in\', \'0.000\')" onblur="FieldHiddenValue(this, \'out\', \'0.000\')" style="text-align:right;width:90%" /></td>' +
+						"<td><div id='drmparam_"+paramNo+"' class='removebtn' /></td>" +
+					"</tr>";
+	paramList.find("table tr:last").after(tableRow);
+	eval("$(\"#drmparam_"+paramNo+"\").click(function(){ $(\"#ermparam_"+paramNo+"\").remove(); updateParamTable('"+t+"') });");
+	updateParamTable(t);
+	paramNo++;
+}
+
+function updateParamTable(t){
+	paramTR	=	$("#"+t+"_ParameterList table tr");
+	for(ptr=1; ptr<paramTR.length; ptr++){
+		tabClass	=	(ptr%2)?'content_rows_light':'content_rows_dark';
+		//$("#"+paramTR[ptr].id).removeClass().addClass(tabClass);
+		$(paramTR[ptr]).removeClass().addClass(tabClass);
+	}
+}
+
+function addItemFunc(){
+	newRMName		=	$('#new_RMName');
+	newUnits		=	$('#new_Units');
+	newGrade		=	$('#new_Grade');
+	newManufacturer	=	$('#new_Manufacturer');	
+	newChemName		=	$('#new_ChemName');
+	newPriComp		=	$('#new_PriComp');
+	newClass		=	$('#new_Class');
+	newMinStock		=	$('#new_MinStock');
+	newShelfLife	=	$('#new_ShelfLife');
+	newRackNo		=	$('#new_RackNo');
+	newHSNCode		=	$('#new_HSNCode');
+	newAppRate		=	$('#new_AppRate');
+	newStdPack		=	$('#new_StdPack');	
+	newRemarks		=	$('#new_Remarks');
+	newError		=	$('#new_item_error');
+	paramTR			=	$("#new_ParameterList table tr:gt(0)");
+	accordionObj	=	$("#new_item_accord");	
+	
+	if(newRMName.val() == null || newRMName.val() == "")
+	{
+		displayError(newError, "error", "<strong>Error !</strong> - Please provide the Raw Material Name.");
+		if(accordionObj.accordion("option", "active") != 0)
+			accordionObj.accordion("option", "active", 0);		
+		newRMName.focus();
+		return false;	
+	}
+	if(newUnits.val() == null || newUnits.val() == "" || newUnits.val() == 0)
+	{
+		if(accordionObj.accordion("option", "active") != 0)
+			accordionObj.accordion("option", "active", 0);		
+		displayError(newError, "error", "<strong>Error !</strong> - Please provide the Raw Material Unit of Measure.");
+		newRMName.focus();
+		return false;	
+	}
+	if(newClass.val() == null || newClass.val() == "" || newUnits.val() == 0)
+	{
+		if(accordionObj.accordion("option", "active") != 0)
+			accordionObj.accordion("option", "active", 0);		
+		displayError(newError, "error", "<strong>Error !</strong> - Please provide the Raw Material Class.");
+		newRMName.focus();
+		return false;	
+	}	
+	param				=	"selecttype=" + "RMADD" +
+							"&rmname=" + newRMName.val() +
+							"&rmunits=" + newUnits.val() +
+							"&rmclass=" + newClass.val() +
+							"&rmgrade=" + newGrade.val() +
+							"&rammanufacturer=" + newManufacturer.val() +
+							"&ramchemname=" + newChemName.val() +
+							"&ramcomposition=" + newPriComp.val() +
+							"&rmminstock=" + newMinStock.val()+
+							"&rmshelflife=" + newShelfLife.val()+
+							"&rmrackno=" + newRackNo.val() +
+							"&rmhsncode=" + newHSNCode.val() +
+							"&rmapprate=" + newAppRate.val() +
+							"&rmstdpack=" + newStdPack.val()+
+							"&rmremarks=" + newRemarks.val();
+	// Get Supplier List
+	for(sp=0; sp<addSupList.length; sp++){
+		param		+=		"&rmsuplist[]=" + addSupList[sp].id;
+	}
+	// Get Paramter List
+	for(ptr=0; ptr<paramTR.length; ptr++){
+		parameter = $(paramTR[ptr]).find("td:eq(0) select");
+		if(parameter.val() != null && parameter.val() != ""){
+			spec	=	$(paramTR[ptr]).find("td:eq(4) input[type=text]");
+			ulimit	=	$(paramTR[ptr]).find("td:eq(6) input[type=text]");
+			llimit	=	$(paramTR[ptr]).find("td:eq(5) input[type=text]");
+			if(spec.val().toNumber() >= llimit.val().toNumber() && spec.val().toNumber() <= ulimit.val().toNumber()) {
+				param	+=	"&param["+ptr+"][pname]=" + parameter.val() +
+							"&param["+ptr+"][pspec]=" + spec.val() +
+							"&param["+ptr+"][pul]=" + ulimit.val() +
+							"&param["+ptr+"][pll]=" + llimit.val() +
+							"&param["+ptr+"][psp]=" + $(paramTR[ptr]).find("td:eq(7) input[type=text]").val();
+			}
+			else
+			{			
+				displayError(newError, "error", "<strong>Error !</strong> - Please check the values provided for the Parameter.");
+				if(accordionObj.accordion("option", "active") != 1)
+					accordionObj.accordion("option", "active", 1);					
+				spec.focus();
+				return false;			
+			}
+		}
+		else
+		{		
+			displayError(newError, "error", "<strong>Error !</strong> - Please select a Parameter.");
+			if(accordionObj.accordion("option", "active") != 1)
+				accordionObj.accordion("option", "active", 1);			
+			parameter.focus();
+			return false;		
+		}
+	}
+	$("#new_item_form").dialog("close");
+	XMLContent			=	postback(actionFile, param, "POST", "XML");
+	xmlData				=	$(XMLContent);
+	error				=	xmlData.find("mysql status").text();
+	ramId				=	xmlData.find("output ramid").text(); 
+	if(error == "success"){
+		alert("Rawmaterial " + ramId + " created successfully...");
+	}
+	else{
+		alert("Creation of Raw Material failed because of : " + error + " : " + xmlData.find("mysql errtxt").text());
+	}
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();	
+}
+	
+
+function addBaseRMFunc(){
+	rmOpen			=	(isEditOpen)?"edit":"new";
+	newBaseRMName	=	$('#new_BaseRMName');
+	newBaseUnits	=	$('#new_BaseUnits');
+	newBaseClass	=	$('#new_BaseClass');
+	errorItem		=	$("#new_base_item_error");
+	
+	if(newBaseRMName.val() == null || newBaseRMName.val() == ""){
+		displayError(errorItem, "error", "<strong>Error !</strong> - Raw Material Missing.");
+		newBaseRMName.focus();
+		return false;
+	}
+	else if(newBaseUnits.val() == null || newBaseUnits.val() == ""){
+		displayError(errorItem, "error", "<strong>Error !</strong> - Unit of Measurement Missing.");
+		newBaseUnits.focus();
+		return false;
+	}
+	else if(newBaseClass.val() == null || newBaseClass.val() == ""){
+		displayError(errorItem, "error", "<strong>Error !</strong> - Class Name Missing.");
+		newBaseClass.focus();
+		return false;
+	}
+	
+	displayError(errorItem, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Adding Data to Server . . .</strong>");
+	param		=	"selecttype=" + "BASERMADD" +
+					"&rmname=" + newBaseRMName.val() +
+					"&rmunits=" + newBaseUnits.val() +
+					"&rmclass=" + newBaseClass.val();
+	XMLContent	=	postback(actionFile, param, "POST", "XML");
+	xmlData		=	parseXMLdoc(XMLContent);
+	error		=	$(xmlData).find("mysql:eq(0) status:eq(0)").text();
+	if(error == "success"){
+		baseRMList.push(newBaseRMName.val());
+		baseRMData[newBaseRMName.val()]	=	{
+			uomid:newBaseUnits.val(),
+			uom:newBaseUnits.find("option:selected").text(),
+			classid:newBaseClass.val(),
+			class:newBaseClass.find("option:selected").text()
+		};
+		$("#"+rmOpen+"_RMName").autocomplete('option', 'source', baseRMList);
+		$("#"+rmOpen+"_units_text").text(newBaseUnits.find("option:selected").text());
+		$("#"+rmOpen+"_class_text").text(newBaseClass.find("option:selected").text());
+		$("#"+rmOpen+"_Units").val(newBaseUnits.val());
+		$("#"+rmOpen+"_Class").val(newBaseClass.val());
+		$("#add_base_ram_form").dialog("close");
+	}
+	else{
+		displayError(errorItem, "error", error);
+	}
+}
+
+function setEditFunc(){
+	editRMID		=	$('#edit_RMID');
+	editRMName		=	$('#edit_RMName');
+	editUnitsTxt	=	$('#edit_units_text');
+	editUnits		=	$('#edit_Units');
+	editGrade		=	$('#edit_Grade');
+	editStatus		=	$('#edit_Status');
+	editManufacturer=	$('#edit_Manufacturer');	
+	editChemName	=	$('#edit_ChemName');
+	editPriComp		=	$('#edit_PriComp');	
+	editClass		=	$('#edit_Class');
+	editClassTxt	=	$('#edit_class_text');
+	editMinStock	=	$('#edit_MinStock');
+	editShelfLife	=	$('#edit_ShelfLife');
+	editRackNo		=	$('#edit_RackNo');
+	editHSNCode		=	$('#edit_HSNCode');
+	editAppRate		=	$('#edit_AppRate');
+	editStdPack		=	$('#edit_StdPack');	
+	editAppUser		=	$('#edit_AppUser');
+	editAppDate		=	$('#edit_AppDate');
+	editRemarks		=	$('#edit_Remarks');
+	editError		=	$('#edit_item_error');
+	
+	if(EditNo != null && EditNo != ""){
+		xmlData		=	parseXMLdoc(XMLContent);
+		Rows		=	xmlData.getElementsByTagName("row");
+		EditData	=	new Array();
+		if(Rows.length > 0){
+			for(R=0; R<Rows.length; R++){
+				Obj		=	Rows[R];
+				Sno		=	Obj.childNodes[0].firstChild.nodeValue;
+				if(Sno == EditNo){
+					for(ER=0; ER<Obj.childNodes.length; ER++){
+						if(Obj.childNodes[ER].firstChild != null){
+							EditData[Obj.childNodes[ER].tagName]	=	Obj.childNodes[ER].firstChild.nodeValue;
+						}
+						else{
+								EditData[Obj.childNodes[ER].tagName] = "";
+							}
+					}
+					break;
+				}
+			}
+			editRMName.val(EditData['ramname']);
+			editUnits.val(EditData['ramunitno']);
+			editUnitsTxt.text(EditData['ramunit']);
+			editClass.val(EditData['ramclassno']);
+			editClassTxt.text(EditData['ramclass']);
+			editGrade.val(EditData['ramgrade']);
+			if(EditData['ramactstatus'] == 1)
+				editStatus.attr('checked',true);
+			else
+				editStatus.attr('checked',false);
+			editManufacturer.val(EditData['rammanufacturer']);;	
+			editChemName.val(EditData['ramchemname']);;
+			editPriComp.val(EditData['ramcomposition']);;				
+			editMinStock.val(EditData['ramminstock']);
+			editShelfLife.val(EditData['ramshelflife']);
+			editRackNo.val(EditData['ramrackno']);
+			editHSNCode.val(EditData['ramhsncode']);
+			editAppRate.val(EditData['ramapprovedrate']);
+			editStdPack.val(EditData['ramstdpacking']);			
+			editAppUser.val(EditData['entry_by']);
+			editAppDate.val(EditData['entry_on']);
+			editRemarks.text(EditData['remarks']);
+			
+			$("#edit_item_form").dialog({"title":'Edit Raw Material - ' + EditNo});			
+			if(EditData['ramminstock'] != null && EditData['ramminstock'] != "" && !isNaN(EditData['ramminstock']) && Number(EditData['ramminstock']) > 1)
+				editMinStock.removeClass("invisible_text");
+			else
+				editMinStock.addClass("invisible_text");
+			if(EditData['ramshelflife'] != null && EditData['ramshelflife'] != "" && !isNaN(EditData['ramshelflife']) && Number(EditData['ramshelflife']) > 0)
+				editShelfLife.removeClass("invisible_text");
+			else
+				editShelfLife.addClass("invisible_text");
+			if(EditData['ramapprovedrate'] != null && EditData['ramapprovedrate'] != "" && !isNaN(EditData['ramapprovedrate']) && Number(EditData['ramapprovedrate']) > 0)
+				editAppRate.removeClass("invisible_text");
+			else
+				editAppRate.addClass("invisible_text");
+			if(EditData['ramstdpacking'] != null && EditData['ramstdpacking'] != "" && !isNaN(EditData['ramstdpacking']) && Number(EditData['ramstdpacking']) > 0)
+				editStdPack.removeClass("invisible_text");
+			else
+				editStdPack.addClass("invisible_text");				
+			
+		}
+	}
+}
+
+function editItemFunc(){
+	editRMID		=	$('#edit_RMID');
+	editRMName		=	$('#edit_RMName');
+	editUnits		=	$('#edit_Units');
+	editGrade		=	$('#edit_Grade');
+	editStatus		=	$('#edit_Status');
+	editManufacturer=	$('#edit_Manufacturer');	
+	editChemName	=	$('#edit_ChemName');
+	editPriComp		=	$('#edit_PriComp');	
+	editClass		=	$('#edit_Class');
+	editMinStock	=	$('#edit_MinStock');
+	editRackNo		=	$('#edit_RackNo');
+	editHSNCode		=	$('#edit_HSNCode');
+	editAppRate		=	$('#edit_AppRate');
+	editStdPack		=	$("#edit_StdPack");	
+	editShelfLife	=	$("#edit_ShelfLife");
+	editRemarks		=	$("#edit_Remarks");
+	editError		=	$('#edit_item_error');
+	paramTR			=	$("#edit_ParameterList table tr:gt(0)");
+	accordionObj	=	$("#edit_item_accord");
+	if(editRMName.val() == null || editRMName.val() == "")
+	{
+		displayError(editError, "error", "<strong>Error !</strong> - Please provide the Raw Material Name.");
+		if(accordionObj.accordion("option", "active") != 0)
+			accordionObj.accordion("option", "active", 0);		
+		editRMName.focus();
+		return false;	
+	}
+	if(editUnits.val() == null || editUnits.val() == "" || editUnits.val() == 0)
+	{
+		if(accordionObj.accordion("option", "active") != 0)
+			accordionObj.accordion("option", "active", 0);		
+		displayError(editError, "error", "<strong>Error !</strong> - Please provide the Raw Material Unit of Measure.");
+		editRMName.focus();
+		return false;	
+	}
+	if(editClass.val() == null || editClass.val() == "" || editClass.val() == 0)
+	{
+		if(accordionObj.accordion("option", "active") != 0)
+			accordionObj.accordion("option", "active", 0);		
+		displayError(editError, "error", "<strong>Error !</strong> - Please provide the Raw Material Class.");
+		editRMName.focus();
+		return false;	
+	}		
+	param				=	"selecttype=" + "RMEDIT" +
+							"&rmid=" + EditNo +
+							"&rmname=" + editRMName.val() +
+							"&rmunits=" + editUnits.val() +
+							"&rmgrade=" + editGrade.val() +
+							"&rmstatus=" + ((editStatus.attr('checked'))?1:0) +
+							"&rammanufacturer=" + editManufacturer.val() +
+							"&ramchemname=" + editChemName.val() +
+							"&ramcomposition=" + editPriComp.val() +							
+							"&rmclass=" + editClass.val() +
+							"&rmminstock=" + editMinStock.val() +
+							"&rmrackno=" + editRackNo.val() +
+							"&rmshelflife=" + editShelfLife.val()+
+							"&rmhsncode=" + editHSNCode.val()+
+							"&rmapprate=" + editAppRate.val()+
+							"&rmstdpack=" + editStdPack.val()+	
+							"&rmremarks=" + editRemarks.val();
+	for(sp=0; sp<editSupList.length; sp++){
+		param		+=		"&rmsuplist[]=" + editSupList[sp].id;
+	}
+	// Get Paramter List
+	for(ptr=0; ptr<paramTR.length; ptr++){
+		parameter = $(paramTR[ptr]).find("td:eq(0) select");
+		if(parameter.val() != null && parameter.val() != ""){
+			spec	=	$(paramTR[ptr]).find("td:eq(4) input[type=text]");
+			ulimit	=	$(paramTR[ptr]).find("td:eq(6) input[type=text]");
+			llimit	=	$(paramTR[ptr]).find("td:eq(5) input[type=text]");
+			if(spec.val().toNumber() >= llimit.val().toNumber() && spec.val().toNumber() <= ulimit.val().toNumber()) {
+				param	+=	"&param["+ptr+"][pname]=" + parameter.val() +
+							"&param["+ptr+"][pspec]=" + spec.val() +
+							"&param["+ptr+"][pul]=" + ulimit.val() +
+							"&param["+ptr+"][pll]=" + llimit.val() +
+							"&param["+ptr+"][psp]=" + $(paramTR[ptr]).find("td:eq(7) input[type=text]").val();
+			}
+			else
+			{			
+				displayError(editError, "error", "<strong>Error !</strong> - Please check the values provided for the Parameter.");
+				if(accordionObj.accordion("option", "active") != 1)
+					accordionObj.accordion("option", "active", 1);		
+				
+				spec.focus();
+				return false;			
+			}
+		}
+		else
+		{
+			displayError(editError, "error", "<strong>Error !</strong> - Please select a Parameter.");
+			if(accordionObj.accordion("option", "active") != 1)
+				accordionObj.accordion("option", "active", 1);			
+			parameter.focus();
+			return false;		
+		}
+	}	
+	//alert(param); return false;
+	$("#edit_item_form").dialog("close");
+	XMLContent			=	postback(actionFile, param, "POST", "XML");
+	xmlData				=	$(XMLContent);
+	error				=	xmlData.find("mysql status").text();	
+	if(error == "success"){
+		alert("Rawmaterial "+ EditNo +" updated successfully....");
+	}
+	else{
+		alert(" Updation of Raw Material failed due to : " + error + " : " + xmlData.find("mysql errtxt").text());
+	}
+	listPageData($("#content_body"), XMLContent, XSLFile);
+	updatePageBehaviour();	
+}
+
+
+function delItemFunc(){
+	delError		=	$('#del_item_error');
+	if(DeleteNo != null && DeleteNo != ""){
+		displayError(delError, "highlight", "<div class='loading' style='float:left;margin-right:10px;' /> <strong>Removing Data From Server . . .</strong>");
+		param			=	"selecttype=RMDEL" + "&rmid=" + DeleteNo;
+		XMLContent		=	postback(actionFile, param, "POST", "XML");
+		xmlData			=	parseXMLdoc(XMLContent);
+		error			=	xmlData.getElementsByTagName("mysql")[0].getElementsByTagName("status")[0].firstChild.nodeValue;
+		if(error == "success"){
+			listPageData($("#content_body"), XMLContent, XSLFile);
+			$("#del_item_form").dialog("close");
+			updatePageBehaviour();
+		}
+		else{
+			displayError(delError, "error", error);
+			setTimeout(function(){
+				$("#del_item_form").dialog("close");
+			}, 2000);
+		}
+	}
+}
+
+function setObjFocus(ui)
+{
+	if ($(document.activeElement).attr("type") != "text" && $(document.activeElement).attr("type") != "select-one" && $(document.activeElement).attr("type") != "textarea"){
+		if($('input', ui.newContent.html()).length > 0)
+			$('#' + $('input', ui.newContent.html())[0].id).focus();
+		else if ($('textarea', ui.newContent.html()).length > 0)
+			$('#' + $('textarea', ui.newContent.html())[0].id).focus();
+		else if ($('select', ui.newContent.html()).length > 0)
+			$('#' + $('select', ui.newContent.html())[0].id).focus();
+	}  
+}
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){
+	// Add Item Dialog
+	$("#new_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 900,
+		height:'auto',
+		buttons: [
+			{
+				text: "Add",
+				click: function(){
+				if(typeof addItemFunc == "function"){
+						addItemFunc();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Close",
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		open: function(event, ui) {
+			getBaseRawMaterialList();
+			$('#new_RMName').focus();
+			$('#new_RMName').autocomplete({
+				source:baseRMList,
+				close:setBaseRawMaterial,
+				change:checkBaseRawMaterial
+			});
+			
+			getSupplierAutoList();
+			$('#new_Suppliers').autocomplete({
+				source:supplierList,
+				close:function(){$("#new_SupplierButton").button().click();}
+			});
+		
+		},
+		close: function(event, ui) {
+			addSupList		=	new Array;
+			classObj		=	['new_HSNCode','new_MinStock','new_ShelfLife'];
+			for(o=0; o<classObj.length; o++){
+				$("#new_item_form #" + classObj[o]).removeClass('normal_text');
+				$("#new_item_form #" + classObj[o]).addClass('invisible_text');
+			}
+			$("#new_item_form form")[0].reset();
+			$("#new_item_error").html("");
+			$("#new_item_error").css("display", "none");
+			$("#new_SuppliersList").html("");
+			$("#new_ParameterList table tr:gt(0)").remove();
+			$(this).find("form")[0].reset();
+		} 
+	});
+	
+	// Add Item Accordion
+	$("#new_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui)
+		}
+	});
+	
+	// Add Base RM List
+	$("#add_base_ram_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 450,
+		height:'auto',
+		buttons: [
+			{
+				text: "Create",
+				tabindex:103,
+				click: function(){
+					if(typeof addBaseRMFunc == "function"){
+						addBaseRMFunc();
+					}else{
+						$(this).dialog("close"); 
+					}
+				}
+			},
+			{
+				text: "Cancel",
+				tabindex:104,
+				click: function(){
+					$(this).dialog("close");
+				}
+			}
+		],
+		close: function(event, ui) {
+			addSupList		=	new Array;
+			$("#new_item_error").html("");
+			$("#new_item_error").css("display", "none");
+			$(this).find("form")[0].reset();
+		} 
+	});
+
+	// Edit Item Dialog
+	$("#edit_item_form").dialog({
+		autoOpen: false,
+		modal: true,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 900,
+		height:'auto',
+		buttons: {
+			Update:function(){
+				$(this).css("default");
+				if(typeof editItemFunc == "function"){
+					editItemFunc();
+				}else{
+					$(this).dialog("close");
+				}
+			},
+			Close:function(){
+				$(this).dialog("close");
+			}
+		},
+		open: function(event, ui) {
+			isEditOpen = true;
+			getBaseRawMaterialList();
+			$('#edit_RMName').focus();
+			$('#edit_RMName').autocomplete({
+				source:baseRMList,
+				close:setBaseRawMaterial,
+				change:checkBaseRawMaterial
+			});
+			
+			getSupplierAutoList();
+			$('#edit_Suppliers').autocomplete({
+				source:supplierList,
+				close:function(){$("#edit_SupplierButton").button().click();}
+			});
+		},
+		close: function(event, ui) {
+			isEditOpen = false;
+			editSupList		=	new Array;
+			$("#edit_item_error").html("");
+			$("#edit_item_error").css("display", "none");
+			$("#edit_ParameterList table tr:gt(0)").remove();
+			$(this).find("form")[0].reset();
+		} 
+	});
+	
+	// Add Item Accordion
+	$("#edit_item_accord").accordion({
+		active: 0,
+		collapsible: false,
+		autoHeight: false,
+		change: function(event, ui){
+			setObjFocus(ui)
+		}
+	});
+	
+	// Delete Item Dialog
+	$("#del_item_form").dialog({
+		autoOpen: false ,
+		modal: true ,
+		position: ['center','center'],
+		draggable: true,
+		resizable: false,
+		width: 400,
+		buttons: [
+			{
+				text: "Yes",
+				click: function(){
+					if(typeof delItemFunc == "function"){
+						delItemFunc();
+					}else{
+						$(this).dialog("close");
+					}
+				}
+			},
+			{
+				text: "No",
+				click: function() { $(this).dialog("close"); }
+			}
+		],
+		close: function(event, ui) {
+			$("#del_item_error").html("");
+			$("#del_item_error").css("display", "none");
+		} 
+	});
+	
+	$("#button_add").button().click(function(){
+		$("#new_item_form").css('visibility','visible');
+		$("#new_item_form").dialog("open");
+	});
+	
+	$("#new_SupplierButton").button().click(function(){
+		supVal		=	$("#new_Suppliers");
+		chkVal		=	0;
+		supId		=	-1;
+		suppName	=	"";
+		suppId		=	"";
+		if(supVal.val() != null && supVal.val() != ""){
+			for(csl=0; csl<addSupList.length; csl++){
+				if(addSupList[csl] == supVal.val()){
+					chkVal++;
+					break;
+				}
+			}
+			for(sl=0; sl<supplierList.length; sl++){
+				if(supplierList[sl] == supVal.val()){
+					supId		=	sl;
+					suppName	=	supplierList[sl];
+					suppId		=	supplierId[sl];
+					supplierId.splice(sl, 1);
+					supplierList.splice(sl, 1);
+					supVal.autocomplete({
+						source:supplierList
+					});
+					break;
+				}
+			}
+			if(chkVal == 0 && supId > -1){
+				addSupList.push({
+					id:suppId,
+					name:suppName
+				});
+				listSupplierData('new');
+			}
+		}
+		supVal.val('');
+	});
+	
+	$("#edit_SupplierButton").button().click(function(){
+		supVal	=	$("#edit_Suppliers");
+		chkVal	=	0;
+		supId		=	-1;
+		suppName	=	"";
+		suppId		=	"";
+		if(supVal.val() != null && supVal.val() != ""){
+			for(csl=0; csl<editSupList.length; csl++){
+				if(editSupList[csl] == supVal.val()){
+					chkVal++;
+					break;
+				}
+			}
+			for(sl=0; sl<supplierList.length; sl++){
+				if(supplierList[sl] == supVal.val()){
+					supId		=	sl;
+					suppName	=	supplierList[sl];
+					suppId		=	supplierId[sl];
+					supplierId.splice(sl, 1);
+					supplierList.splice(sl, 1);
+					supVal.autocomplete({
+						source:supplierList
+					});
+					break;
+				}
+			}
+			if(chkVal == 0 && supId > -1){
+				editSupList.push({
+					id:suppId,
+					name:suppName
+				});
+				listSupplierData('edit');
+			}
+		}
+		supVal.val('');
+	});
+	
+	$("#new_add_param").button().click(function(){
+		if(typeof addParameter == "function"){
+			addParameter('new');
+		}
+	});
+
+	$("#edit_add_param").button().click(function(){
+		if(typeof addParameter == "function"){
+			addParameter('edit');
+		}
+	});
+
+	getPageData();
+});

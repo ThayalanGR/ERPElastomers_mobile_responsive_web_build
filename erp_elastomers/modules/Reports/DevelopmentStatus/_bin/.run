@@ -1,0 +1,105 @@
+tableFilters.col_0			=	"none";
+tableFilters.sort_config	=	{ sort_types:['none','string', 'string','date','string','date','string','date','string','date','string','date','string','date','string','date', 'string'] };
+var TF_01					=	null;
+var needRefresh				=	false;
+var	objCompList				=	null;
+var objSchList				=	null;
+var usePeriod				=	null;
+var XSLFile					=	[XSLPath + "_1.design", XSLPath + "_2.design"];
+
+$(document).ready(function(){
+	$("#submitPrint").click(function(e){
+		submitPrint(0);
+		e.stopImmediatePropagation();
+	});	
+	
+	$("#show_plan_form").dialog({ autoOpen: false ,
+								modal: true ,
+								position: ['center','center'],
+								draggable: true,
+								resizable: true,
+								width: 1200,
+								height:600,
+								buttons: [
+									{
+										text: "Print",
+										click: function(){
+											submitPrint(1);
+										}
+									},
+									{
+										text: "Close",
+										click: function(){
+											$(this).dialog("close");
+										}
+									}
+								],
+								close: function(event, ui) {
+									$(this).css("display", "none");
+								}, 									
+								open: function(event, ui) {
+									$(this).css('visibility','visible');
+								}
+							});
+	updatePageBehaviour();
+});
+
+function updatePageBehaviour(){
+	objCompList 	= postback(actionFile, "selecttype=GETTOP&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val(), "POST","XML");
+	//alert(objCompList);
+	//$("#content_body").html(objCompList);
+	listPageData($("#content_body"), objCompList, XSLFile[0]);	
+	$(".view_button").click(function(e){
+		useperiod	=	$(this).attr('useperiod');
+		if(useperiod != null && useperiod != ""){
+			getDetailList(useperiod);
+			e.stopImmediatePropagation();
+		}
+	});	
+}
+
+function getDetailList(useperiod){
+	usePeriod	=	useperiod;
+	$("#show_plan_form").css('visibility', 'visible');
+	$("#show_plan_form").dialog("open");
+	objSchList	=	postback(actionFile, "selecttype=GETVAL&fromdate="+$("#from_date").val()+"&todate="+$("#to_date").val()+"&useperiod="+useperiod, "POST","XML");
+	//alert(objSchList); //return false;
+	listPageData($("#detail_body"), objSchList, XSLFile[1]);
+	TF_01	=	setFilterGrid("resultTable",tableFilters);
+    if(needRefresh)
+		TF_01.RefreshGrid();
+	else
+		needRefresh	=	true;
+}
+
+function submitPrint(desNo){
+	desFile		=	XSLFile[desNo];
+	$("#print_item_form").css('visibility', 'visible');	
+	if(desNo == 0)
+		objList	=	objCompList;
+	else
+		objList	=	objSchList;
+	
+	$("#print_item_form").dialog({
+									modal:true,
+									minWidth:'1200',
+									resizable:false,									
+									open: function(event, ui) {
+										listPageData($("#print_body"), objList, desFile);
+										var today = new Date();											
+										$("#hdr_date").html(today.getDate()+"-"+(today.getMonth()+1)+"-"+today.getFullYear());
+										$("#hdr_title").html(((desNo == 0 || (desNo == 1 && usePeriod == 'yes'))?" From: " + $("#from_date").val() + " To: " + $("#to_date").val():"For all Development Items"));
+										$("#imgpath").attr("src","http://"+location.hostname + "/images/company_logo.png");
+									}									
+								});	
+	var DocumentContainer = document.getElementById('print_item_form');
+	$("#print_item_form").dialog('close');
+	var WindowObject = window.open("","PrintWindow");
+	WindowObject.document.writeln(DocumentContainer.innerHTML);	
+	loader = document.createElement('link');
+	loader.href = "/style/printTable.css";
+	loader.rel = "stylesheet";
+	WindowObject.document.head.appendChild(loader);	
+	WindowObject.document.close();
+	WindowObject.focus();
+}

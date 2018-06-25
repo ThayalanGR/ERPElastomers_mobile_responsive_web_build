@@ -1,0 +1,49 @@
+tableFilters.sort_config		=	{ sort_types:['us','string', 'string','string','string', 'us', 'us','us','us','us','us','us','us','us','string','us'],sort_col: [15,false] };
+var TF_01			=	null;
+
+function getPageData(){	
+	XMLContent	=	postback(actionFile, "compconvcost="+$("#conv_rate").val()+"&insprocrate="+$("#insproc_rate").val(), "POST", "XML");
+	listPageData($("#content_body"), XMLContent, XSLFile);			
+}
+
+function updateCmpdRate(id){
+	selIndex	=	$("#"+id).attr('selectedIndex');
+	cmpdId		= 	$("#"+id).attr('cmpdid');
+	noCav		=	Number($("#"+id).val());
+	if(!(noCav > 0))
+	{
+		noCav	=	1;
+	}
+	rmCost		=	$("#"+id).attr('rmcost');
+	insCost		=	$("#"+id).attr('inscost');
+	sellPrice	=	$("#"+id).attr('sellprice');
+	inspRate	=	$("#"+id).attr('insprate');
+	liftRates	=	$("#"+id).attr('liftrate').split(":");
+	trimRates	=	$("#"+id).attr('trimrate').split(":");	
+	liftRate	=	liftRates[selIndex];	
+	trimRate	=	trimRates[selIndex];
+	cmpdAMR		=	$("#"+id).attr('cmpdamr');
+	moldCost	=	liftRate.toNumber()/noCav;
+	cmpdCost	=	moldCost + trimRate.toNumber() + rmCost.toNumber() + insCost.toNumber() + inspRate.toNumber();
+	diffCost	=	sellPrice.toNumber() - cmpdCost;
+	cmpdContrib	=	diffCost * cmpdAMR.toNumber();
+	$("#moldcost_"+cmpdId).html(moldCost.toFixed(2));
+	$("#cmpdcost_"+cmpdId).html(cmpdCost.toFixed(2));
+	$("#diffcost_"+cmpdId).html(diffCost.toFixed(2));
+	$("#contrib_"+cmpdId).html(cmpdContrib.toFixed(2));
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+$(document).ready(function(){	
+	getPageData();
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	$("#button_submit").button().click(function(){
+		getPageData();
+		TF_01		=	setFilterGrid("resultTable",tableFilters);
+		TF_01.RefreshGrid();
+		
+	});		
+
+});

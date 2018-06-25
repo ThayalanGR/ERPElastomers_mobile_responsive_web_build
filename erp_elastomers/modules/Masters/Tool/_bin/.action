@@ -1,0 +1,133 @@
+<?php
+
+	// Includes
+	session_start();
+	global $dev_grp_email,$quality_grp_email,$cmpd_grp_email;
+	// Do Actions
+	header('Content-Type: text/xml');
+	switch($_POST['selecttype']){
+		case "TOOLVIEW":
+			$output		=	@getMySQLData("select *, tt.status as tool_status from tbl_tool tt
+											inner join tbl_component tc on tt.compId=tc.cmpdId
+											where tool_ref='".$_POST['tool_ref']."'", 'xml', 'xmldata', 'lower');
+			echo $output;
+			exit();		
+		case "COMPONENTPARTREF":
+			$output =@getMySQLData("select cmpdName, cmpdId, cmpdRefNo from tbl_component where status > 0", 'xml');
+			echo $output;
+			exit();
+		break;
+		case "TOOLADD":
+			if($_POST['compartref'] != ""){
+							// Generate Code No
+				$codeArray		=	@getSettingsData("toolRef");
+				$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+				
+				$sql			=	"insert into tbl_tool(
+													tool_ref, compId, comp_part_ref, nature, no_of_cavities, no_of_active_cavities, mold_process, mold_type, std_lifts_per_plan, tool_life, manufacturer, 
+													strips_per_lift, lift_rate, trim_rate, rack, next_validation, status, remarks, blanking_type, blank_method, strip_profile, strip_weight_spec, strip_weight_min, strip_weight_max, 
+													strip_dim1_spec, strip_dim1_min, strip_dim1_max, strip_dim2_spec, strip_dim2_min, strip_dim2_max, strip_dim3_spec, strip_dim3_min, strip_dim3_max, intro_date, prev_lifts_run, entry_on, updated_on, status1)
+												values(
+													'$codeNo', '".$_POST['compId']."', '".$_POST['compName']."', '".$_POST['nature']."', '".$_POST['noofcav']."', '".$_POST['noofactivecav']."', '".$_POST['mold_process']."', '".$_POST['mold_type']."', '".$_POST['stdlifts']."', '".$_POST['toollife']."', '".$_POST['manufact']."', 
+													'".$_POST['stripsperlift']."', '".$_POST['lift_rate']."', '".$_POST['trim_rate']."', '".$_POST['rack']."', '".$_POST['nextvalid']."', '".$_POST['status']."', '".$_POST['remarks']."', '".$_POST['blanktype']."', '".$_POST['blankmethod']."', '".$_POST['stripprof']."', '".$_POST['stripweightspec']."', '".$_POST['stripweightmin']."', '".$_POST['stripweightmax']."',
+													'".$_POST['stripdim1spec']."', '".$_POST['stripdim1min']."', '".$_POST['stripdim1max']."', '".$_POST['stripdim2spec']."', '".$_POST['stripdim2min']."', '".$_POST['stripdim2max']."', '".$_POST['stripdim3spec']."', '".$_POST['stripdim3min']."', '".$_POST['stripdim3max']."', '".$_POST['introdate']."', '".$_POST['prevlifts']."',now(), '', '1');";
+				$sql_query		=	@getMySQLData($sql);
+				$output		=	"<tooladd>
+									<status>".$sql_query['status']."</status>
+									<toolref>$codeNo</toolref>
+								</tooladd>";
+				if($sql_query['status'] == "success"){
+					@getMySQLData("update tbl_settings set auto_inc=auto_inc+1 where name='toolRef'");
+				}
+			}
+		break;
+		case "TOOLEDIT":
+			$tool_ref=$_POST['tool_ref'];
+			$compName=$_POST['compName'];
+			
+			if($tool_ref != ""){
+				$act_cavities	=	@getMySQLData("select no_of_active_cavities  from tbl_tool where tool_ref='$tool_ref' and status1>0", "arr");
+				$act_cavities	=	$act_cavities['data'][0]['no_of_active_cavities'];
+				$new_actCavs	=	$_POST['noofactivecav'];
+				$sql			=	"update tbl_tool set
+									compId = '".$_POST['compId']."',
+									comp_part_ref = '".$compName."', 
+									nature = '".$_POST['nature']."', 
+									no_of_cavities = '".$_POST['noofcav']."',
+									no_of_active_cavities = '".$new_actCavs."',
+									mold_process = '".$_POST['mold_process']."',
+									mold_type = '".$_POST['mold_type']."',
+									std_lifts_per_plan = '".$_POST['stdlifts']."',
+									tool_life = '".$_POST['toollife']."', 
+									manufacturer = '".$_POST['manufact']."', 
+									strips_per_lift = '".$_POST['stripsperlift']."',
+									lift_rate = '".$_POST['lift_rate']."',
+									trim_rate = '".$_POST['trim_rate']."',									
+									rack = '".$_POST['rack']."',
+									next_validation = '".$_POST['nextvalid']."',
+									status = '".$_POST['status']."',
+									remarks = '".$_POST['remarks']."',
+									blank_method = '".$_POST['blankmethod']."',
+									blanking_type = '".$_POST['blanktype']."', 
+									strip_profile = '".$_POST['stripprof']."',
+									strip_weight_spec = '".$_POST['stripweightspec']."', 
+									strip_weight_min = '".$_POST['stripweightmin']."',
+									strip_weight_max = '".$_POST['stripweightmax']."', 
+									strip_dim1_spec = '".$_POST['stripdim1spec']."', 
+									strip_dim1_min = '".$_POST['stripdim1min']."', 
+									strip_dim1_max = '".$_POST['stripdim1max']."', 
+									strip_dim2_spec = '".$_POST['stripdim2spec']."', 
+									strip_dim2_min = '".$_POST['stripdim2min']."', 
+									strip_dim2_max = '".$_POST['stripdim2max']."', 
+									strip_dim3_spec = '".$_POST['stripdim3spec']."', 
+									strip_dim3_min = '".$_POST['stripdim3min']."',
+									strip_dim3_max = '".$_POST['stripdim3max']."', 
+									intro_date = '".$_POST['introdate']."',
+									prev_lifts_run = '".$_POST['prevlifts']."', 													
+									updated_on = now() where tool_ref='$tool_ref' and status1>0"; 									
+												
+				$sql_query		=	@getMySQLData($sql);
+				if (($sql_query['status'] == "success")  && (str2num($act_cavities) != str2num($new_actCavs)))
+				{
+					$pstatus = sendEmail(array_merge($dev_grp_email,$cmpd_grp_email),$quality_grp_email,"Active Cavities Changed: ".$compName."(".$tool_ref.")","Please note: The Number of active cavities for the Tool : ".$compName."(".$tool_ref.") has been changed from ".$act_cavities." to ".$new_actCavs,"");		
+				}				
+				$output			=	"<tooladd>
+										<sql>".$sql."</sql>
+										<status>".$sql_query['status']."</status>
+										<toolref>$tool_ref</toolref>
+									</tooladd>";
+			}				
+			
+		break;		
+
+		case "TOOLDEL":
+		$tool_ref = $_POST['tool_ref'];
+			if($tool_ref != ""){
+				$sql		=	"update tbl_tool set status1='0' where tool_ref='$tool_ref' and status1>0;";
+				$sql_query		=	@getMySQLData($sql);
+					$output		=	"<tooladd>
+										<sql>".$sql."</sql>
+										<status>".$sql_query['status']."</status>
+										<toolref>$tool_ref</toolref>
+									</tooladd>";
+			}		
+		break;
+
+	}
+	
+	// List Data
+	$list	=	@getMySQLData("select t1.tool_ref, t1.comp_part_ref, t1.nature,t1.no_of_cavities, t1.no_of_active_cavities, t1.mold_process, t1.mold_type, t1.std_lifts_per_plan, DATE_FORMAT(t1.intro_date,'%d-%b-%y') as date_of_app,
+									t1.rack, t1.manufacturer, t1.strips_per_lift, t1.lift_rate, t1.trim_rate, t1.blanking_type, t1.strip_profile, t1.status as tool_status, t1.blank_method,
+									(select transferee_userName from tbl_tool_transfer where tool_ref=t1.tool_ref order by ttn_date desc limit 1) as tool_location, t1.next_validation, t1.tool_life,
+									t1.strip_profile, t1.strip_weight_spec, t1.strip_weight_min, t1.strip_weight_max, t1.strip_dim1_spec, t1.strip_dim1_min, t1.strip_dim1_max,
+									t1.strip_dim2_spec, t1.strip_dim2_min, t1.strip_dim2_max, t1.strip_dim3_spec, t1.strip_dim3_min, t1.strip_dim3_max,t1.prev_lifts_run,
+									ifnull((select sum(actualLifts)as mldQty from tbl_moulding_receive where toolRef=t1.tool_ref group by toolRef),0)as lifts_run
+								from tbl_tool t1
+									left outer join tbl_tool_transfer t2 on t1.tool_ref=t2.tool_ref
+								where t1.status1>0 group by t1.tool_ref order by next_validation - lifts_run", 'xml','root', 'lower');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+?>

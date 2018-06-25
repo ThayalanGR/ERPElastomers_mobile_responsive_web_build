@@ -1,0 +1,47 @@
+<?php
+	session_start();
+	global $appsub_docs, $appsubdocs_upload_dir,$dev_grp_email;
+	header("Content-Type: text/xml");
+	
+	switch($_POST["selecttype"]){
+		case "GETVAL":			
+			$sql_qan	=	"select subId, DATE_FORMAT(subDate,'%d-%b-%Y') as subDate, part_number,part_description,cusName
+								from tbl_approval_submit tas
+								inner join tbl_trn tt on tt.trnId=tas.toolRef
+								inner join tbl_develop_request tdr on tt.rfqid=tdr.sno
+								inner join tbl_customer tc on tc.cusid=tdr.cusid
+							where tdr.status>0 and tas.status = 1 and subDate >= '".$_POST["fromdate"]."' and  subDate  <= '".$_POST["todate"]."' order by subId desc";
+							
+			$list		=	getMySQLData($sql_qan,'xml','root','lower');
+			$list		=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+			echo "<xmldata>
+				$list
+				$output
+			</xmldata>";
+		break;
+		case "SUBMITDOCS":
+			$codeNo			=	$_POST["invid"];
+			$partNum		=	$_POST["partnum"];
+			$uploadPath 	= 	$_SESSION['app']['iso_dir'].$appsubdocs_upload_dir.$codeNo;
+			$filesArr		=	glob("$uploadPath/*.*");
+			if($_POST["subtype"] == 1)
+			{
+				$pstatus 	= 	createPDFforReport("NPD/ApprovalSubmissions",$codeNo);
+				$tempPath	=	sys_get_temp_dir();
+				if($pstatus == "")			
+				{
+					rename($tempPath.'/'.$codeNo.'.pdf', $tempPath.'/Covering Letter-'.$partNum.'.pdf');
+					$thefile = $tempPath.'/Covering Letter-'.$partNum.".pdf";	
+					array_push($filesArr,$thefile);	
+				}
+			}				
+			$pstatus = sendEmail(explode(',',$_POST["subemail"]),$dev_grp_email,"Part Approval Submission:".$partNum,"Dear Sir/Madam, Please find the necessary documents for Approval of Part Number:". $partNum ." attached to this email <br\> Thank you <br\>".$_SESSION['app']['comp_name'],$filesArr);
+			if($thefile != null && $thefile != "")
+			{
+				unlink($thefile);
+			}			
+			echo $pstatus;
+		break;
+	}
+	
+?>

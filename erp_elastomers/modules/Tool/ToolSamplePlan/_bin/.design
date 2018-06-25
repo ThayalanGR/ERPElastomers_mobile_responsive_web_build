@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+		<table id="resultTable" class="print_table" border="0" cellpadding="6" cellspacing="0" width="100%">
+			<thead>
+				<tr style="font-size:8px;">
+					<th width="7%" align="left">TRN ID</th>
+					<th width="8%" align="left">TRN Date</th>
+					<th width="12%" align="left">Customer</th>
+					<th width="8%" align="left">Part Number</th>  
+					<th width="12%" align="left">Description</th>
+					<th width="12%" align="left">Supplier</th>
+					<th width="12%" align="left">Tool Size</th>
+					<th width="10%" align="left">Moulding Process</th>
+					<th width="8%" align="left">Mould Type</th>
+					<th width="4%" align="right">Cavities</th>
+					<th align="right">#</th>
+				</tr>
+			</thead>
+			<tbody>	
+				<xsl:for-each select="xmldata/root/data/row">
+					<tr>
+						<td align="left"><xsl:value-of select="trnid"/></td>
+						<td align="left"><xsl:value-of select="trndate"/></td>
+						<td align="left"><xsl:value-of select="cusname"/></td>
+						<td align="left"><xsl:value-of select="part_number"/></td>
+						<td align="left"><xsl:value-of select="part_description"/></td>
+						<td align="left"><xsl:value-of select="supname"/></td>
+						<td align="left"><xsl:value-of select="toolsize"/></td>
+						<td align="left"><xsl:value-of select="moldprocess"/></td>
+						<td align="left"><xsl:value-of select="moldtype"/></td>		
+						<td align="right"><xsl:value-of select='format-number(toolcavities,"##,##,##0")'/></td>
+						<td align="right">
+							<a>
+								<xsl:attribute name="toolid"><xsl:value-of select="trnid" /></xsl:attribute>
+								<xsl:attribute name="partnum"><xsl:value-of select="part_number" /></xsl:attribute>
+								<xsl:attribute name="partdesc"><xsl:value-of select="part_description" /></xsl:attribute>
+								<xsl:attribute name="compid"><xsl:value-of select="cpd_cpdid" /></xsl:attribute>
+								<xsl:attribute name="noofcavs"><xsl:value-of select="toolcavities" /></xsl:attribute>
+								<xsl:attribute name="blankwgt"><xsl:value-of select="tl_blank_wgt" /></xsl:attribute>
+								<xsl:attribute name="curetime"><xsl:value-of select="cpd_cure_time" /></xsl:attribute>
+								<xsl:attribute name="curepress"><xsl:value-of select="cpd_cure_press" /></xsl:attribute>
+								<xsl:attribute name="curetemp"><xsl:value-of select="cpd_cure_temp" /></xsl:attribute>								
+								<xsl:attribute name="rfqid"><xsl:value-of select="rfqid" /></xsl:attribute>
+								<xsl:attribute name="class">raise_plan_button link</xsl:attribute>
+								Plan Sample
+							</a>
+						</td>
+					</tr>
+				</xsl:for-each>
+			</tbody>
+		</table>
+    </xsl:template>
+</xsl:stylesheet>

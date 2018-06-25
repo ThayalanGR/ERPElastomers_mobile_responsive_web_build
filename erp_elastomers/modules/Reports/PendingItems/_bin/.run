@@ -1,0 +1,123 @@
+tableFilters.default_date_type 	= 	'YMD';
+tableFilters.col_operation		=	{ 
+									   id: ["plan_lifts_total","plan_qty_total","plan_val_total","iss_lifts_total","iss_qty_total","iss_val_total"], 
+									   col: [3,4,5,6,7,8],
+									   operation: ["sum","sum","sum","sum","sum","sum"],
+									   decimal_precision: [0,0,2,0,0,2]
+									};
+									
+var TF_01	=	null;
+currOperation	=	"";
+
+function fieldChange(){
+    updatePageBehaviour(true);
+}
+
+$(document).ready(function(){
+
+	// View Item Dialog
+	$("#show_plan_form").dialog({ autoOpen: false ,
+									modal: true ,
+									position: ['center','center'],
+									draggable: true,
+									resizable: false,
+									width: 750,
+									height:'auto',
+									buttons: [
+										{
+											text: "Close",
+											click: function(){
+												$(this).dialog("close");
+											}
+										}
+									],
+									open: function(event, ui) {
+										$("#show_plan_form").css('visibility','visible');
+									}
+								});		
+
+	updatePageBehaviour(false);
+});
+
+function updatePageBehaviour(needRefesh){
+	param				=	"type="+$("#phasefield").val()+"&fetchdate="+$("#datefield").val()+"&operator="+$("#operator1").val();	
+	var mouldList       =	postback(actionFile, param, "POST", "XML");
+	listPageData($("#content_body"), mouldList, XSLFile);
+	$(".view_button").click(function(e){
+		cmpdname	=	$(this).attr('cmpdname');
+		operation	=	$(this).attr('operation');
+		if(cmpdname != null && cmpdname != ""){
+			getPlanDetailList(cmpdname,operation);
+		}
+	});	
+	printData		=	$(mouldList);
+	currOperation	=	printData.find("currOperation").html();			
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	if(needRefesh)
+		TF_01.RefreshGrid();	
+}
+
+function getPlanDetailList(cmpdname,operation){
+	$("#show_plan_form").css('visibility', 'visible');
+	$("#show_plan_form").dialog("open");
+	var objSchList	=	postback(actionFile,"type="+operation+"&fetchdate="+$("#datefield").val()+"&cmpdname="+cmpdname+"&operator="+$("#operator1").val()+"&outtype=xml","POST","XML");
+	schXML			=	parseXMLdoc(objSchList);
+	$("#new_PlanList table tr:gt(0)").remove();
+	sno 			= 	1;
+	planLiftsTot	=	0;
+	planQtyTot 		= 	0;
+	planValTot 		= 	0;
+	issliftsTot		=	0;
+	issQtyTot 		= 	0;
+	issValTot 		= 	0;
+	$(objSchList).find('row').each(function(index, element) {
+		tabClass	=	(sno%2)?'content_rows_dark':'content_rows_light';
+		planQty		= 	$(this).find('plannedqty').text();
+		issQty		= 	$(this).find('issqty').text();
+		poRate		= 	$(this).find('porate').text();
+		planVal		=	Number(planQty) * Number(poRate);
+		issVal		=	Number(issQty) * Number(poRate);
+		planLifts	=	$(this).find('plannedlifts').text();
+		if(!(planLifts > 0))
+			planLifts	=	0;
+		issLifts	=	$(this).find('isslifts').text();
+		if(!(issLifts > 0))
+			issLifts	=	0;		
+		tabData			=	"<tr class='"+tabClass+"'>" +
+							"<td width='3%' align='center'>"+sno+"</td>" +
+							"<td width='8%' align='left'>"+$(this).find('planid').text()+"</td>" +
+							"<td width='9%' align='center'>"+$(this).find('issdate').text()+"</td>" +								
+							"<td width='10%' align='center'>"+$(this).find('recdate').text()+"</td>" +								
+							"<td width='10%' align='center'>"+$(this).find('operator').text()+"</td>" +
+							"<td width='10%' align='right'>"+getCurrency(planLifts,0)+"</td>" +								
+							"<td width='10%' align='right'>"+getCurrency(planQty,0)+"</td>" +
+							"<td width='10%' align='right'>"+getCurrency(planVal,2)+"</td>" +
+							"<td width='10%' align='right'>"+getCurrency(issLifts,0)+"</td>" +
+							"<td width='10%' align='right'>"+getCurrency(issQty,0)+"</td>" +
+							"<td align='right'>"+getCurrency(issVal,2)+"</td>" +
+						"</tr>";	
+		$("#new_PlanList table tr:last").after(tabData);
+		planLiftsTot	= 	planLiftsTot + Number(planLifts);		
+		planQtyTot 		= 	planQtyTot + Number(planQty);
+		planValTot 		= 	planValTot + Number(planVal);
+		issliftsTot		= 	issliftsTot + Number(issLifts);		
+		issQtyTot 		= 	issQtyTot + Number(issQty);
+		issValTot 		= 	issValTot + Number(issVal);
+		sno++;
+	});	
+	$("#plan_tot_lifts").html(getCurrency(planLiftsTot,0));
+	$("#plan_tot_qty").html(getCurrency(planQtyTot,0));
+	$("#plan_tot_val").html(getCurrency(planValTot,2));
+	$("#iss_tot_lifts").html(getCurrency(issliftsTot,0));
+	$("#iss_tot_qty").html(getCurrency(issQtyTot,0));
+	$("#iss_tot_val").html(getCurrency(issValTot,2));
+}
+
+function exportPlanDetailList(){
+	$('#type').val(currOperation);
+	$('#fetchdate').val($("#datefield").val());
+	$('#operator').val($("#operator1").val());
+	document.exportform.action= actionFile;
+	document.exportform.submit();
+}
+

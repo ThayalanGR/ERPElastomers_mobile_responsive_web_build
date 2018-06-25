@@ -1,0 +1,167 @@
+<?php
+
+	// Includes
+	session_start();
+	
+	// Do Actions
+	header('Content-Type: text/xml');
+	switch($_POST['selecttype']){
+		case "USERCPDATLIST":
+			$output		=	@getMySQLData("select cmpdId as id, cmpdRefNo, cmpdName as name from tbl_component where status>0 order by cmpdName asc", 'xml', 'xmldata', 'lower');
+			echo $output;
+			exit();
+		break;
+		
+		case "USERCPDLIST":
+			$output		=	@getMySQLData("select t1.userId, t1.cpdId, t2.cmpdRefNo, t2.cmpdName, t1.mouldingRate, t1.trimmingRate from tbl_users_details t1, tbl_component t2 where t1.cpdId = t2.cmpdId and t1.userId='".$_POST['userid']."'", 'xml', 'xmldata', 'lower');
+			echo $output;
+			exit();
+		break;
+		
+		case "MODLIST":
+			$output		=	@getMySQLData("select autoId, menu_head from tbl_menu_head where status>0 order by menu_order asc", 'xml', 'modhead', 'lower');
+			$output		.=	@getMySQLData("select autoId, menu_head, menu_sub from tbl_menu_sub where status>0 order by menu_head, menu_order asc", 'xml', 'modsub', 'lower');
+			echo "<modlist>
+			$output
+			</modlist>";
+			exit();
+		break;
+		
+		case "USERADD":
+			if($_POST['optname'] != "" ){
+				$_POST['optmould']	=	($_POST['optmould'] == 'false')?0:1;
+				$_POST['opttrim']	=	($_POST['opttrim'] == 'false')?0:1;
+				// Generate Code No
+				$codeArray		=	@getSettingsData("usercode");
+				$codeNo			=	@getRegisterNo($codeArray[0], $codeArray[1]);
+				if($codeNo != ""){
+					$optDtls		=	$_POST['optdtls'];
+					$curtime		=	"00:".$_POST['cmpdcurmm'].":".$_POST['cmpdcurss'];
+					$subMenuAccess	=	$_POST['optaccess']['sub'];
+					$headMenuAccess	=	"";
+					if($subMenuAccess != "" && $subMenuAccess != null)
+					{
+						$head_sql 		=	@getMySQLData("SELECT group_concat(autoId  SEPARATOR ',') as menuheadlist FROM tbl_menu_head
+											WHERE STATUS >0	AND menu_head IN (SELECT DISTINCT menu_head FROM tbl_menu_sub	WHERE STATUS >0	AND autoId IN (".$subMenuAccess.") )
+											ORDER BY menu_order");
+						$headMenuAccess	=	$head_sql['data'][0]['menuheadlist'];
+					}
+					
+					$output			=	@getMySQLData("insert into tbl_users(
+														userId, userName, password, userType, fullName,
+														userDesignation, userAddress1, userAddress2, userAddress3, userPhone,
+														userMobile, userEmail, userBank, userBankAcc, userIFSCNo,
+														userPan, isMoulding, isTrimming, userPermissions, userSubPermissions,
+														userApprovedBy, userApprovedDate, userRemarks
+													)
+													values(
+														'$codeNo', '$codeNo', '".md5($_POST['optpass'])."', '".$_POST['opttype']."', '".$_POST['optname']."',
+														'".$_POST['optdesign']."', '".$_POST['optadd1']."', '".$_POST['optadd2']."', '".$_POST['optadd3']."', '".$_POST['optph']."',
+														'".$_POST['optmob']."', '".$_POST['opteml']."', '".$_POST['optbank']."', '".$_POST['optacc']."', '".$_POST['optifsc']."',
+														'".$_POST['optpan']."', '".$_POST['optmould']."', '".$_POST['opttrim']."', '".$headMenuAccess."', '".$subMenuAccess."',
+														'".$_POST['optappuser']."', '".$_POST['optappdate']."', '".$_POST['optremarks']."'
+													);", "xml");
+					
+					if($_POST['optmould'] == 1 || $_POST['opttrim'] == 1){
+						// Add Operator Details
+						if(is_array($optDtls) && count($optDtls['cpd']) > 0){
+							$appSql		=	"insert into tbl_users_details(
+												userId, cpdId, mouldingRate, trimmingRate
+											 ) values";
+							for($od=0; $od<count($optDtls['cpd']); $od++){
+								$appSql		.=	"(
+													'$codeNo', '".$optDtls['cpd'][$od]."', '".$optDtls['mould'][$od]."', '".$optDtls['trim'][$od]."'
+												 )".(($od == (count($optDtls['cpd'])-1))?'':', ');
+							}
+							$output		.=	@getMySQLData($appSql, "xml");
+						}
+					}
+				}
+				if($output != ""){
+					$status		=	split("<status>", $output);
+					$status		=	split("</status>", $status[1]);
+					$status		=	$status[0];
+					
+					if($status == "success"){
+						@getMySQLData("update tbl_settings set auto_inc='".($codeArray[1]+1)."' where name='usercode'");
+					}
+				}
+			}
+		break;
+		
+		case "USEREDIT":
+			if($_POST['userid'] != "" ){
+				$_POST['optmould']	=	($_POST['optmould'] == 'false')?0:1;
+				$_POST['opttrim']	=	($_POST['opttrim'] == 'false')?0:1;
+				$optDtls			=	$_POST['optdtls'];
+				$subMenuAccess		=	$_POST['optaccess']['sub'];
+				$headMenuAccess		=	"";
+				if($subMenuAccess != "" && $subMenuAccess != null)
+				{
+					$head_sql 		=	@getMySQLData("SELECT group_concat(autoId  SEPARATOR ',') as menuheadlist FROM tbl_menu_head
+										WHERE STATUS >0	AND menu_head IN (SELECT DISTINCT menu_head FROM tbl_menu_sub	WHERE STATUS >0	AND autoId IN (".$subMenuAccess.") )
+										ORDER BY menu_order");
+					$headMenuAccess	=	$head_sql['data'][0]['menuheadlist'];
+				}			
+				
+				$output		=	@getMySQLData("update tbl_users set
+												".(($_POST['optpass'] != "")?"password='".md5($_POST['optpass'])."',":'')."
+												userType='".$_POST['opttype']."',
+												fullName='".$_POST['optname']."',
+												userDesignation='".$_POST['optdesign']."',
+												userAddress1='".$_POST['optadd1']."',
+												userAddress2='".$_POST['optadd2']."',
+												userAddress3='".$_POST['optadd3']."',
+												userPhone='".$_POST['optph']."',
+												userMobile='".$_POST['optmob']."',
+												userEmail='".$_POST['opteml']."',
+												userBank='".$_POST['optbank']."',
+												userBankAcc='".$_POST['optacc']."',
+												userIFSCNo='".$_POST['optifsc']."',
+												userPan='".$_POST['optpan']."',
+												isMoulding='".$_POST['optmould']."',
+												isTrimming='".$_POST['opttrim']."',
+												userPermissions='".$headMenuAccess."',
+												userSubPermissions='".$subMenuAccess."',
+												userLastModifiedBy='".$_POST['optappuser']."',
+												userLastModified=now(),
+												userRemarks='".$_POST['optremarks']."'
+												where userId='".$_POST['userid']."' and status>0;", "xml");
+				
+				if($_POST['optmould'] == 1 || $_POST['opttrim'] == 1){
+					// Delete All Compounds
+					$output			.=	@getMySQLData("delete from tbl_users_details where userId='".$_POST['userid']."'", 'xml');
+					
+					// Add Compounds
+					if(is_array($optDtls) && count($optDtls['cpd']) > 0){
+						$appSql		=	"insert into tbl_users_details(
+											userId, cpdId, mouldingRate, trimmingRate
+										 ) values";
+						for($od=0; $od<count($optDtls['cpd']); $od++){
+							$appSql		.=	"(
+												'".$_POST['userid']."', '".$optDtls['cpd'][$od]."', '".$optDtls['mould'][$od]."', '".$optDtls['trim'][$od]."'
+											 )".(($od == (count($optDtls['cpd'])-1))?'':', ');
+						}
+						$output		.=	@getMySQLData($appSql, "xml");
+					}
+				}
+			}
+		break;
+		
+		case "USERDEL":
+			if($_POST['userid'] != ""){
+				$sql		=	"update tbl_users set status='0' where userId='".$_POST['userid']."' and status>0;";
+				$output		=	@getMySQLData($sql, "xml");
+			}
+		break;
+	}
+	
+	// List Data
+	$list	=	@getMySQLData("select * from tbl_users where status>0 order by userId asc", 'xml', 'root', 'lower');
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";	
+
+?>

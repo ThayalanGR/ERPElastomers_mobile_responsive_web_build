@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+		<div class="row" id="table">
+            <xsl:for-each select="xmldata/root/data/row">
+			<div class="col-12 mt-2" id="tablesub">
+				<div class="container shadow text-left" id="tr">
+                	<div class="row bg-light" >
+						<div class="col-6">Key ID</div>
+                       	<div class="col-6 text-success " id="td"> <xsl:value-of select="planid"/></div>
+                 	</div>
+					<div class="row ">
+						<div class="col-6"> Location</div>
+                       	<div class="col-6 text-success " id="td"><xsl:value-of select="operator"/></div>
+                 	</div>
+					<div class="row bg-light">
+						<div class="col-6">Part No.</div>
+                       	<div class="col-6 text-success " id="td"><xsl:value-of select="cmpdname" /></div>
+                 	</div>
+					<div class="row ">
+						<div class="col-6">No of Cavities</div>
+                       	<div class="col-6 text-success " id="td"><xsl:value-of select="no_of_active_cavities"/></div>
+                 	</div>
+					<div class="row bg-light">
+						<div class="col-6">Plan. Lift</div>
+                       	<div class="col-6 text-success " id="td"><xsl:value-of select="format-number(liftplanned, '###,###,##0')"/></div>
+                 	</div>
+					<div class="row ">
+						<div class="col-6">Act. Lift</div>
+                       	<div class="col-6 text-success " id="td">
+						   <input>
+								<xsl:attribute name="id">input_<xsl:value-of select="planid" /></xsl:attribute>
+								<xsl:attribute name="planid"><xsl:value-of select="planid" /></xsl:attribute>
+								<xsl:attribute name="plannedqty"><xsl:value-of select="plannedqty" /></xsl:attribute>
+								<xsl:attribute name="operator"><xsl:value-of select="operator" /></xsl:attribute>
+								<xsl:attribute name="type">text</xsl:attribute>
+								<xsl:attribute name="style">text-align:right;width:75%</xsl:attribute>
+								<xsl:attribute name="class">invisible_text</xsl:attribute>
+								<xsl:attribute name="onfocus">FieldHiddenValue(this, 'in', '0')</xsl:attribute>
+								<xsl:attribute name="onblur">FieldHiddenValue(this, 'out', '0')</xsl:attribute>								
+								<xsl:attribute name="value">0</xsl:attribute>
+								<xsl:attribute name="onkeyup">updateLiftChanges(this)</xsl:attribute>
+							</input>
+						</div>
+                 	</div>
+					<div class="row bg-light">
+						<div class="col-6">Plan. Qty</div>
+                       	<div class="col-6 text-success " id="td"> <xsl:value-of select="format-number(plannedqty,'###,###,##0')" /></div>
+                 	</div>
+					<div class="row ">
+						<div class="col-6">Act. Qty</div>
+                       	<div class="col-6 text-success ">
+							<xsl:attribute name="id">label_<xsl:value-of select="planid" /></xsl:attribute>
+							<xsl:attribute name="noofCavs" id="td"><xsl:value-of select="no_of_active_cavities" /></xsl:attribute>
+							0   
+						</div>
+                 	</div>
+                   <div class="row text-white justify-content-center ">
+				   		<a>
+                            <xsl:attribute name="planid"><xsl:value-of select="planid" /></xsl:attribute>
+                            <xsl:attribute name="class">add_button col-5 btn btn-sm btn-primary </xsl:attribute>
+                            <i class="fas fa-plus"></i>
+                        </a>
+						<a>
+                            <xsl:attribute name="planid"><xsl:value-of select="planid" /></xsl:attribute>
+                            <xsl:attribute name="class">delete_button col-5 btn btn-sm btn-danger</xsl:attribute>
+                            <i class="fas fa-trash-alt"></i>
+                        </a>
+				   </div>
+				</div>
+			</div>
+            </xsl:for-each>
+        </div>
+    </xsl:template>
+</xsl:stylesheet>

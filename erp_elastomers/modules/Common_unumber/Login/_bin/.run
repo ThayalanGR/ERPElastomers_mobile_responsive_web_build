@@ -1,0 +1,107 @@
+function loginURL(){
+   url		=	window.location.href;
+   // Check URL
+   if(url != null && url != ""){
+	   	if(!isRewrite){
+			if(url.indexOf("?") > -1){
+				urlSplit	=	url.split("?");
+				mURL		=	urlSplit[0];
+				urlSplit.splice(0, 1);
+			}
+			if(typeof urlSplit == "object" && urlSplit[urlSplit.length-1].indexOf("&") > -1)
+				urlSplit	=	urlSplit[urlSplit.length-1].split("&");
+			if(typeof urlSplit == "object" && urlSplit[0].indexOf("=") > -1)
+				urlSplit	=	urlSplit[0].split("=");
+	
+			url		=	(typeof urlSplit == 'object' && urlSplit[urlSplit.length-1] == "Logout")?mURL:url;			  
+			
+			if(url.lastIndexOf("#") > -1)
+			url		=	url.substr(0, url.length-1);
+		}
+		else{
+			url		=	window.location.protocol+"//"+window.location.host;
+			urlPath	=	window.location.pathname;
+			url		+=	(urlPath.toLowerCase().indexOf("logout") < 0)
+							?urlPath
+							:'';
+		}
+   }
+   
+	window.location.replace(url);
+}
+
+function loginUser(){
+   user		=	$("#userId");
+   //alert(user.val());
+   //pass		=	$("#password");
+   error	=	$("#err_msg");
+   url		=	window.location.href;
+
+   if(user.val() == null && user.val() == ""){
+	   user.focus();
+	   displayError(error, "error", "Invalid Username . . .");
+	   return false;
+   }
+//   if(pass.val() == null && pass.val() == ""){
+//	   pass.focus();
+//	   displayError(error, "error", "Invalid Password . . .");
+//	   return false;
+//   }
+   
+   pData		=	"selecttype=VALIDATE&user="+user.val();
+   logindata	=	postback(actionFile, pData, "POST", "XML");
+   
+   if(logindata == "success"){
+	   loginURL();
+   }else{
+	   alert(logindata);
+	   displayError(error, "error", "Invalid User/Login . . .");
+   }
+}
+
+function checkLogin(){
+	pData		=	"selecttype=CHECK";
+	logChk		=	postback(actionFile, pData, "POST", "XML");
+	if(logChk == 'true'){
+	   loginURL();
+	}
+}
+
+$(document).ready(function(){
+	url		=	window.location.href;
+   user = '';
+   pass = '';
+   var mURL = new Array();
+   if(url.indexOf("?") > -1){
+				urlSplit	=	url.slice(url.indexOf("?")+1);
+				mURL		=	urlSplit.split("&");
+	}
+	for(i=0;i<mURL.length;i++)
+	{
+		if(mURL[i].indexOf("user") == 0)
+		{
+			user = mURL[i].substring(mURL[i].indexOf("=")+1);
+		}
+		if(mURL[i].indexOf("pass") == 0)
+		{
+			pass = mURL[i].substring(mURL[i].indexOf("=")+1);
+		}		
+	
+	}
+	
+ 	if(user != null && user != '' && pass != null && pass != '')
+	{
+		$("#username").val(user);
+		$("#password").val(pass);
+		loginUser();
+	}
+	else
+	{
+		$("#username").focus();
+		$("#login").button();
+		$("#login").click(loginUser);
+	}
+	
+	
+	//setInterval(checkLogin, 1000);
+});

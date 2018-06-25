@@ -1,0 +1,175 @@
+
+
+tableFilters.default_date_type 	= 	'DDMMMYYYY';
+tableFilters.col_6				=	"none";
+tableFilters.sort_config		=	{ sort_types:['string', 'ddmmmyyyydate', 'string','string', 'us', 'string','None'] };	
+tableFilters.col_operation		=	{ 
+									   id: ["val_total1"], 
+									   col: [4],
+									   operation: ["sum"],
+									   decimal_precision: [0]
+									};
+var TF_01						=	null;
+$(document).ready(function(){
+	createAutoComplete();
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+
+});
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------- //
+
+
+function createAutoComplete(){
+	var mouldList       =	postback(actionFile,"type=GETMDREC","POST","XML");
+	//alert(mouldList);
+	listPageData($("#content_body"), mouldList, XSLFile);
+    
+	$("#button_submit").button().click(function(){
+       var inputs = $("#content_body").find(":checkbox"); 
+		if(inputs.length <= 0)
+		{	
+			displayError($('#error_msg'), "error", "<strong>Error !</strong> -  No DC to be created!!!");
+			return false;
+		}		
+		userList		=	"";
+		userData       	=   postback(actionFile,"type=GETUSERS","POST","XML");
+		username		=	[];
+		username.push("In-House");
+		$(userData).find('row').each(function(){
+			username.push($(this).find('fullname').text());
+		});
+		userList	=	username.toSelectWithValue(username, "userlist", "userlist", null, "width:95%;");
+
+
+		issueCont =   `<div class="container" >
+							<div class="row justify-content-center"><b>Issue Deflashing</b></div>
+							<form action="" class="form-control-sm" onsubmit="return false;">
+								<div class="row">
+									<label>Operator</label>
+									${userList}
+								</div>
+								<div class="row">
+									<label>Issue Date</label>
+									<input type="date" name="issDate" id="issDate" onChange="closeDate(this);" value="<?php echo date("Y-m-d",mktime(0, 0, 0, date("m")  , date("d"), date("Y"))); ?>" />
+								</div>
+							</form>
+						</div>`;
+	    $('#issue_dialog').html(issueCont).dialog({
+			width:230,
+			resizable:false,
+			modal:true,
+			buttons:{
+				'Create':function(){
+					oper	=	$("#userlist").val();
+					if(oper != null && oper != "")
+					{
+						confirmCont =  '<div class="container" width="100%" id="titleBatch"  >' +
+									'<div class="row justify-content-center"><b>Create</b></div><div class="row">Are you Sure to Create the DC?</div>' +
+								'</div>';
+						$('#confirm_dialog').html(confirmCont).dialog({
+							width:230,
+							resizable:false,
+							modal:true,
+							buttons:{
+								'Ok':function(){
+									$(this).dialog('close');
+									issueDeflashing(inputs,oper, $("#issDate").val());									
+								},
+								'Cancel':function(){
+									$(this).dialog('close');
+								}
+							},
+							close:function(){
+								$(this).html('').dialog('destroy');
+							}
+						});	$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
+				
+						
+					}
+					else
+					{
+						displayError($('#error_msg'), "error", "<strong>Error !</strong> - Please select the operator. ! ! !");			
+						$("#userlist").focus()
+						return false;
+					}
+				},
+				'Cancel':function(){
+					$(this).dialog('close');
+				}
+			},
+			close:function(){
+				$(this).html('').dialog('destroy');
+			}
+		});$('#issue_dialog').prev('.ui-dialog-titlebar').hide();
+	});
+	
+
+	
+	
+	$("#button_cancel").button().click(function(){
+		$("#content_body table tbody tr").each(function(index, element){
+			planId 	=	($(this).find("td:eq(6) input"));
+			planId.removeAttr("checked");
+		});	
+	});
+}
+
+function issueDeflashing(inputsArr,operator,issDate){
+
+	mouldIds 	= new Array();
+	cmpdIds 	= new Array();
+	planIds		= new Array();
+	issueQtys	= new Array();
+	for(rl=0; rl<inputsArr.length; rl++){
+		chkBxId		=	inputsArr[rl].id;
+		planId		=	$("#"+chkBxId).attr("planid");
+		cmpdId		=	$("#"+chkBxId).attr("cmpdid");
+		mouldId		=	$("#"+chkBxId).attr("modrecref");
+		issQty		=	$("#"+chkBxId).attr("mouldqty");
+		isJWControl	=	$("#"+chkBxId).attr("jwcontrol");	
+		isChecked 	= 	$("#"+chkBxId).attr("checked");
+		if (isChecked == true)
+		{
+			if(isJWControl == 1 && operator != 'In-House')
+			{
+				displayError($("#error_msg"), "error", "<strong>Error !</strong> - Key "+ planId +" is under job work control, hence can be deflashed only in In-House");
+				$("#"+chkBxId).focus();
+				return false;					
+			}
+			planIds.push(planId);
+			cmpdIds.push(cmpdId);
+			mouldIds.push(mouldId);
+			issueQtys.push(issQty);				
+		}
+	}	
+	if(planIds == null || planIds.length <= 0 )
+	{
+		$("#issue_dialog").dialog('close');
+		displayError($('#error_msg'), "error", "<strong>Error !</strong> - Please select the Keyno(s) for Deflashing Issue. ! ! !");		
+		return false;
+	}
+
+	param			=	'type=INSDEF&issdate=' + issDate +
+						'&operator=' + operator ;
+	for(rm=0; rm<planIds.length; rm++){
+		param = param + "&planref[]=" + planIds[rm];
+		param = param + "&cmpdid[]=" + cmpdIds[rm] ;
+		param = param + "&mouldref[]=" + mouldIds[rm] ;
+		param = param + "&issdefqty[]=" + issueQtys[rm] ;
+	}
+	//alert(param); return false;
+	$("#issue_dialog").dialog('close');	
+	var deflashIss      =	postback(actionFile,param,"POST","XML");
+	temp = deflashIss.split("-");
+	if(temp[1] == 'success')
+	{
+		displayError($('#error_msg'), "highlight", "Deflashing DC Ref "+temp[0]+" has been created successfully");
+		openInvoice({invID:temp[0]});
+	}
+	else
+		displayError($('#error_msg'), "error", "<strong>Error !</strong> - DC creation failed due to : " + deflashIss);
+		
+	createAutoComplete();
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	TF_01.RefreshGrid();		
+}

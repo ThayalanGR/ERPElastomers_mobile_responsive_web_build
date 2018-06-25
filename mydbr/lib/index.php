@@ -1,0 +1,18 @@
+<?php //00099
+// Copyright myDBR.com Ltd 2007-2017 http://www.mydbr.com
+// All rights reserved
+// myDBR 5.0.2 (build 3467)
+include('install/loader.php');
+?>
+HR+cPtGoxlVR0TFuxerxr0qf1vMeLrGmWbGRs0hDMAVzT/47CdV0r+1ab7qwKWhO+5N6LKrOCKwR
++PL/w/6gIaGmODIgs4z36G99jItJtBarJLb5P4bRueSbL4NlskMzYCkE2dOXKbQMzfC1eS0UhwGN
+qpeKKYOgmNb1Kr2LBv1uEgZeZEqiKFB5fX187AAoCpjjCwwEg+KYjluFvOIPoVmo9DlXjV3/6j6w
+tqsEPDYQPtbtWlbpZQ0bVsfg1YcuRyNsxAqFI/Z9v7jpFI6IDb8Abn4oYzocqu1btrjVPajOQOtH
+/gHoQ48qMQGH18QfOB2e8HOaiwGigIa0Jf88YUI14OZ1bpefgHKwco6SzjkVrKWrhuLSWy85Ylb9
+eGdj/dhNAtWX6BXGzaQdTdzJjIF0Z+U/PpDTNDPYMR9NFpEo4xNtS/yjc8a6tQzIhkl4rGePoplK
+owYUkiqhGCx04iP7189T9CrzcOnLH3xbPefNBF1CDmWz+RKHu9Fq6yJAYAywcws7N2VvOFXX2A77
+3GhxSk0lyCZLQZhGWHOLv3+Gpmnz+9QQmk18/RVpvF/Tm2zsThNwge96xWYMswduRH11B8UJgkXY
+3EnmwmZ5SbdkHoT8b0gvLbEafGkI4CHVH/ef4Bbr+x25RbTCfciKRGSYVu1y5sid/5TIpeKwnPAs
+cwo0xs9GNKNZBdMg+UN9WWdX4o5BAkBNNeR15K3KxdxBCf4PvX66VLS/fpbnfVRQHsEO0Dn2X0ln
+Zpk1eINr3GE9v6ysWb093CYzj7tie1QH1ru9cvwHqmhfpb8vPBZwHirsV0tqL0WZVcmJahzPhvgS
+FH2xy/ZKf3FntPN31k6bQx0GSW==

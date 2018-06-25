@@ -1,0 +1,76 @@
+<?php
+	session_start();
+	ob_start();
+	global $dev_grp_email;
+	
+	
+	header("Content-Type: text/xml");
+	switch($_REQUEST["type"]){
+		case "TOOLPOADD":
+			if(count($_REQUEST) > 0){
+				$rfqid			=	$_REQUEST['rfqid'];
+				$supplier		=	$_REQUEST['supplier'];
+				$quoteref		=	$_REQUEST['quoteref'];
+				$quotedate		=	$_REQUEST['quotedate'];
+				$supquotedate	=	$_REQUEST['supquotedate'];
+				$toolsize		=	$_REQUEST['toolsize'];
+				$toolcavs		=	$_REQUEST['toolcavs'];
+				$shrinkage		=	$_REQUEST['shrinkage'];
+				$moldproc		=	$_REQUEST['moldproc'];
+				$moldtype		=	$_REQUEST['moldtype'];
+				$moldmatl		=	$_REQUEST['moldmatl'];
+				$isproto		=	$_REQUEST['isproto'];
+				$cavengrave		=	$_REQUEST['cavengrave'];
+				$poval			=	$_REQUEST['poval'];
+				$compdate		=	$_REQUEST['compdate'];
+				$remark			=	$_REQUEST['remark'];
+				$codeNo			=	@getRegisterData("toolpurcode");
+				$sup_data		=	@getMySQLData("select * from tbl_supplier where supId='$supplier'", "arr");
+				$sup_data		=	$sup_data['data'][0];
+				
+				$sql_ins	=	"insert into tbl_tool_purchase (
+									purId, purDate,rfqId, supId, supQuoteRef, supQuoteDate, expRecvDate, toolSize, toolCavities, shrinkage, 
+									moldProcess, moldType, moldMaterial, cavEngravement, isproto, poValue,	remarks, entry_on, entry_by		
+								) 
+								values(
+										'$codeNo','$quotedate',$rfqid, '$supplier', '$quoteref', '$supquotedate', '$compdate', '$toolsize', $toolcavs, $shrinkage,
+										'$moldproc', '$moldtype', '$moldmatl', $cavengrave,$isproto,$poval,'$remark', now(), '".$_SESSION['userdetails']['userId']."')";
+				
+				$soutput	=	@getMySQLData($sql_ins,"xml");
+				//echo $soutput;	exit();			
+				if($soutput != ""){
+					$istatus		=	split("<status>", $soutput);
+					$istatus		=	split("</status>", $istatus[1]);
+					$istatus		=	$istatus[0];					
+					if($istatus == "success"){	
+						@getMySQLData("update tbl_settings set auto_inc=auto_inc + 1 where name='toolpurcode'");
+						if($_REQUEST['sendemail'] == 'yes')
+						{
+							// close & send the result to user & then send emails									
+							closeConnForAsyncProcess("$istatus | $codeNo");
+							// send email
+							$aEmail = new AsyncCreatePDFAndEmail("NPD/ToolPORegister",$codeNo, explode(',',$sup_data['supEmail']),$dev_grp_email,"Tool Purchase Order:".$codeNo,"Dear Sir/Madam,\n Please find the attached Tool purchase order and provide the Tool");									
+							$aEmail->start();
+							exit();										
+						}
+					}
+				}
+			}
+			echo "$istatus | $codeNo";
+			exit();
+		break;
+		case  "RFQLIST":
+			$sql		=	"select sno,part_number,part_description,tc.cusName,tl_toolref,target_price,ave_monthly_req,tl_cavs,tl_mould_proc as moldproc, ifnull(noofpo,0) as noofpo,ifnull(tcpd.shrinkage,0) as shrinkage,drawing_file_name,'/".$rfqdrawings_upload_dir."' as filepath
+							from tbl_develop_request tdr
+								inner join tbl_customer tc on tc.cusId=tdr.cusId
+								inner join tbl_develop_feasibility tdf on tdf.prod_ref=tdr.sno 
+								left join (select count(purid) as noofpo, rfqid from tbl_tool_purchase where status > 0 group by rfqid) ttp	on ttp.rfqid=tdr.sno
+								left join tbl_compound tcpd	on tcpd.cpdId=tdf.cpd_cpdid
+							where tdr.status>1 and tdr.status<5 and approval_status > 0 and NOT (tl_toolref != 'NA' and isNew = 1) order by noofpo,ttp.rfqid";	
+			$outlist	=	@getMySQLData($sql, "xml", "root", "lower");
+			echo "<xmldata>$outlist</xmldata>";	
+		break;
+	}
+	
+	ob_end_flush();
+?>

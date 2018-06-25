@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:template match="/">
+<table id="resultTable" border="0" cellpadding="6" cellspacing="0" width="100%">
+	<thead>
+		<tr class="ram_rows_head">
+			<th align="left" width="10%" title="Tool Number">Tool No</th>
+			<th align="left" width="15%" title="Component">Comp</th>
+			<th align="right" width="3%" title="Number Of Active Cavities">NOAC</th>
+			<th align="left" width="8%" title="Rack Reference">Rack Ref.</th>
+			<th align="right" width="4%">Strips/Lift</th>
+			<th align="left" width="8%" title="Banking Type">Blank Type</th>
+			<th align="left" width="5%">Status</th>
+			<th align="left" width="15%">Location</th>
+			<th align="right" width="6%">Prev. Lifts</th>
+			<th align="right" width="6%">Lifts Run</th>
+			<th align="right" width="6%" title="Next Validation Due">NxtValid Due</th>
+			<th align="right" title="Lifts Due for Validation">Lifts Due for Valid</th>
+		</tr>	
+	</thead>
+	<tbody>
+	<xsl:for-each select="xmldata/root/data/row">
+        <tr>
+			<xsl:choose>
+				<xsl:when test="lifts_run  &gt;=  next_validation">
+					<xsl:attribute name="style">color:#FF0000</xsl:attribute>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:if test="next_validation - lifts_run  &lt;=  500">
+						<xsl:attribute name="style">color:#FF9900</xsl:attribute>
+					</xsl:if>
+				</xsl:otherwise>
+			</xsl:choose>  					
+            <td align="left">			
+                <a>
+                    <xsl:attribute name="href">javascript:viewChild('<xsl:value-of select="tool_ref" />','docs')</xsl:attribute>
+                    <xsl:value-of select="tool_ref"/>
+                </a>			
+			</td>
+            <td align="left"><xsl:value-of select="comp_part_ref"/></td>
+            <td align="right"><xsl:value-of select="no_of_active_cavities"/></td>
+            <td align="left"><xsl:value-of select="rack" /></td>
+            <td align="right"><xsl:value-of select="strips_per_lift"/></td>
+            <td align="left"><xsl:value-of select="blanking_type" /></td>
+            <td align="left"><xsl:value-of select="tool_status" /></td>
+            <td align="left">
+                <a>
+                    <xsl:attribute name="href">javascript:viewChild('<xsl:value-of select="tool_ref" />','location')</xsl:attribute>
+                    <xsl:choose>
+                        <xsl:when test="tool_location!=''">
+                            <xsl:value-of select="tool_location" />
+                        </xsl:when>
+                        <xsl:otherwise>
+                            Store
+                        </xsl:otherwise>
+                    </xsl:choose>                         
+                </a>
+            </td>
+			<td align="right"><xsl:value-of select="prev_lifts_run" /></td>
+            <td align="right">
+                <a>
+                    <xsl:attribute name="href">javascript:viewChild('<xsl:value-of select="tool_ref" />','history')</xsl:attribute>
+                    <xsl:value-of select="lifts_run" />
+                </a>
+            </td>
+            <td align="right"><xsl:value-of select="format-number(next_validation,'###,###,##0')" /></td>
+            <td align="right"><xsl:value-of select="format-number(next_validation - lifts_run,'###,###,##0')" /></td> 
+        </tr>
+    </xsl:for-each>
+	</tbody>
+</table>
+</xsl:template>
+</xsl:stylesheet>

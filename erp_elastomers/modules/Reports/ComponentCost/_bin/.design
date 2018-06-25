@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE xsl:stylesheet  [
+	<!ENTITY nbsp   "&#160;">
+	<!ENTITY copy   "&#169;">
+	<!ENTITY reg    "&#174;">
+	<!ENTITY trade  "&#8482;">
+	<!ENTITY mdash  "&#8212;">
+	<!ENTITY ldquo  "&#8220;">
+	<!ENTITY rdquo  "&#8221;">
+	<!ENTITY pound  "&#163;">
+	<!ENTITY yen    "&#165;">
+	<!ENTITY euro   "&#8364;">
+]>
+<xsl:stylesheet version="1.0"
+xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:output omit-xml-declaration="yes" indent="yes"/>
+<xsl:variable name="delimiter">
+        <xsl:text>:</xsl:text>
+</xsl:variable>
+<xsl:template name="processingTemplate">
+	<xsl:param name="datalist"/>
+	<xsl:param name="datalist1"/>
+	<xsl:choose>
+	<xsl:when test="contains($datalist,$delimiter)">
+			<xsl:element name="option">
+				<xsl:attribute name="value"><xsl:value-of select="substring-before($datalist1,$delimiter)"/></xsl:attribute>
+				<xsl:value-of select="substring-before($datalist,$delimiter)"/>
+			</xsl:element>
+			<xsl:call-template name="processingTemplate">
+				<xsl:with-param name="datalist" select="substring-after($datalist,$delimiter)"/>
+				<xsl:with-param name="datalist1" select="substring-after($datalist1,$delimiter)"/>
+			</xsl:call-template>
+	</xsl:when>
+	<xsl:otherwise>
+		<xsl:element name="option">
+			<xsl:attribute name="value"><xsl:value-of select="$datalist1"/></xsl:attribute>
+			<xsl:value-of select="$datalist"/>
+		</xsl:element>
+	</xsl:otherwise>	
+	</xsl:choose>
+</xsl:template>
+<!-- To Avoid infinit value in calculation -->
+<xsl:decimal-format name='infi' infinity="0" />
+<xsl:template match="/">
+<table id="resultTable"  border="0" cellpadding="0" cellspacing="0">
+<thead>	
+	<tr>
+		<th width="2%" >S.No</th>
+		<th width="12%">Comp. Ref.</th>
+		<th width="9%">Tool</th>
+		<th width="7%">Compound Ref.</th>
+		<th width="9%">Insert Ref.</th>		
+		<th width="6%" title='Blank Weight'>BW</th>
+		<th width="6%" title='Compound Cost per Kg'>CC</th>
+		<th width="5%" title='Raw Material Cost'>RM</th>
+		<th width="5%" title='Insert Cost'>IC</th>	
+		<th width="5%" title='Moulding Cost'>MC</th>			
+		<th width="5%" title='Component Cost'>CC</th>
+		<th width="5%" title='Sell Price'>SP</th>
+		<th width="5%" title='Difference'>Diff</th>
+		<th width="7%" title='Average Monthly Requirement'>AMR</th>
+		<th width="5%" title='Customer Group'>Cust.</th>
+		<th  title='Monthly Contribution' >Contrib.</th>
+	</tr>
+</thead>
+<tbody>	
+	<xsl:for-each select="xmldata/root/data/row">
+        <tr>
+			<xsl:if test="cmpdcost  &gt;=  sellprice">
+				<xsl:attribute name="style">color:#FF0000</xsl:attribute>
+			</xsl:if>			
+			<xsl:attribute name="id"><xsl:value-of select="cmpdid"/></xsl:attribute>
+            <td align="left"><xsl:value-of select="position()"/></td>
+            <td align="left"><xsl:value-of select="cmpdname"/></td>
+			<td align="left">
+				<xsl:choose>
+					<xsl:when test="toolcount ='1'">
+						<xsl:value-of select="toolref" />
+					</xsl:when>
+					<xsl:otherwise>
+						<select>
+							<xsl:attribute name="id">select_<xsl:value-of select="cmpdid" /></xsl:attribute>
+							<xsl:attribute name="cmpdid"><xsl:value-of select="cmpdid" /></xsl:attribute>
+							<xsl:attribute name="rmcost"><xsl:value-of select="rmcost" /></xsl:attribute>
+							<xsl:attribute name="inscost"><xsl:value-of select="inscost" /></xsl:attribute>	
+							<xsl:attribute name="liftrate"><xsl:value-of select="liftrate" /></xsl:attribute>	
+							<xsl:attribute name="trimrate"><xsl:value-of select="trimrate" /></xsl:attribute>
+							<xsl:attribute name="insprate"><xsl:value-of select="insprate" /></xsl:attribute>	
+							<xsl:attribute name="sellprice"><xsl:value-of select="sellprice" /></xsl:attribute>	
+							<xsl:attribute name="cmpdamr"><xsl:value-of select="cmpdamr" /></xsl:attribute>					
+							<xsl:attribute name="onChange">updateCmpdRate('select_<xsl:value-of select="cmpdid" />');</xsl:attribute>
+							<xsl:attribute name="style">text-align:right;width:90%</xsl:attribute>
+							<xsl:variable name="dataList">
+								<xsl:value-of select="toolref"/>
+							</xsl:variable>
+							<xsl:variable name="dataList1">
+								<xsl:value-of select="toolactcavs"/>
+							</xsl:variable>							
+							<xsl:call-template name="processingTemplate">
+								<xsl:with-param name="datalist" select="$dataList"/>
+								<xsl:with-param name="datalist1" select="$dataList1"/>
+							</xsl:call-template>								
+						</select>
+					</xsl:otherwise> 
+			   </xsl:choose> 						
+			</td>			
+            <td align="left"><xsl:value-of select="cmpdcpdname"/></td>
+			<td align="left"><xsl:value-of select="cmpdinserts"/></td>
+            <td align="right"><xsl:value-of select="format-number(cmpdblankwgt,'##,##,##0.000')"/></td>
+            <td align="right"><xsl:value-of select="format-number(cpdcost,'##,##,##0.00')"/></td>
+			<td align="right"><xsl:value-of select="format-number(rmcost,'##,##,##0.00')"/></td>
+            <td align="right"><xsl:value-of select="format-number(inscost,'##,##,##0.00')"/></td>
+			<td align="right">
+				<xsl:attribute name="id">moldcost_<xsl:value-of select="cmpdid" /></xsl:attribute>
+				<xsl:value-of select="format-number(mconvcost,'##,##,##0.00')"/>
+			</td>
+            <td align="right">
+				<xsl:attribute name="id">cmpdcost_<xsl:value-of select="cmpdid" /></xsl:attribute>			
+				<xsl:value-of select="format-number(cmpdcost,'##,##,##0.00')"/></td>
+			<td align="right"><xsl:value-of select="format-number(sellprice,'##,##,##0.00')"/></td>			
+            <td align="right">
+				<xsl:attribute name="id">diffcost_<xsl:value-of select="cmpdid" /></xsl:attribute>
+				<xsl:value-of select="format-number(sellprice - cmpdcost,'##,##,##0.00')"/>
+			</td>	
+            <td align="right"><xsl:value-of select="format-number(cmpdamr,'##,##,##0')"/></td>
+			<td align="left"><xsl:value-of select="cusgroup"/></td>
+            <td align="right">
+				<xsl:attribute name="id">contrib_<xsl:value-of select="cmpdid" /></xsl:attribute>
+				<xsl:value-of select="format-number(cmpdamr * (sellprice - cmpdcost),'##,##,##0.00')"/>
+			</td>		
+        </tr>
+	</xsl:for-each>
+</tbody>
+</table>
+</xsl:template>
+</xsl:stylesheet>

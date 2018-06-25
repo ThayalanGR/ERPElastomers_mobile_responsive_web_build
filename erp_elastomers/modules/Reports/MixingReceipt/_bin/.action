@@ -1,0 +1,27 @@
+<?php
+	session_start();
+	
+	// List Data
+	header("Content-Type: text/xml");
+	$sql_list	=	"select m.batId,invId,c.cpdName,c.cpdpolymer,m.batPlanWgt,sum(mixIssuQty) as mixIssue,mxr.batRecvWgt,((mxr.batRecvWgt/sum(mixIssuQty))*100) as mixyeild ,
+							(select DATE_FORMAT(mixRecvDate,'%d-%b-%Y') from tbl_mixing_recv where batid=mi.batid) as MixRecvDate,c.cpdid, mi.entry_by as user from  tbl_invoice_mixissue imi
+							  inner join tbl_mixing_issue mi on imi.mixid=mi.mixIssuId
+							  inner join tbl_mixing_issue_rm mir on mi.mixIssuId=mir.mixIssuId
+							  inner join tbl_mixing m on mi.batId=m.batId
+							  inner join tbl_mixing_recv mxr on m.batId=mxr.batId
+							  inner join tbl_compound c on m.cpdId=c.cpdId
+							  where imi.status > 0
+							  group by imi.invId
+							  order by imi.invId desc";
+	
+	$sql_list	=	"select invId, batId, DATE_FORMAT(mixRecvDate,'%d-%b-%Y') as MixRecvDate, cpdName, cpdPolymer, batRecvWgt, entry_by as user, (batRecvWgt/(select sum(mixIssQty) from tbl_invoice_mixrecv_grn where invId=imr.invId)*100) as mixyeild ,
+						(select sum(mixIssQty) from tbl_invoice_mixrecv_grn where invId=imr.invId) as mixIssue  
+					from tbl_invoice_mix_recv  imr group by invId order by invId desc";
+	$list	=	@getMySQLData($sql_list, "xml", "root", "lower");
+	$list	=	preg_replace("/<\?xml version=\"1.0\" encoding=\"UTF-8\"\?>/", "", $list);
+	echo "<xmldata>
+		$list
+		$output
+	</xmldata>";
+	
+?>
