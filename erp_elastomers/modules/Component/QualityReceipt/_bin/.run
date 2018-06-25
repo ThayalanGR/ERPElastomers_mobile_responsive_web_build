@@ -9,6 +9,7 @@ tableFilters.col_operation		=	{
 									};
 var TF_01						=	null;
 var rejarr						=	new Array();
+<<<<<<< HEAD
 //$(document).ready(function(){
 //	createAutoComplete();
 //	TF_01		=	setFilterGrid("resultTable",tableFilters);
@@ -24,10 +25,20 @@ function waitAndCall()
 	setTimeout(function(){createAutoComplete();}, 1000);
 }
 
+=======
+$(document).ready(function(){
+	createAutoComplete();
+	TF_01		=	setFilterGrid("resultTable",tableFilters);
+	$("#button_view").button().click(function(){
+		openMvmt({});
+	});	
+});
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 
 // ----------------------------------------------------------------------------------------------------------------------------------------------- //
 
 function createAutoComplete(){
+<<<<<<< HEAD
 	invRef			=	$("#invRef").val();
 
 	if(invRef != "" && invRef != null)
@@ -51,12 +62,27 @@ function createAutoComplete(){
 			mdlrref		=	mouldListArr[3];
 			isexternal	=	mouldListArr[4];
 			currrec		=	mouldListArr[5];
+=======
+	var mouldList       =	postback(actionFile,"type=GETDEFREC","POST","XML");
+	listPageData($("#content_body"), mouldList, XSLFile);
+	$('a').click(function(){
+		job         =   $(this).attr('job');
+		if(job == 'issue'){
+			componentid =   $(this).attr('cmpdid');
+			keyid       =   $(this).attr('planid');
+			operator    =   $(this).attr('operator');
+			mdlrref		=	$(this).attr('mdlrref');
+			isexternal	=	$(this).attr('isexternal');
+			currrec		=	$(this).attr('currrec');
+			
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 			userList		=	"";
 			userData       	=   postback(actionFile,"type=GETUSERS","POST","XML");
 			username		=	[];
 			$(userData).find('row').each(function(){
 				username.push($(this).find('fullname').text());
 			});
+<<<<<<< HEAD
 
 			userList	=	username.toSelectWithValue(username, "userlist", "userlist", null, "width:75%;");				
 
@@ -66,6 +92,16 @@ function createAutoComplete(){
 								'<div class="row justify-content-center"><b>Quality Receipt</b></div>'+
 								'<form action="form-control-sm" onsubmit="return false;">' +	
 									'<div class="row bg-light text-success justify-content-center" style="font-weight: bold;"><span class="text-left">Plan Reference</span> &nbsp; ' +keyid+ '</div>' +
+=======
+			userList	=	username.toSelectWithValue(username, "userlist", "userlist", null, "width:75%;");				
+
+			var rejection	=	postback(actionFile,"type=GETREJ&cmpdid="+componentid,"POST","XML");
+			issueCont   	=   '<div class="container-fluid text-primary justify-content-center" style="font-size:10px;">'+   
+								'<div class="row bg-light" style="diplay:none"  id="new_item_error"></div>'+
+								'<div class="row justify-content-center"><b>Quality Receipt</b></div>'+
+								'<form action="form-control-sm" onsubmit="return false;">' +	
+									'<div class="row bg-light text-success justify-content-center"><span class="text-left">Plan Reference</span> &nbsp; ' +keyid+ '</div>' +
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 									'<div class="row"><span class="text-left">Inpector</span>  &nbsp;'+userList+'</div>' +
 									'<div class="row bg-light"><span class="text-left">Inspection Date</span><input type="date" name="inspDate" id="inspDate" onChange="closeDate(this);" value="<?php echo date("Y-m-d",mktime(0, 0, 0, date("m")  , date("d"), date("Y"))); ?>" /></div>'  + 								
 									'<div class="row text-success"><span class="text-left mr-2">Receipt Quantity</span><span id=\"receiptqty\" >'+getCurrency(currrec, 0)+'</span></div>' +
@@ -88,6 +124,7 @@ function createAutoComplete(){
 										'<span><input type=text id="rj_REWORK" onkeyup=calcApproved()  value=\'0\' class=\'invisible_text\' onfocus="FieldHiddenValue(this, \'in\', \'0\')" onblur="FieldHiddenValue(this, \'out\', \'0\')" /></span>'+
 									'</div>';
 			rejarr.push('REWORK');				
+<<<<<<< HEAD
 			issueCont	+=				'<div class="row bg-light text-success"><span class="text-left mr-2">Approved Quantity</span><span id="appqty" >'+getCurrency(currrec, 0)+'</span></div>' +
 									'<input class="row" type="submit" onclick="getSubmitButton(\'issue_dialog\');" style="visibility: hidden; width: 1px; height: 1px; "/>'+	
 									'</form>'+
@@ -98,6 +135,15 @@ function createAutoComplete(){
 				width:300,
 				resizable:false,
 				autoOpen: true ,
+=======
+	issueCont	+=				'<div class="row bg-light text-success"><span class="text-left mr-2">Approved Quantity</span><span id="appqty" >'+getCurrency(currrec, 0)+'</span></div>' +
+									'<input class="row" type="submit" onclick="getSubmitButton(\'issue_dialog\');" style="visibility: hidden; width: 1px; height: 1px; "/>'+	
+									'</form>'+
+									 '</div>' ;
+			$('#issue_dialog').html(issueCont).dialog({
+				width:230,
+				resizable:false,
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 				modal:true,
 				buttons:{
 					'Generate':function(){
@@ -130,6 +176,7 @@ function createAutoComplete(){
 				close:function(){
 					$(this).html('').dialog('destroy');
 				}
+<<<<<<< HEAD
 			}); $('#issue_dialog').prev('.ui-dialog-titlebar').hide();
 			// if(rejarr.length == 0)
 			// 		displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Rejection List Not Available.");
@@ -186,6 +233,15 @@ function createAutoComplete(){
 				// }
 		//});
 
+=======
+			}); $('#issue_dialog').prev('.ui-dialog-titlebar').hide();	   
+			if(rejarr.length == 0)
+				displayError($("#new_item_error"), "error", "<strong>Error !</strong> - Rejection List Not Available.");
+		}
+	});
+}
+
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 function calcApproved(){
 	total		=	0;	
 	inspqty		=	$("#inspqty").val().toNumber();
@@ -258,6 +314,7 @@ function receiveQuality(keyid,mdlrref,cmpdid){
         });
 		//alert(getString); return false;
 		$("#issue_dialog").dialog('close');
+<<<<<<< HEAD
 
 		var mouldquality	=	postback(actionFile,getString,"POST","XML");
 		if(mouldquality == 'fail'){
@@ -268,6 +325,15 @@ function receiveQuality(keyid,mdlrref,cmpdid){
 		displayError($("#new_item_error"), "Successfully created!");
 		//TF_01		=	setFilterGrid("resultTable",tableFilters);
 		//TF_01.RefreshGrid();		
+=======
+		var mouldquality	=	postback(actionFile,getString,"POST","XML");
+		if(mouldquality == 'fail'){
+			alert('Component Quality Entry Failed!');
+		}			
+		createAutoComplete();
+		TF_01		=	setFilterGrid("resultTable",tableFilters);
+		TF_01.RefreshGrid();		
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 	}
 }
 

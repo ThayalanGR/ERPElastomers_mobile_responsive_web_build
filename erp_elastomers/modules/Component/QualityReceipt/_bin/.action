@@ -2,6 +2,7 @@
 	session_start();
 	global $dev_grp_email,$cmpd_grp_email,$cpd_grp_email,$quality_grp_email,$compRejPer;
 	header('Content-Type: text/xml');
+<<<<<<< HEAD
 
 
 	$sqlConst	=	"select issref,cmpdname,cmpdrefno,'0' as isexternal,(dr.currrec - ifnull(mq.receiptqty,0)) as currrec,di.cmpdid,dr.sno, dr.defrecdate, DATE_FORMAT(dr.defrecdate,'%d-%b-%Y') as defrecdatef
@@ -20,12 +21,15 @@
 	$resultConst	=	@getMySQLData($sqlConst);
 	$countConst  =  $resultConst['count'];
 
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 	switch($_POST["type"]){
 		case 'GETUSERS':
 		   $sql		=	"select fullName from tbl_users where status>0 and userDesignation = 'Inspector'";
 		   echo getXML($sql);
 		   break;			
 		case 'GETDEFREC':
+<<<<<<< HEAD
 			$refId			=	$_POST['invref'];
 			//$sql = "";
 			//$list	=	@getMySQLData($sql,"xml","root","lower");
@@ -47,6 +51,25 @@
 			}
 			//echo "<xmldata>".$list."</xmldata>";
 		break;
+=======
+			$sql	=	"select issref,cmpdname,cmpdrefno,'0' as isexternal,(dr.currrec - ifnull(mq.receiptqty,0)) as currrec,di.cmpdid,dr.sno, dr.defrecdate, DATE_FORMAT(dr.defrecdate,'%d-%b-%Y') as defrecdatef
+							from tbl_deflash_reciept dr
+								inner join tbl_deflash_issue di on dr.defissref = di.sno
+								inner join tbl_component tc on di.cmpdid=tc.cmpdId
+								left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 0 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = dr.sno
+							where dr.status = 1 and (dr.currrec - ifnull(mq.receiptqty,0)) > 0  
+						UNION ALL
+						select cr.planId as issref,cmpdname,cmpdrefno,'1' as isexternal,(cr.recvqty - ifnull(mq.receiptqty,0)) as currrec,cr.cmpdid,cr.sno, cr.invdate as defrecdate, DATE_FORMAT(cr.invdate,'%d-%b-%Y') as defrecdatef
+							from tbl_component_recv cr
+								inner join tbl_component tc on cr.cmpdid=tc.cmpdId
+								left join ( select mdlrref, sum(receiptqty) as receiptqty from (select mdlrref, receiptqty from tbl_moulding_quality where status > 0 and isExternal = 1 group by qualityref)tmq group by mdlrref) mq on mq.mdlrref = cr.sno
+							where cr.status = 1 and (cr.recvqty - ifnull(mq.receiptqty,0)) > 0							
+						order by defrecdate desc,issref ";
+							
+			$list	=	@getMySQLData($sql,"xml","root","lower");
+			echo "<xmldata>".$list."</xmldata>";
+			break;
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 		case 'GETREJ':
 			$cmpdid	=	$_POST['cmpdid'];
 			$sql	=	"select distinct t1.sno, t1.rej_type, t1.rej_short_name

@@ -21,6 +21,21 @@ var XSLFile						=	[XSLPath + "_.1.design", XSLPath + "_.2.design"];
 
 function formatTotals()
 {
+<<<<<<< HEAD
+=======
+	tf_Id('di_qty_total').innerHTML = tf_Id('di_qty_total').innerHTML.toCurrency();
+	tf_Id('di_val_total').innerHTML = tf_Id('di_val_total').innerHTML.toCurrency();
+	tf_Id('inv_qty_total').innerHTML = tf_Id('inv_qty_total').innerHTML.toCurrency();
+	tf_Id('inv_val_total').innerHTML = tf_Id('inv_val_total').innerHTML.toCurrency();
+	tf_Id('pend_qty_total').innerHTML = tf_Id('pend_qty_total').innerHTML.toCurrency();
+	tf_Id('pend_val_total').innerHTML = tf_Id('pend_val_total').innerHTML.toCurrency();
+	tf_Id('di_qty_total1').innerHTML = tf_Id('di_qty_total').innerHTML;
+	tf_Id('di_val_total1').innerHTML = tf_Id('di_val_total').innerHTML;
+	tf_Id('inv_qty_total1').innerHTML = tf_Id('inv_qty_total').innerHTML;
+	tf_Id('inv_val_total1').innerHTML = tf_Id('inv_val_total').innerHTML;
+	tf_Id('pend_qty_total1').innerHTML = tf_Id('pend_qty_total').innerHTML;
+	tf_Id('pend_val_total1').innerHTML = tf_Id('pend_val_total').innerHTML;	
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 }
 
 $(document).ready(function(){
@@ -29,8 +44,15 @@ $(document).ready(function(){
 		autoOpen: false ,
 		modal: true ,
 		position: ['center','center'],
+<<<<<<< HEAD
 		resizable: false,
 		width:300,
+=======
+		draggable: true,
+		resizable: false,
+		width: 500,
+		height:'auto',
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 		buttons: [
 			{
 				text: "Create",
@@ -55,6 +77,7 @@ $(document).ready(function(){
 			$("#new_item_error").css("display", "none");
 			removeAllList();
 		} 
+<<<<<<< HEAD
 	}); $('#new_item_form').prev('.ui-dialog-titlebar').hide();
 	
 	$("#di_submit").button().click(function(){
@@ -63,6 +86,18 @@ $(document).ready(function(){
 				'</div>';	
 		$('#confirm_dialog').html(confirmCont).dialog({
 			width:230,
+=======
+	});	
+	
+	$("#di_submit").button().click(function(){
+		confirmCont = '<table width="100%" >' +
+					'<tr><td><b>Are you Sure to Upload the DI?</b></td></tr>' +
+					'</table>'
+		$('#confirm_dialog').html(confirmCont).dialog({
+			title:'Customer DI',
+			width:450,
+			height:'auto',
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 			resizable:false,
 			modal:true,
 			buttons:{
@@ -78,7 +113,10 @@ $(document).ready(function(){
 				$(this).html('').dialog('destroy');
 			}
 		});	 		
+<<<<<<< HEAD
 		$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 	});		
 	
 	updatePageBehaviour();
@@ -177,11 +215,21 @@ $(document).ready(function(){
 							"&templatepost[multicmpds]="			+ 	((invIds.length > 1)?1:0) +
 							"&templatepost[total]="					+	totVal ;
 		//alert(getstring);	//return false;
+<<<<<<< HEAD
 		createCont =  '<div class="container" >' +
 		'<div class="row justify-content-center"><b>Create Multi-Invoice</b></div><div class="row">Are you Sure to Create this Invoice ?</div>' +
 		'</div>';	
 		$('#confirm_dialog').html(createCont).dialog({
 			width:230,
+=======
+		createCont   =   '<table width="100%" >' +
+						'<tr><td><b>Are you Sure to Create this Invoice ?</b></td></tr>' +
+						'</table>';
+		$('#confirm_dialog').html(createCont).dialog({
+			title:'Create Multi-Invoice',
+			width:300,
+			height:125,
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 			resizable:false,
 			modal:true,
 			buttons:{
@@ -208,7 +256,10 @@ $(document).ready(function(){
 				$(this).html('').dialog('destroy');
 			}
 		});			
+<<<<<<< HEAD
 		$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 	});
 	
 	$("#button_add").button().click(function(){
@@ -375,7 +426,11 @@ function getKeys(cusId,cmpdId,cmpdName,rate,cusState,cusGSTN,cusPAN,setKeys,posi
 
 		$('#invoice_dialog').html(issueCont).dialog({
 			title:'Invoice Issue',
+<<<<<<< HEAD
 			width:230,
+=======
+			width:500,
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 			resizable:false,
 			modal:true,
 			buttons:{
@@ -391,7 +446,10 @@ function getKeys(cusId,cmpdId,cmpdName,rate,cusState,cusGSTN,cusPAN,setKeys,posi
 				$(this).html('').dialog('destroy');
 			}
 		});
+<<<<<<< HEAD
 				$('#invoice_dialog').prev('.ui-dialog-titlebar').hide();
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 	}
 	else
 	{
@@ -399,7 +457,11 @@ function getKeys(cusId,cmpdId,cmpdName,rate,cusState,cusGSTN,cusPAN,setKeys,posi
 					'</form>';	
 		$('#invoice_dialog').html(issueCont).dialog({
 			title:'Invoice Issue',
+<<<<<<< HEAD
 			width:230,
+=======
+			width:500,
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 			resizable:false,
 			modal:true,
 			buttons:{
@@ -409,11 +471,21 @@ function getKeys(cusId,cmpdId,cmpdName,rate,cusState,cusGSTN,cusPAN,setKeys,posi
 				},
 				'Unset Keys':function(){
 					$(this).dialog('close');
+<<<<<<< HEAD
 							createCont =  '<div class="container" >' +
 				'<div class="row justify-content-center"><b>Unset Keys</b></div><div class="row">Are you Sure to Unset the Keys ?</div>' +
 				'</div>';
 					$('#confirm_dialog').html(createCont).dialog({
 						width:230,
+=======
+					createCont   =   '<table width="100%" >' +
+										'<tr><td><b>Are you Sure to Unset the Keys ?</b></td></tr>' +
+										'</table>';
+					$('#confirm_dialog').html(createCont).dialog({
+						title:'Unset Keys',
+						width:300,
+						height:125,
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 						resizable:false,
 						modal:true,
 						buttons:{
@@ -431,8 +503,12 @@ function getKeys(cusId,cmpdId,cmpdName,rate,cusState,cusGSTN,cusPAN,setKeys,posi
 						close:function(){
 							$(this).html('').dialog('destroy');
 						}
+<<<<<<< HEAD
 					});	
 					$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();					
+=======
+					});						
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 				},
 				'Close':function(){
 					$(this).dialog('close');
@@ -442,7 +518,10 @@ function getKeys(cusId,cmpdId,cmpdName,rate,cusState,cusGSTN,cusPAN,setKeys,posi
 				$(this).html('').dialog('destroy');
 			}
 		});
+<<<<<<< HEAD
 				$('#invoice_dialog').prev('.ui-dialog-titlebar').hide();
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 	}
 	calcApproved();
 }
@@ -581,11 +660,21 @@ function createInvoiceSubmit(){
 	}
 
 	//alert(getstring);	//return false;
+<<<<<<< HEAD
 				createCont =  '<div class="container" >' +
 				'<div class="row justify-content-center"><b>Create Invoice</b></div><div class="row">Are you Sure to Create this Invoice ?</div>' +
 				'</div>';
 	$('#confirm_dialog').html(createCont).dialog({
 		width:230,
+=======
+	createCont   =   '<table width="100%" >' +
+						'<tr><td><b>Are you Sure to Create this Invoice ?</b></td></tr>' +
+						'</table>';
+	$('#confirm_dialog').html(createCont).dialog({
+		title:'Create Invoice',
+		width:300,
+		height:125,
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 		resizable:false,
 		modal:true,
 		buttons:{
@@ -612,7 +701,10 @@ function createInvoiceSubmit(){
 			$(this).html('').dialog('destroy');
 		}
 	});	
+<<<<<<< HEAD
 			$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 }
 
 function setKeysSubmit(){
@@ -684,11 +776,21 @@ function setKeysSubmit(){
 	}
 
 	//alert(output);	return false;
+<<<<<<< HEAD
 	createCont =  '<div class="container" >' +
 				'<div class="row justify-content-center"><b>Set Keys</b></div><div class="row">Are you Sure to Set the Keys ?</div>' +
 				'</div>';
 	$('#confirm_dialog').html(createCont).dialog({
 		width:230,
+=======
+	createCont   =   '<table width="100%" >' +
+						'<tr><td><b>Are you Sure to Set the Keys ?</b></td></tr>' +
+						'</table>';
+	$('#confirm_dialog').html(createCont).dialog({
+		title:'Set Keys',
+		width:300,
+		height:125,
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 		resizable:false,
 		modal:true,
 		buttons:{
@@ -709,7 +811,11 @@ function setKeysSubmit(){
 			$(this).html('').dialog('destroy');
 		}
 	});	
+<<<<<<< HEAD
 		$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
+=======
+
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 }
 
 function getStock(cmpdId,penQty){
@@ -767,7 +873,12 @@ function getStock(cmpdId,penQty){
 								'</table>' ;		
 			$("#stock_dialog").html(confirmCont).dialog({
 													title:'Component Stock',
+<<<<<<< HEAD
 													width:230,
+=======
+													width:450,
+													height:'auto',
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 													resizable:false,
 													modal:true,
 													buttons: [
@@ -787,7 +898,10 @@ function getStock(cmpdId,penQty){
 															$(this).dialog("destroy");
 														} 
 													});
+<<<<<<< HEAD
 															$('#stock_dialog').prev('.ui-dialog-titlebar').hide();
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 }
 
 function getDI(diRef,cusId,cmpdId){
@@ -810,7 +924,12 @@ function getDI(diRef,cusId,cmpdId){
 			confirmCont 	+=	'</table>' ;		
 			$("#dichange_dialog").html(confirmCont).dialog({
 													title:'DI Qty Change',
+<<<<<<< HEAD
 													width:230,
+=======
+													width:450,
+													height:'auto',
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 													resizable:false,
 													modal:true,
 													buttons:
@@ -821,7 +940,12 @@ function getDI(diRef,cusId,cmpdId){
 																			'</table>'
 																$('#confirm_dialog').html(confirmCont).dialog({
 																	title:'Customer DI Update',
+<<<<<<< HEAD
 																	width:230,
+=======
+																	width:450,
+																	height:'auto',
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 																	resizable:false,
 																	modal:true,
 																	buttons:{
@@ -836,8 +960,12 @@ function getDI(diRef,cusId,cmpdId){
 																	close:function(){
 																		$(this).html('').dialog('destroy');
 																	}
+<<<<<<< HEAD
 																});	 		
 																		$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();															
+=======
+																});	 																	
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 															},
 															"Cancel": function(){
 																$(this).dialog("close");
@@ -997,7 +1125,11 @@ function handleSchSubmit(){
 				didate			=	printData.find("didate").html();
 			
 				if(error == "success"){
+<<<<<<< HEAD
 					//alert("DI for " + dicust + " on " + didate + " has been created sucessfully");					
+=======
+					alert("DI for " + dicust + " on " + didate + " has been created sucessfully");					
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 					window.location.reload();
 				}				
 				else{
@@ -1110,7 +1242,11 @@ function addItemFunc(){
 	xmlData		=	$(XMLContent);
 	error		=	xmlData.find("mysql:eq(0) status:eq(0)").text();
 	if(error == "success"){
+<<<<<<< HEAD
 		//alert("DI Items has been created...");
+=======
+		alert("DI Items has been created...");
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 		updatePageBehaviour();
 		$("#new_item_form").dialog("close");
 	}

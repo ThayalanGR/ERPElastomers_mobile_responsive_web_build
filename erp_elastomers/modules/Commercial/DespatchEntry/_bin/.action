@@ -43,7 +43,11 @@
 				}
 			}
 			echo $list;
+<<<<<<< HEAD
 		break; 
+=======
+		break;
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 		case 'INSDESPDETS':
 			$pickedBy		=	$_REQUEST['pickedby'];
 			$vehNumber		=	$_REQUEST['vehnumber'];

@@ -76,6 +76,12 @@ a.hover1:hover{
       font-size: 10px;
   }
 
+<<<<<<< HEAD
 /*   .ui-widget-content{
      max-width: 200px;
   } */
+=======
+  .ui-widget-content{
+      max-width: 200px;
+  }
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647

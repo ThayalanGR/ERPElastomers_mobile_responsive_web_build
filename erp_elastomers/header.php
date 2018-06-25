@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 
 <?php
@@ -18,6 +19,17 @@
     }
 
     
+=======
+<?php
+
+	$userName	=	$_SESSION['userdetails']['userName'];
+	$fullName	=	$_SESSION['userdetails']['fullName'];
+	$cName		=	$fullName;
+	
+	if(strlen($cName) > 0 && strlen($cName) > 10){
+		$cName	=	substr($cName, 0, 10)."..";
+	}
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 ?>
 <?php if(ISO_LOAD_MODULE != "login"): ?> 
     <div class="row justify-content-between fixed-top shadow-sm " style="height:50px; background-color:white; ">
@@ -42,6 +54,7 @@
     </div>
 
  <?php   if(ISO_BASE_URL == '/modules/Common/') {?>
+<<<<<<< HEAD
     <div class="jumbotron" style="height:auto; padding-top: 60px; padding-bottom: 0px;">
         <div class="row clearfix">
             <div class="col text-primary text-center"><b>Frequently used</b></div>
@@ -93,6 +106,10 @@
     <div class="row justify-content-center" style="height:100em;" >
         <div class="container-fluid "> 
             <div class="row justify-content-center text-primary"><b>All Menu</b></div>
+=======
+    <div class="row justify-content-center" style="height:100em; padding-top: 65px;" >
+        <div class="container-fluid "> 
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
             <div class="row"  style="padding-left: 10px; padding-right: 10px; ">   
             <?php
                 // Get Menus
@@ -147,11 +164,16 @@
                             $_SESSION[''.$menuSub[$sm]['menu_sub'].''] =  $menuSubIcon;
                             $subMenu	.=	($chkLink)
                                                 ?'
+<<<<<<< HEAD
                                                 <a class="col btn hover1 text-center " href="'.$subLink.'" onclick="frequently_used('.$menuSub[$sm]['autoId'].')" style="" ><div class="text-warning"><i class="'.$menuSubIcon.' fa-2x"> </i><br>'.$menuSub[$sm]['menu_sub'].'</div></a>
+=======
+                                                <a class="col btn hover1 text-center " href="'.$subLink.'" style="" ><div class="text-warning"><i class="'.$menuSubIcon.' fa-2x"> </i><br>'.$menuSub[$sm]['menu_sub'].'</div></a>
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
                                                 '
                                                 :'                            
                                                 
                                                 ';
+<<<<<<< HEAD
                             if($chkLink)
                             { 
                                 array_push($userMenuId,$menuSub[$sm]['autoId']);
@@ -159,6 +181,8 @@
                             }
                             //echo $userMenuId[$sm];
 
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
                         }
                         else if ($currHdMenu != "")
                         {
@@ -178,12 +202,15 @@
                                                 
                                                 '
                                             :'';
+<<<<<<< HEAD
                             if($chkLink)
                             {
                                 array_push($userMenuId,$menuSub[$sm]['autoId']);
                                 array_push($userMenuName,$menuSub[$sm]['menu_sub']);
                             }
                             //echo $userMenuId[$sm];
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
                         }
                     }
                     $subMenu		.=	'</div></div>';
@@ -251,6 +278,7 @@
                 </div>                 
         </div>         
     </div>
+<<<<<<< HEAD
     <div class="modal fade" id="edit" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
         <form action="" onsubmit="return false">
             <div class="modal-dialog modal-dialog-centered" role="document">
@@ -279,6 +307,8 @@
             </div>
         </form>
     </div>
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
     <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/popper.min.js" type="text/javascript"></script>
     <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/jquery-3.3.1.min.js" type="text/javascript"></script>
     <script src="<?php echo ISO_REWRITE_URL; ?>bootstrap/js/bootstrap.min.js" type="text/javascript"></script>

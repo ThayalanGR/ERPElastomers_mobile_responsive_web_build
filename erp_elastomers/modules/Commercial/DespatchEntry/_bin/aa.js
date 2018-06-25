@@ -9,10 +9,7 @@ function waitAndCall()
 function createAutoComplete(){
 	
 	invRef			=	$("#invRef").val();
-<<<<<<< HEAD
-=======
 	//console.log(invRef)
->>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 	if(invRef != "" && invRef != null)
 	{
 		var mouldList   =	postback(actionFile,"type=GETDEF&invref="+invRef.toLowerCase(),"POST","XML");
@@ -35,32 +32,10 @@ function createAutoComplete(){
 				addr		=	data['invconsignee'].split("|");
 				consignee	=	addr[0]; //+"<BR />"+addr[2];
 				numPacks	=	getCurrency(data['numpacks'],0);
-<<<<<<< HEAD
-				objList		=	$('#content_body table tr');
-				ol			=	objList.length;
-				nextRow		=	ol + 1;
-				newRow		=	"<tr class='" + ((ol%2)?'content_rows_light':'content_rows_dark') + "' id='" + nextRow + "' docid='" + invId + "' doctype='" + docType + "' invqty = '"+ invQty + "'>" +
-									"<td width='5%'>"+ nextRow +"</td>" +
-									"<td width='8%'>"+invId+"</td>" +
-									"<td width='8%'>"+data['invdate']+"</td>" +
-									"<td width='25%'>"+consignee+"</td>" +
-									"<td width='20%'>"+data['partnumber']+"</td>" +
-									"<td width='8%' align='right'>"+getCurrency(invQty,0)+"</td>" +
-									"<td width='12%' align='right'>"+getCurrency(data['invgrandtotal'],2)+"</td>" +
-									"<td width='8%' align='right'><input id='input_"+ nextRow +"' style='width:50%;text-align:right' class='invisible_text' value='"+numPacks+"' tabindex='2' onFocus=\"FieldHiddenValue(this, 'in', '"+numPacks+"')\" onBlur=\"FieldHiddenValue(this, 'out', '"+numPacks+"')\"></input></td>" +
-									"<td align='center'>" +
-										"<div class='removebtn' id='delrm_" + nextRow + "' target='absmiddle' />" +
-									"</td>" +						
-								"</tr>"	;	
-				
-				if(ol > 0)
-				{	
-					$('#content_body table tr:last').after(newRow);			
-=======
 				objList		=	$('#content_body');
 				ol			=	objList.length;
 				nextRow		=	ol + 1;
-				newRow		=	`<div class="col-12 mt-2 point" id="${nextRow}" docid="${invId}" doctype= "${docType}" invqty = "${invQty}">
+				newRow		=	`<div class="col-12 mt-2" id="${nextRow}" docid="${invId}" doctype= "${docType}" invqty = "${invQty}">
                                                     <div class="container shadow text-left">
                                                             <div class="row ">
                                                                 <div class="col-5 bg-dark" >S.No</div>
@@ -103,17 +78,12 @@ function createAutoComplete(){
 	
 				if(ol > 0)
 				{	
-					$('#content_body div:last').after(newRow);			
->>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
+					$('#content_body').after(newRow);		
 				}
 				else
 				{	
 					$('.window_error').html("");
-<<<<<<< HEAD
-					newTable	=	"<table border='0' cellpadding='6' cellspacing='0' width='100%'>"+newRow+"</table>";
-=======
-					newTable	=	newRow ;
->>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
+					newTable	=	newRow;
 					$('#content_body').html(newTable);
 					
 				}
@@ -136,17 +106,10 @@ function createAutoComplete(){
 }
 
 function updateAllItems(){
-<<<<<<< HEAD
-	$("#content_body table tr").each(function(index, element) {
-		$(element).removeClass((index%2)?'content_rows_dark':'content_rows_light');
-        $(element).addClass((index%2)?'content_rows_light':'content_rows_dark');
-		$(element).find("td:first").text((index+1));
-=======
 	$("#content_body").each(function(index, element) {
 		$(element).removeClass((index%2)?'content_rows_dark':'content_rows_light');
         $(element).addClass((index%2)?'content_rows_light':'content_rows_dark');
-		$(element).find("div:first").text((index+1));
->>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
+		$(element).find("td:first").text((index+1));
     });
 }
 
@@ -205,49 +168,13 @@ $(document).ready(function(){
 				arrParams = arrParams + "&totQtys[]=" + invQtys[rm] ;
 				arrParams = arrParams + "&numPacks[]=" + numPacks[rm] ;
 			}
-<<<<<<< HEAD
-			param	= param + arrParams;
-			confirmCont =  '<div class="container" >' +
-							'<div class="row justify-content-center"><b>Despatch Entry</b></div><div class="row">Are you Sure to Update Despatch Details?</div>' +
-							'</div>';					
-			$("#confirm_dialog").html(confirmCont).dialog({
-				width:230,
-				resizable:false,
-				modal:true,
-				buttons: [
-					{
-						text: "Yes",
-						click: function(){
-							$(this).dialog("close");
-							//alert(param); return false;
-							error	=	postback(actionFile,param,"POST","XML");
-							if(error == "success"){
-								displayError(newError, "highlight", "<strong>Info !</strong> - Despatch Details Updated Successfully");
-								setTimeout(function(){window.location.reload();}, 500);
-							}
-							else{
-								displayError(newError, "error", "<strong>Error !</strong> - Failed to Create Plans - " + error );
-								return false;
-							}																
-						}
-					},
-					{
-						text: "No",
-						click: function() { $(this).dialog("close"); }
-					}
-				],
-				close: function(event, ui) {
-						$(this).dialog("destroy");
-				} 
-			});
-			$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();	
-=======
 			param	= param + arrParams;			
-			confirmCont =  '<div class="container" >' +
-								'<div class="row justify-content-center"><b>Update</b></div><div class="row">Are you Sure to Update Despatch Details?</div>' +
-							'</div>';	
+			confirmCont = '<table width="100%" >' +
+				'<tr><td><b>Are you Sure to Update Despatch Details?</b></td></tr>' +
+				'</table>'	;		
 			$("#confirm_dialog").html(confirmCont).dialog({
-													width:230,
+													title:'Despatch Entry',
+													width:450,
 													height:'auto',
 													resizable:false,
 													modal:true,
@@ -277,8 +204,6 @@ $(document).ready(function(){
 															$(this).dialog("destroy");
 													} 
 			});
-			 $('#confirm_dialog').prev('.ui-dialog-titlebar').hide()
->>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 		}
 		else	
 		{
@@ -288,93 +213,25 @@ $(document).ready(function(){
 	});	
 
 	//Cancel Items
-<<<<<<< HEAD
 	$("#button_cancel").button().click(function(){
-		confirmCont =  '<div class="container" >' +
-				'<div class="row justify-content-center"><b>Despatch Entry</b></div><div class="row">Are you Sure to Clear All Details?</div>' +
-				'</div>';
-		$("#confirm_dialog").html(confirmCont).dialog({
-				width:230,
-				resizable:false,
-				modal:true,
-				buttons: [
-					{
-						text: "Yes",
-						click: function(){
-							$(this).dialog("close");
-							window.location.reload();
-						}
-					},
-					{
-						text: "No",
-						click: function() { $(this).dialog("close"); }
-					}
-				],
-				close: function(event, ui) {
-						$(this).dialog("destroy");
-				} 
-		});
-		$('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
+		document.getElementById('errorId').innerHTML = `<div class="bg-light ">Are you sure to clear?<br>
+		<span class="text-center"><button class="btn btn-sm btn-danger" onClick="window.location.reload();">Yes</button></span>
+		<button class="btn btn-sm btn-success" id="noClear" onClick="noClear();" >No</button>
+		</div>`	
 	});
-	
-
-});
-=======
-//("#button_cancel").button().click(function(){
-//	document.getElementById('errorId').innerHTML = `<div class="bg-light ">Are you sure to clear?<br>
-//	<span class="text-center"><button class="btn btn-sm btn-danger" onClick="window.location.reload();">Yes</button></span>
-//	<button class="btn btn-sm btn-success" id="noClear" onClick="noClear();" >No</button>
-//	</div>`	
-//;
-$("#button_cancel").button().click(function(){
-		confirmCont =  '<div class="container" >' +
-								'<div class="row justify-content-center"><b>Create</b></div><div class="row">Are you Sure to Clear all items?</div>' +
-							'</div>';		
-		$("#confirm_dialog").html(confirmCont).dialog({
-												title:'Despatch Entry',
-												width:230,
-												height:'auto',
-												resizable:false,
-												modal:true,
-												buttons: [
-													{
-														text: "Yes",
-														click: function(){
-															$(this).dialog("close");
-															window.location.reload();
-														}
-													},
-													{
-														text: "No",
-														click: function() { $(this).dialog("close"); }
-													}
-												],
-												close: function(event, ui) {
-														$(this).dialog("destroy");
-												} 
-			});	
-			 $('#confirm_dialog').prev('.ui-dialog-titlebar').hide();
-	});
-	
-
-
-
 
 	
 
 });
 
 
-//function noClear(){
-//
-//	var displayError = document.getElementById('errorId')
-//
-//	displayError.innerHTML = ' '
-//	return 1;
-//	
-//
-//}
+function noClear(){
 
+	var displayError = document.getElementById('errorId')
 
+	displayError.innerHTML = ' '
+	return 1;
 	
->>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
+
+}
+	

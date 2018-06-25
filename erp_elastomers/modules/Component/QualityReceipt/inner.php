@@ -130,7 +130,11 @@
 </div>
 <div style="display:none">
 		<div id="stock_dialog"></div>
+<<<<<<< HEAD
 </div>
+=======
+	</div>
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 
 <script>
 	tableFilters.sort_config		=	{ sort_types:['us','string','string','string', 'string','us','us','us','us','us','us','us'] };

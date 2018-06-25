@@ -31,8 +31,12 @@
         <script src="<?php echo ISO_REWRITE_URL; ?>script/incvar.js" type="text/javascript"></script>
 		<script src="<?php echo ISO_REWRITE_URL; ?>script/TableFilter/tablefilter.js" type="text/javascript"></script>
        
+<<<<<<< HEAD
         <?php
          if(ISO_SUB_PAGE == ''):?>    
+=======
+        <?php if(ISO_SUB_PAGE == ''):?>    
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
         <script src="<?php echo ISO_BASE_URL; ?>_bin/.run" type="text/javascript"></script><?php endif; ?>
         <title><?php  echo $_SESSION['app']['comp_name'];?></title>
     </head>
@@ -85,6 +89,7 @@
                 document.body.scrollTop = 0;
                 document.documentElement.scrollTop = 0;
             }
+<<<<<<< HEAD
             
             
             function frequent_submit()
@@ -130,6 +135,8 @@
 
 
                 
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
         </script>
     </body>
     </html>

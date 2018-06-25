@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 <?php if($changeLoginUi == 1){ ?>
 
+=======
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 <div class="" style="margin-top:100px;">
 <div class="row justify-content-center mt-5">
     <div class="jumbotron-fluid shadow-sm rounded-circle text-center" style="height: 85px; width:85px; "> 
@@ -24,6 +27,7 @@
         <button type="submit" class="btn btn-block btn-sm btn-primary" onclick="loginUser()" id="login">Login</button>
     </form>            
 </div>    
+<<<<<<< HEAD
 </div>
 
 <?php }
@@ -51,3 +55,6 @@ else{
 
 
 <?php } ?>
+=======
+</div>
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647

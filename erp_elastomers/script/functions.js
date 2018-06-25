@@ -495,8 +495,12 @@
 					ucCustFunc();
 			}
 		}
+<<<<<<< HEAD
 
 
+=======
+		
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 		function CheckBox(id, func){
 			chkId	=	$("#" + id);
 			if(chkId){

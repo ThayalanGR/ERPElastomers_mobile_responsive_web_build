@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <div id="window_list_wrapper" class="filter-table" style="padding-top:65px;">
 	 <div class="row ">
 	 	<div class="col-9 text-primary">
@@ -6,11 +7,18 @@
 		<div class="col-2" style="text-align:right;">
 			<button id="button_add" class="btn-primary btn-sm" style="font-size:10px; padding:0px;">Add DI</button>	
 		</div>		
+=======
+<div id="window_list_wrapper" class="filter-table" style="overflow-x:auto; padding-top:65px;">
+     <div id="window_list_head">
+        <strong>Despatch Plan</strong>
+		<span id="button_add">Add DI</span>			
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
     </div>
    <div id="window_list">
     	<div class="window_error">
             <div class="loading_txt"><span>Loading Data . . .</span></div>
         </div>
+<<<<<<< HEAD
         <div id="content_body" style=""></div>
     </div>
    <div id="content_foot">
@@ -22,10 +30,38 @@
 				<button id="btn_availability" class="btn-sm btn-primary" type="submit" style="font-size:10px; padding:0px;">Print Availability Report</button>
 				<button id="btn_submit" class="btn-sm btn-primary" type="submit" style="font-size:10px; padding:0px;">Print Despatch Plan</button>
 				<button id="btn_multi_invoice" class="btn-sm btn-primary" type="submit" style="font-size:10px; padding:0px;">Create Multi-Item Invoice</button>
+=======
+        <div id="content_body"></div>
+    </div>	
+   <div id="content_foot">
+        <table border="0" cellpadding="6" cellspacing="0" width="100%">
+            <tr>
+                <th align="right" style="width:40%;">Grand Total</th>
+                <th align="right" id="di_qty_total" style="width:7%;">0</th>
+				<th align="right" id="di_val_total" style="width:7%;">0</th>
+                <th align="right" id="inv_qty_total" style="width:7%;">0</th>
+				<th align="right" id="inv_val_total" style="width:7%;">0</th>
+				<th style="width:12%;">&nbsp;</th>
+                <th align="right" id="pend_qty_total" style="width:7%;">0</th>
+				<th align="right" id="pend_val_total" style="width:7%;">0</th>
+				<th>&nbsp;</th>
+            </tr>
+        </table>
+    </div> 	
+ 	<form action="" onsubmit="return false;">
+	<div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="new_error_msg"></div>
+    <table width="100%" border="0" cellpadding="5" cellspacing="0" style="margin-right:10px;margin-top:5px;">
+        <tr>
+            <td align="right">
+				<button id="btn_availability" type="submit" >Print Availability Report</button>
+				<button id="btn_submit" type="submit" >Print Despatch Plan</button>
+				<button id="btn_multi_invoice" type="submit" >Create Multi-Item Invoice</button>
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 			</td>			
         </tr>
     </table>
 	</form>	
+<<<<<<< HEAD
     </div> 	
  	
 </div>
@@ -53,6 +89,29 @@
 			</div>
 		</div>
 		<div style="text-align:center;padding-bottom:6px;"><input id="file" name="file" type="file" accept=".csv" style="font-size:10px; height: 25px; width:150px;" tabindex="1" />&nbsp;&nbsp;<span id="di_submit">Upload DI</span> &nbsp; <span id="new_RMButton">Add Row</span></div>
+=======
+</div>
+<div class="window" id="new_item_form" title="ADD DI" style="visibility:hidden">
+	<div style="padding: 5px 7px 7px .7em;margin-bottom:10px;font-size:11px;display:none" id="new_item_error"></div>
+	<form id="formFileUpload" enctype="multipart/form-data" method="POST" onsubmit="return false;">		
+		<table border="0" cellspacing="0" cellpadding="6" class="new_form_table">
+			<tr>
+				<th align="right" width="15%">
+					Customer:
+				</th>
+				<th align="left" width="55%">
+					<input type="text"  tabindex="1" style="width:90%" id="di_cust" onchange="removeAllList();" />
+				</th>		
+				<th align="right" width="10%">
+					Date:
+				</th>
+				<th align="left" >
+					<input type="date"  tabindex="1" id="di_date" style="width:95%" value="<?php echo date("Y-m-d"); ?>" />
+				</th>		
+			</tr>			
+		</table>	
+		<div style="text-align:center;padding-bottom:6px;"><input id="file" name="file" type="file" accept=".csv" style="width:45%" tabindex="1" />&nbsp;&nbsp;<span id="di_submit">Upload DI</span> &nbsp; <span id="new_RMButton">Add Row</span></div>
+>>>>>>> 6f41397474f73f0cd7d747b51cbbe2dd88756647
 		<div class="supplier_list_head" style="margin-right:2px; margin-left:2px;">
 				<table border="0" cellpadding="5" cellspacing="0" width="100%">
 					<tr>
