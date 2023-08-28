@@ -5,7 +5,7 @@ function Geo_GetLoc($ipaddress)
 
   $data = array();
   $license_key=$geo_license_key;
-  $query = "http://geoip1.maxmind.com/f?l=" . $license_key . "&i=" . $ipaddress;
+  $query = "https://geoip.maxmind.com/f?l=" . $license_key . "&i=" . $ipaddress;
   $url = parse_url($query);
   $host = $url["host"];
   $path = $url["path"] . "?" . $url["query"];
